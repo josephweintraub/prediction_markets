@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""
+Fetch real block timestamps from Alchemy RPC for all unique blocks in the dataset.
+Parallelized with multiprocessing, writes chunk files to disk.
+
+Usage:
+    python3 fetch_timestamps.py --workers 50
+"""
+
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import argparse
+import json
+import logging
+import os
+import sys
+import time
+from multiprocessing import Process, Queue
+from pathlib import Path
+
+import duckdb
+import requests
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] worker-%(process)d: %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("fetch_timestamps.log"),
+    ],
+)
+log = logging.getLogger(__name__)
+
+RPC_URL = os.environ.get(
+    "POLYGON_RPC_URL",
+    "https://polygon-mainnet.g.alchemy.com/v2/NSDVafyFOpXs26a2uN3Z_",
+)
+
+DATA_DIR = Path(__file__).parent / "data"
+RESOLVED_TRADES_PATH = DATA_DIR / "resolved_trades.parquet"
+TIMESTAMPS_DIR = DATA_DIR / "timestamp_chunks"
+TIMESTAMPS_PATH = DATA_DIR / "block_timestamps.parquet"
+
+MAX_RETRIES = 8
+BACKOFF_BASE = 1.5
+BACKOFF_MAX = 60
+BATCH_SIZE = 10  # blocks per RPC batch call — smaller to avoid silent failures
+
+
+def fetch_batch(session, block_numbers):
+    """Fetch timestamps for a batch of block numbers via batch RPC."""
+    payloads = [
+        {
+            "jsonrpc": "2.0",
+            "id": i,
+            "method": "eth_getBlockByNumber",
+            "params": [hex(bn), False],
+        }
+        for i, bn in enumerate(block_numbers)
+    ]
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = session.post(RPC_URL, json=payloads, timeout=60)
+            if resp.status_code == 429:
+                wait = min(BACKOFF_BASE ** (attempt + 1), BACKOFF_MAX)
+                if attempt % 3 == 0:
+                    log.warning("429 rate limited (attempt %d/%d) — waiting %.1fs",
+                                attempt + 1, MAX_RETRIES, wait)
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Check for JSON-level 429 (Alchemy returns 200 but error inside)
+            if isinstance(data, list) and data and "error" in data[0]:
+                err_code = data[0]["error"].get("code", 0)
+                if err_code == 429:
+                    wait = min(BACKOFF_BASE ** (attempt + 1), BACKOFF_MAX)
+                    if attempt % 3 == 0:
+                        log.warning("JSON-level 429 (attempt %d/%d) — waiting %.1fs",
+                                    attempt + 1, MAX_RETRIES, wait)
+                    time.sleep(wait)
+                    continue
+
+            results = {}
+            for item in data:
+                idx = item["id"]
+                if item.get("result") and item["result"].get("timestamp"):
+                    bn = block_numbers[idx]
+                    ts = int(item["result"]["timestamp"], 16)
+                    results[bn] = ts
+            return results
+        except Exception as e:
+            wait = min(BACKOFF_BASE ** (attempt + 1), BACKOFF_MAX)
+            if attempt < MAX_RETRIES - 1:
+                log.warning("Attempt %d/%d failed: %s — retry in %.1fs",
+                            attempt + 1, MAX_RETRIES, e, wait)
+                time.sleep(wait)
+            else:
+                log.error("All retries exhausted for blocks %d-%d: %s",
+                          block_numbers[0], block_numbers[-1], e)
+                return {}
+    log.error("All retries exhausted (429s) for blocks %d-%d", block_numbers[0], block_numbers[-1])
+    return {}
+
+
+def worker(worker_id, block_list, result_queue):
+    """Fetch timestamps for a slice of blocks, write to parquet chunks."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    label = f"w{worker_id}"
+    session = requests.Session()
+    session.headers["Content-Type"] = "application/json"
+
+    TIMESTAMPS_DIR.mkdir(parents=True, exist_ok=True)
+
+    all_blocks = []
+    all_timestamps = []
+    total = len(block_list)
+    flush_count = 0
+    last_log_time = time.time()
+
+    log.info("[%s] Starting: %d blocks to fetch", label, total)
+
+    for i in range(0, total, BATCH_SIZE):
+        batch = block_list[i:i + BATCH_SIZE]
+        results = fetch_batch(session, batch)
+
+        for bn, ts in results.items():
+            all_blocks.append(bn)
+            all_timestamps.append(ts)
+
+        # Flush every 100K timestamps
+        if len(all_blocks) >= 100_000:
+            chunk_path = TIMESTAMPS_DIR / f"ts_{worker_id:03d}_{flush_count:04d}.parquet"
+            table = pa.table({"block_number": all_blocks, "timestamp": all_timestamps})
+            pq.write_table(table, chunk_path, compression="zstd")
+            flush_count += 1
+            all_blocks.clear()
+            all_timestamps.clear()
+
+        if time.time() - last_log_time > 30:
+            progress = min(i + BATCH_SIZE, total) / total * 100
+            log.info("[%s] %.1f%% | %d/%d blocks fetched", label, progress, min(i + BATCH_SIZE, total), total)
+            last_log_time = time.time()
+
+    # Final flush
+    if all_blocks:
+        chunk_path = TIMESTAMPS_DIR / f"ts_{worker_id:03d}_{flush_count:04d}.parquet"
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        table = pa.table({"block_number": all_blocks, "timestamp": all_timestamps})
+        pq.write_table(table, chunk_path, compression="zstd")
+
+    total_fetched = flush_count * 100_000 + len(all_blocks)
+    log.info("[%s] Done. Fetched timestamps for %d blocks", label, min(i + BATCH_SIZE, total))
+    result_queue.put({"worker_id": worker_id, "fetched": min(i + BATCH_SIZE, total)})
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Fetch real block timestamps")
+    parser.add_argument("--workers", type=int, default=50)
+    args = parser.parse_args()
+
+    log.info("Getting unique block numbers from resolved trades...")
+    con = duckdb.connect()
+    con.execute("SET memory_limit='8GB'")
+    blocks = con.execute(f"""
+        SELECT DISTINCT block_number
+        FROM read_parquet('{RESOLVED_TRADES_PATH}')
+        ORDER BY block_number
+    """).fetchdf()["block_number"].tolist()
+    con.close()
+
+    log.info("Unique blocks: %d", len(blocks))
+    log.info("Estimated calls: %d (batch size %d)", len(blocks) // BATCH_SIZE, BATCH_SIZE)
+
+    # Split across workers
+    n_workers = args.workers
+    blocks_per_worker = len(blocks) // n_workers
+    result_queue = Queue()
+    processes = []
+
+    TIMESTAMPS_DIR.mkdir(parents=True, exist_ok=True)
+
+    for i in range(n_workers):
+        start = i * blocks_per_worker
+        end = start + blocks_per_worker if i < n_workers - 1 else len(blocks)
+        p = Process(target=worker, args=(i, blocks[start:end], result_queue))
+        processes.append(p)
+
+    t0 = time.time()
+    for p in processes:
+        p.start()
+        time.sleep(0.05)
+
+    for p in processes:
+        p.join()
+
+    elapsed = (time.time() - t0) / 60
+    log.info("All workers done in %.1f min. Merging...", elapsed)
+
+    # Merge with DuckDB
+    con = duckdb.connect()
+    con.execute("SET memory_limit='8GB'")
+    glob_pattern = str(TIMESTAMPS_DIR / "ts_*.parquet")
+    con.execute(f"""
+        COPY (
+            SELECT DISTINCT block_number, timestamp
+            FROM read_parquet('{glob_pattern}')
+            ORDER BY block_number
+        )
+        TO '{TIMESTAMPS_PATH}' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+    total = con.execute(f"SELECT COUNT(*) FROM read_parquet('{TIMESTAMPS_PATH}')").fetchone()[0]
+    con.close()
+
+    log.info("Block timestamps saved: %d → %s", total, TIMESTAMPS_PATH)
+
+    # Cleanup chunks
+    import shutil
+    shutil.rmtree(TIMESTAMPS_DIR)
+    log.info("Done.")
+
+
+if __name__ == "__main__":
+    main()

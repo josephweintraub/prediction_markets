@@ -1,0 +1,754 @@
+{
+  "collapse": [
+    {
+      "name": "sp500_strike_buckets_same_date",
+      "comment": "Different S&P strike buckets on the same date — strike is the only varying field.",
+      "items": [
+        {"ticker": "KXINXU-25FEB04-T6374.99", "question": "Will the S&P 500 be above 6374.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXINXU-25FEB04-T6349.99", "question": "Will the S&P 500 be above 6349.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXINXU-25FEB04-T6324.99", "question": "Will the S&P 500 be above 6324.99 at the end of Feb 4, 2025?"}
+      ]
+    },
+    {
+      "name": "sp500_strikes_across_dates",
+      "comment": "S&P contracts across different dates — both strike and date should normalize.",
+      "items": [
+        {"ticker": "KXINXU-25FEB04-T6374.99", "question": "Will the S&P 500 be above 6374.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXINXU-25JAN14-B5537", "question": "Will the S&P 500 be above 5525 at the end of Jan 14, 2025?"}
+      ]
+    },
+    {
+      "name": "nasdaq_strike_buckets_daily",
+      "comment": "Daily-close Nasdaq contracts (no time-of-day) — strike + date vary.",
+      "items": [
+        {"ticker": "KXNASDAQ100U-25FEB04-T22799.99", "question": "Will the Nasdaq-100 be above 22799.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXNASDAQ100U-25FEB04-T22699.99", "question": "Will the Nasdaq-100 be above 22699.99 at the end of Feb 4, 2025?"}
+      ]
+    },
+    {
+      "name": "btc_daily_across_dates",
+      "comment": "BTC daily-close contracts across different dates (note the double space in 'price  on').",
+      "items": [
+        {"ticker": "KXBTCD-25FEB0511-T101749.99", "question": "Bitcoin price  on Feb 5, 2025?"},
+        {"ticker": "KXBTCD-25MAR1016-T92499.99", "question": "Bitcoin price  on Mar 10, 2025?"},
+        {"ticker": "KXBTCD-25FEB2219-T106499.99", "question": "Bitcoin price  on Feb 22, 2025?"}
+      ]
+    },
+    {
+      "name": "eth_with_time_of_day",
+      "comment": "ETH contracts with both date and time-of-day.",
+      "items": [
+        {"ticker": "KXETHD-25FEB0600-T3389.99", "question": "Ethereum price at Feb 6, 2025 at 12am EST?"},
+        {"ticker": "KXETHD-25FEB0218-T3099.99", "question": "Ethereum price at Feb 2, 2025 at 6pm EST?"},
+        {"ticker": "KXETHD-25FEB0117-T3569.99", "question": "Ethereum price at Feb 1, 2025 at 5pm EST?"},
+        {"ticker": "KXETHD-25JAN3018-T3299.99", "question": "Ethereum price at Jan 30, 2025 at 6pm EST?"}
+      ]
+    },
+    {
+      "name": "eurusd_fx_above_same_prefix",
+      "comment": "Same-prefix EUR/USD contracts collapse. KXEURUSDH and EURUSDH are different prefixes (covered by expected_improvements).",
+      "items": [
+        {"ticker": "KXEURUSDH-25FEB0517-T1.04859", "question": "Will the EUR/USD open price be above 1.04859 at Feb 5, 2025 at 5pm EST?"},
+        {"ticker": "KXEURUSDH-25FEB0517-T1.04819", "question": "Will the EUR/USD open price be above 1.04819 at Feb 5, 2025 at 5pm EST?"}
+      ]
+    },
+    {
+      "name": "usdjpy_fx_above_same_prefix",
+      "items": [
+        {"ticker": "KXUSDJPYH-25FEB0517-T161.85900", "question": "Will the USD/JPY open price be above 161.85900 at Feb 5, 2025 at 5pm EST?"},
+        {"ticker": "KXUSDJPYH-25FEB0517-T161.71900", "question": "Will the USD/JPY open price be above 161.71900 at Feb 5, 2025 at 5pm EST?"}
+      ]
+    },
+    {
+      "name": "ncaa_spread_across_teams_and_strikes",
+      "comment": "NCAA spread contracts — team and strike vary but the proposition shape is identical. The v1 normalizer keeps team names (each team becomes its own template); this assertion captures only same-team strike-variant collapse.",
+      "items": [
+        {"ticker": "KXNCAAMBSPREAD-25DEC29NICHAMCC-AMCC8", "question": "Texas A&M-Corpus Christi wins by over 8.5 Points?"},
+        {"ticker": "KXNCAAMBSPREAD-25DEC29NICHAMCC-AMCC10", "question": "Texas A&M-Corpus Christi wins by over 10.5 Points?"}
+      ]
+    },
+    {
+      "name": "ncaa_total_team_pair_variant",
+      "items": [
+        {"ticker": "KXNCAAMBTOTAL-25DEC29JMUARK-169", "question": "James Madison at Arkansas: Total Points"},
+        {"ticker": "KXNCAAMBTOTAL-25DEC29JMUARK-171", "question": "James Madison at Arkansas: Total Points"}
+      ]
+    },
+    {
+      "name": "nhl_pts_strike_variants_same_player",
+      "comment": "Records-form normalizes to colon-form canonical template under v2.",
+      "items": [
+        {"ticker": "KXNHLPTS-25DEC31BUFDAL-DALMBOURQUE22-1", "question": "Mavrik Bourque records 1+ points"},
+        {"ticker": "KXNHLPTS-25DEC31BUFDAL-DALMBOURQUE22-2", "question": "Mavrik Bourque records 2+ points"}
+      ]
+    },
+    {
+      "name": "mve_sports_multigame_parlay_collapse",
+      "comment": "All MVE multi-game extended parlays for the same family collapse to <PARLAY_LEGS>.",
+      "items": [
+        {"ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202575AB92EA11E-CA5211E788A", "question": "yes Minnesota,yes San Antonio,yes Over 215.5 points scored"},
+        {"ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202575ABB2BC067-BDBB0A80909", "question": "yes Detroit,yes Oklahoma City,no Over 251.5 points scored,yes Arizona,yes New Mexico,yes Seattle"},
+        {"ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202575AE2428114-E451C0B9017", "question": "yes Toronto,yes Houston,no Charlotte wins by over 7.5 Points,no Over 250.5 points scored"}
+      ]
+    },
+    {
+      "name": "mve_nfl_single_game_parlay_collapse",
+      "items": [
+        {"ticker": "KXMVENFLSINGLEGAME-S20250015185E541-2B27FE342CC", "question": "yes Davante Adams,yes Colston Loveland,yes Davante Adams"},
+        {"ticker": "KXMVENFLSINGLEGAME-S202500773C6CBB2-5CF677C3E82", "question": "yes Drake Maye: 1+,yes C.J. Stroud: 175+,yes Drake Maye: 225+,yes Over 32.5 points scored"}
+      ]
+    },
+    {
+      "name": "mve_oscars_parlay_collapse",
+      "items": [
+        {"ticker": "KXMVEOSCARS-S20260094D3EA3B7-685228D4656", "question": "yes Jessie Buckley,yes KPop Demon Hunters,yes One Battle After Another"},
+        {"ticker": "KXMVEOSCARS-S2026009C1109495-AFB7A5D531C", "question": "yes Jessie Buckley,yes Sinners,yes One Battle After Another,yes Frankenstein,yes Paul Thomas Anderson"}
+      ]
+    },
+    {
+      "name": "mve_cb_championship_parlay_collapse",
+      "items": [
+        {"ticker": "KXMVECBCHAMPIONSHIP-S20260224A66B4F61883-1883FFA5623", "question": "yes Arkansas,yes Illinois,yes Michigan St.,yes St. John's"},
+        {"ticker": "KXMVECBCHAMPIONSHIP-S20260311212351624C2-24C2E5116CE", "question": "yes Arizona,yes Duke,yes Iowa St.,yes Michigan,yes Nebraska,yes Purdue"}
+      ]
+    },
+    {
+      "name": "doge_daily_strikes_collapse",
+      "items": [
+        {"ticker": "KXDOGED-25FEB0417-T0.3449999", "question": "Dogecoin price  on Feb 4, 2025?"},
+        {"ticker": "KXDOGED-25FEB0417-T0.3399999", "question": "Dogecoin price  on Feb 4, 2025?"},
+        {"ticker": "KXDOGED-25FEB0417-T0.3349999", "question": "Dogecoin price  on Feb 4, 2025?"}
+      ]
+    },
+    {
+      "name": "sol_daily_strikes_collapse",
+      "items": [
+        {"ticker": "KXSOLD-26MAR2517-T105.9999", "question": "SOL price  on Mar 25, 2026?"},
+        {"ticker": "KXSOLD-26MAR2517-T107.9999", "question": "SOL price  on Mar 25, 2026?"},
+        {"ticker": "KXSOLD-26MAR2517-T109.9999", "question": "SOL price  on Mar 25, 2026?"}
+      ]
+    },
+    {
+      "name": "nhl_goals_player_collapse_A1",
+      "comment": "All NHL player goal props collapse to <PLAYER>: <NUM>+ goals.",
+      "items": [
+        {"ticker": "KXNHLGOAL-X1", "question": "Martin Necas: 1+ goals"},
+        {"ticker": "KXNHLGOAL-X2", "question": "Nathan MacKinnon: 2+ goals"},
+        {"ticker": "KXNHLGOAL-X3", "question": "Kirill Marchenko: 1+ goals"}
+      ]
+    },
+    {
+      "name": "nhl_points_player_collapse_A1",
+      "items": [
+        {"ticker": "KXNHLPTS-X1", "question": "John Tavares: 2+ points"},
+        {"ticker": "KXNHLPTS-X2", "question": "Connor McDavid: 3+ points"}
+      ]
+    },
+    {
+      "name": "nhl_points_records_variant_A2",
+      "comment": "'records' variant must collapse to same template as colon variant.",
+      "items": [
+        {"ticker": "KXNHLPTS-X1", "question": "John Tavares: 2+ points"},
+        {"ticker": "KXNHLPTS-X3", "question": "Ivan Demidov records 2+ points"}
+      ]
+    },
+    {
+      "name": "nba_pts_player_collapse_A1",
+      "items": [
+        {"ticker": "KXNBAPTS-X1", "question": "Alperen Sengun: 25+ points"},
+        {"ticker": "KXNBAPTS-X2", "question": "LaMelo Ball: 30+ points"}
+      ]
+    },
+    {
+      "name": "nba_reb_player_collapse_A1",
+      "items": [
+        {"ticker": "KXNBAREB-X1", "question": "Kevin Durant: 6+ rebounds"},
+        {"ticker": "KXNBAREB-X2", "question": "Alperen Sengun: 8+ rebounds"}
+      ]
+    },
+    {
+      "name": "nba_3pt_player_collapse_A1",
+      "items": [
+        {"ticker": "KXNBA3PT-X1", "question": "Mikal Bridges: 3+ threes"},
+        {"ticker": "KXNBA3PT-X2", "question": "Kevin Durant: 2+ threes"}
+      ]
+    },
+    {
+      "name": "nhl_firstgoal_collapse_B",
+      "items": [
+        {"ticker": "KXNHLFIRSTGOAL-X1", "question": "Matias Maccelli: First Goalscorer"},
+        {"ticker": "KXNHLFIRSTGOAL-X2", "question": "Mathew Barzal: First Goalscorer"}
+      ]
+    },
+    {
+      "name": "nfl_recyds_player_collapse_C",
+      "items": [
+        {"ticker": "KXNFLRECYDS-X1", "question": "DJ Moore records 50+ receiving yards"},
+        {"ticker": "KXNFLRECYDS-X2", "question": "Christian McCaffrey records 75+ receiving yards"}
+      ]
+    },
+    {
+      "name": "nfl_rec_player_collapse_C",
+      "items": [
+        {"ticker": "KXNFLREC-X1", "question": "Travis Kelce records 4+ receptions"},
+        {"ticker": "KXNFLREC-X2", "question": "DJ Moore records 5+ receptions"}
+      ]
+    },
+    {
+      "name": "ncaa_total_team_collapse_D",
+      "items": [
+        {"ticker": "KXNCAAMBTOTAL-X1", "question": "James Madison at Arkansas: Total Points"},
+        {"ticker": "KXNCAAMBTOTAL-X2", "question": "Southern Utah at UT Arlington: Total Points"},
+        {"ticker": "KXNCAAMBTOTAL-X3", "question": "Florida A&M at South Florida: Total Points"}
+      ]
+    },
+    {
+      "name": "nfl_total_team_collapse_D_with_spread_variant",
+      "items": [
+        {"ticker": "KXNFLTOTAL-X1", "question": "Las Vegas at Arizona: Spread Total Points?"},
+        {"ticker": "KXNFLTOTAL-X2", "question": "Pittsburgh at Carolina: Spread Total Points?"}
+      ]
+    },
+    {
+      "name": "ncaaf_total_duplicate_phrase",
+      "comment": "Duplicate 'Total Points Total Points?' should still collapse.",
+      "items": [
+        {"ticker": "KXNCAAFTOTAL-X1", "question": "Virginia Tech at Georgia Tech: Total Points Total Points?"},
+        {"ticker": "KXNCAAFTOTAL-X2", "question": "Utah at BYU: Total Points Total Points?"},
+        {"ticker": "KXNCAAFTOTAL-X3", "question": "BYU at Texas Tech: Total Points"}
+      ]
+    },
+    {
+      "name": "nhl_total_vs_form",
+      "items": [
+        {"ticker": "KXNHLTOTAL-X1", "question": "Vegas vs Dallas: Total Goals"},
+        {"ticker": "KXNHLTOTAL-X2", "question": "Pittsburgh vs Carolina: Total Goals"}
+      ]
+    },
+    {
+      "name": "ncaa_game_winner_at_E",
+      "items": [
+        {"ticker": "KXNCAAMBGAME-X1", "question": "Wagner at LIU Winner?"},
+        {"ticker": "KXNCAAMBGAME-X2", "question": "Lipscomb at Vanderbilt Winner?"}
+      ]
+    },
+    {
+      "name": "ncaabb_game_winner_vs_E",
+      "items": [
+        {"ticker": "KXNCAABBGAME-X1", "question": "Wichita State vs Hawaii winner?"},
+        {"ticker": "KXNCAABBGAME-X2", "question": "Bradley vs East Tennessee State winner?"}
+      ]
+    },
+    {
+      "name": "ncaamb_1h_total_F",
+      "items": [
+        {"ticker": "KXNCAAMB1HTOTAL-X1", "question": "Arizona vs Houston: First Half Total?"},
+        {"ticker": "KXNCAAMB1HTOTAL-X2", "question": "Missouri vs Arkansas: First Half Total?"}
+      ]
+    },
+    {
+      "name": "ncaa_spread_team_collapse_G",
+      "items": [
+        {"ticker": "KXNCAAMBSPREAD-X1", "question": "Michigan wins by over 5.5 Points?"},
+        {"ticker": "KXNCAAMBSPREAD-X2", "question": "Duke wins by over 8.5 Points?"}
+      ]
+    },
+    {
+      "name": "nfl_spread_team_collapse_G",
+      "items": [
+        {"ticker": "KXNFLSPREAD-X1", "question": "New England wins by over 3.5 points?"},
+        {"ticker": "KXNFLSPREAD-X2", "question": "Buffalo wins by over 5.5 points?"}
+      ]
+    },
+    {
+      "name": "ncaamb_1h_spread_H",
+      "items": [
+        {"ticker": "KXNCAAMB1HSPREAD-X1", "question": "Will Purdue win the 1H by over 4.5 points?"},
+        {"ticker": "KXNCAAMB1HSPREAD-X2", "question": "Will Arizona win the 1H by over 5.5 points?"}
+      ]
+    },
+    {
+      "name": "nfl_anytd_team_team_player_I1",
+      "items": [
+        {"ticker": "KXNFLANYTD-X1", "question": "San Francisco at Seattle: Anytime Touchdown Scorer: Kenneth Walker III"},
+        {"ticker": "KXNFLANYTD-X2", "question": "Houston at Seattle: Anytime Touchdown Scorer: Tory Horton"}
+      ]
+    },
+    {
+      "name": "nfl_firsttd_team_team_player_I1",
+      "items": [
+        {"ticker": "KXNFLFIRSTTD-X1", "question": "Green Bay at Chicago: First Touchdown Scorer: Caleb Williams"},
+        {"ticker": "KXNFLFIRSTTD-X2", "question": "Green Bay at Chicago: First Touchdown Scorer: Jayden Reed"}
+      ]
+    },
+    {
+      "name": "nfl_anytd_player_short_I2",
+      "items": [
+        {"ticker": "KXNFLANYTD-X1", "question": "Kenneth Walker III: Anytime Touchdown"},
+        {"ticker": "KXNFLANYTD-X2", "question": "Rhamondre Stevenson: Anytime Touchdown"}
+      ]
+    },
+    {
+      "name": "nfl_firsttd_player_short_I2",
+      "items": [
+        {"ticker": "KXNFLFIRSTTD-X1", "question": "Drake Maye: First Touchdown"},
+        {"ticker": "KXNFLFIRSTTD-X2", "question": "AJ Barner: First Touchdown"}
+      ]
+    },
+    {
+      "name": "pga_tournament_J",
+      "items": [
+        {"ticker": "KXPGATOUR-X1", "question": "Will Paul Waring win the Valspar Championship?"},
+        {"ticker": "KXPGATOUR-X2", "question": "Will Patrick Cantlay win the THE PLAYERS Championship?"}
+      ]
+    },
+    {
+      "name": "atp_match_K",
+      "items": [
+        {"ticker": "KXATPMATCH-X1", "question": "Will Jannik Sinner win the Sinner vs de Minaur match?"},
+        {"ticker": "KXATPMATCH-X2", "question": "Will Marcos Giron win the Giron vs Quinn match?"}
+      ]
+    },
+    {
+      "name": "wta_match_K",
+      "items": [
+        {"ticker": "KXWTAMATCH-X1", "question": "Will Aryna Sabalenka win the Sabalenka vs Pegula match?"},
+        {"ticker": "KXWTAMATCH-X2", "question": "Will Coco Gauff win the Bencic vs Gauff match?"}
+      ]
+    },
+    {
+      "name": "spotify_song_L",
+      "items": [
+        {"ticker": "KXSPOTIFYD-X1", "question": "Will the top Song on Jan 1, 2025 be Die With A Smile?"},
+        {"ticker": "KXSPOTIFYD-X2", "question": "Will the top Song on Jan 2, 2025 be APT.?"}
+      ]
+    },
+    {
+      "name": "spotify_artist_L",
+      "items": [
+        {"ticker": "KXSPOTIFYARTISTD-X1", "question": "Will the top Artist on Jan 1, 2025 be Drake?"},
+        {"ticker": "KXSPOTIFYARTISTD-X2", "question": "Will the top Artist on Jan 2, 2025 be Bad Bunny?"}
+      ]
+    },
+    {
+      "name": "weather_high_temp_M_ny",
+      "items": [
+        {"ticker": "HIGHNY-X1", "question": "Will the **high temp in NYC** be 82-83° on Jul 1, 2025?"},
+        {"ticker": "HIGHNY-X2", "question": "Will the **high temp in NYC** be 78-79° on Jul 2, 2025?"}
+      ]
+    },
+    {
+      "name": "weather_high_temp_M_chi",
+      "items": [
+        {"ticker": "HIGHCHI-X1", "question": "Will the high temp in Chicago be 78-79° on Jul 1, 2025?"},
+        {"ticker": "HIGHCHI-X2", "question": "Will the high temp in Chicago be 80-81° on Jul 2, 2025?"}
+      ]
+    },
+    {
+      "name": "nba_team_total_N",
+      "items": [
+        {"ticker": "KXNBATEAMTOTAL-X1", "question": "Will Milwaukee score over 110 points?"},
+        {"ticker": "KXNBATEAMTOTAL-X2", "question": "Will Brooklyn score over 105 points?"}
+      ]
+    },
+    {
+      "name": "btcd_dollar_comma_collapse",
+      "comment": "Standalone $X,XXX amounts should collapse — fixes the BTCD over/above split.",
+      "items": [
+        {"ticker": "BTCD-X1", "question": "Bitcoin price $66,750 or above on Feb 5, 2025 at 12pm EST?"},
+        {"ticker": "BTCD-X2", "question": "Bitcoin price $67,250 or above on Feb 5, 2025 at 12pm EST?"}
+      ]
+    },
+    {
+      "name": "kx_high_temp_city_M_aus",
+      "items": [
+        {"ticker": "KXHIGHAUS-X1", "question": "Will the **high temp in Austin** be 94-95° on Jul 1, 2025?"},
+        {"ticker": "KXHIGHAUS-X2", "question": "Will the **high temp in Austin** be 92-93° on Jul 2, 2025?"}
+      ]
+    },
+    {
+      "name": "kx_max_temp_M2",
+      "items": [
+        {"ticker": "KXHIGHTSEA-X1", "question": "Will the maximum temperature be 49-50° on Jan 1, 2025?"},
+        {"ticker": "KXHIGHTSEA-X2", "question": "Will the maximum temperature be 51-52° on Jan 2, 2025?"}
+      ]
+    },
+    {
+      "name": "kx_min_temp_M3",
+      "items": [
+        {"ticker": "KXLOWTNYC-X1", "question": "Will the minimum temperature be 33-34° on Jan 1, 2025?"},
+        {"ticker": "KXLOWTNYC-X2", "question": "Will the minimum temperature be 28-29° on Jan 2, 2025?"}
+      ]
+    },
+    {
+      "name": "kx_pgatop20_P",
+      "items": [
+        {"ticker": "KXPGATOP20-X1", "question": "Cognizant Classic in The Palm Beaches: Will Rasmus Hojgaard finish top 20?"},
+        {"ticker": "KXPGATOP20-X2", "question": "Cognizant Classic in The Palm Beaches: Will Paul Waring finish top 20?"}
+      ]
+    },
+    {
+      "name": "kx_cs2_total_maps_Q",
+      "items": [
+        {"ticker": "KXCS2TOTALMAPS-X1", "question": "Will over 2.5 maps be played in the Astralis vs. FUT Esports CS2 match?"},
+        {"ticker": "KXCS2TOTALMAPS-X2", "question": "Will over 1.5 maps be played in the Aurora Gaming vs. Natus Vincere CS2 match?"}
+      ]
+    },
+    {
+      "name": "kx_lol_total_maps_Q",
+      "items": [
+        {"ticker": "KXLOLTOTALMAPS-X1", "question": "Will over 2.5 maps be played in the JD Gaming vs. Bilibili Gaming League of Legends match?"},
+        {"ticker": "KXLOLTOTALMAPS-X2", "question": "Will over 1.5 maps be played in the Invictus Gaming vs. Weibo Gaming LoL match?"}
+      ]
+    },
+    {
+      "name": "kx_nfl2td_I1",
+      "comment": "Two-or-more touchdown scorer follows the same shape as anytime/first.",
+      "items": [
+        {"ticker": "KXNFL2TD-X1", "question": "Green Bay at Chicago: Two or More Touchdowns Scorer: Luke Musgrave"},
+        {"ticker": "KXNFL2TD-X2", "question": "Green Bay at Chicago: Two or More Touchdowns Scorer: Kyle Monangai"}
+      ]
+    },
+    {
+      "name": "kx_nhl_goal_team_at_team_A3",
+      "comment": "NHL goal/first-goal has a coexisting Team-at-Team format alongside the player-stat format.",
+      "items": [
+        {"ticker": "KXNHLGOAL-X1", "question": "STL Blues at NSH Predators: Anytime Goal: Cam Fowler"},
+        {"ticker": "KXNHLGOAL-X2", "question": "CHI Blackhawks at STL Blues: Anytime Goal: Colton Dach"}
+      ]
+    },
+    {
+      "name": "kx_nhl_firstgoal_team_at_team_A3",
+      "items": [
+        {"ticker": "KXNHLFIRSTGOAL-X1", "question": "VGK Golden Knights at NYI Islanders: First Goal: Matthew Schaefer"},
+        {"ticker": "KXNHLFIRSTGOAL-X2", "question": "TB Lightning at NJ Devils: First Goal: Connor Brown"}
+      ]
+    },
+    {
+      "name": "kx_atp_round_of_K2",
+      "comment": "Alternate ATP/WTA format using 'be a winner of the round of N of <TOURNAMENT>'.",
+      "items": [
+        {"ticker": "KXATPMATCH-X1", "question": "Will Alejandro Davidovich Fokina be a winner of the round of 128 of Wimbledon Men Singles?"},
+        {"ticker": "KXATPMATCH-X2", "question": "Will Carlos Alcaraz be a winner of the round of 64 of Wimbledon Men Singles?"}
+      ]
+    },
+    {
+      "name": "kx_ncaa_total_vs_short_form",
+      "comment": "NCAA total has a coexisting short 'vs <T>: Total' format (no 'Points' word).",
+      "items": [
+        {"ticker": "KXNCAAMBTOTAL-X1", "question": "UNC Greensboro vs Wofford: Total"},
+        {"ticker": "KXNCAAMBTOTAL-X2", "question": "Furman vs The Citadel: Total"}
+      ]
+    },
+    {
+      "name": "kx_seriea_team_collapse_U",
+      "comment": "Each Serie A team's question collapses to '<TEAM> win the Serie A' template.",
+      "items": [
+        {"ticker": "KXSERIEA-X1", "question": "Will Inter win the Serie A?"},
+        {"ticker": "KXSERIEA-X2", "question": "Will Milan win the Serie A?"},
+        {"ticker": "KXSERIEA-X3", "question": "Will the Udinese win the Serie A champion?"}
+      ]
+    },
+    {
+      "name": "kx_bundesliga_team_collapse_U",
+      "items": [
+        {"ticker": "KXBUNDESLIGA-X1", "question": "Will Bayern Munich win the Bundesliga?"},
+        {"ticker": "KXBUNDESLIGA-X2", "question": "Will the RB Leipzig win the German Bundesliga?"},
+        {"ticker": "KXBUNDESLIGA-X3", "question": "Will Augsburg win the Bundesliga?"}
+      ]
+    },
+    {
+      "name": "mlb_game_winner_E_extension",
+      "items": [
+        {"ticker": "KXMLBGAME-X1", "question": "Texas at Los Angeles A Winner?"},
+        {"ticker": "KXMLBGAME-X2", "question": "Houston at New York Y Winner?"}
+      ]
+    },
+    {
+      "name": "nhl_game_winner_E_extension_vs",
+      "items": [
+        {"ticker": "KXNHLGAME-X1", "question": "Dallas vs Winnipeg Winner?"},
+        {"ticker": "KXNHLGAME-X2", "question": "Vegas vs Edmonton Winner?"}
+      ]
+    },
+    {
+      "name": "nba_game_winner_E_extension_vs",
+      "items": [
+        {"ticker": "KXNBAGAME-X1", "question": "Oklahoma City vs Indiana Winner?"},
+        {"ticker": "KXNBAGAME-X2", "question": "Boston vs Miami Winner?"}
+      ]
+    },
+    {
+      "name": "epl_game_winner_E_extension_vs",
+      "items": [
+        {"ticker": "KXEPLGAME-X1", "question": "Brighton vs Liverpool Winner?"},
+        {"ticker": "KXEPLGAME-X2", "question": "Arsenal vs Chelsea Winner?"}
+      ]
+    },
+    {
+      "name": "ncaa_1h_winner_F2",
+      "items": [
+        {"ticker": "KXNCAAMB1HWINNER-X1", "question": "Florida Atlantic vs North Texas: First Half Winner?"},
+        {"ticker": "KXNCAAMB1HWINNER-X2", "question": "Duke vs UNC: First Half Winner?"}
+      ]
+    },
+    {
+      "name": "nba_1h_total_F_extension",
+      "items": [
+        {"ticker": "KXNBA1HTOTAL-X1", "question": "Brooklyn vs Miami: First Half Total?"},
+        {"ticker": "KXNBA1HTOTAL-X2", "question": "Lakers vs Clippers: First Half Total?"}
+      ]
+    },
+    {
+      "name": "nfl_rshyds_player_collapse",
+      "items": [
+        {"ticker": "KXNFLRSHYDS-X1", "question": "Christian McCaffrey records 80+ rushing yards"},
+        {"ticker": "KXNFLRSHYDS-X2", "question": "Saquon Barkley records 100+ rushing yards"}
+      ]
+    },
+    {
+      "name": "nba_stl_collapse",
+      "items": [
+        {"ticker": "KXNBASTL-X1", "question": "Mikal Bridges: 1+ steals"},
+        {"ticker": "KXNBASTL-X2", "question": "Rudy Gobert: 2+ steals"}
+      ]
+    },
+    {
+      "name": "nba_blk_collapse",
+      "items": [
+        {"ticker": "KXNBABLK-X1", "question": "Rudy Gobert: 3+ blocks"},
+        {"ticker": "KXNBABLK-X2", "question": "Victor Wembanyama: 2+ blocks"}
+      ]
+    },
+    {
+      "name": "ucl_goal_player_A1",
+      "items": [
+        {"ticker": "KXUCLGOAL-X1", "question": "Jens Hauge: 1+ goals"},
+        {"ticker": "KXUCLGOAL-X2", "question": "Erling Haaland: 2+ goals"}
+      ]
+    },
+    {
+      "name": "nba_double_double_V",
+      "items": [
+        {"ticker": "KXNBA2D-X1", "question": "Alperen Sengun: Double Double"},
+        {"ticker": "KXNBA2D-X2", "question": "Domantas Sabonis: Double Double"}
+      ]
+    },
+    {
+      "name": "cs2_map_X1",
+      "items": [
+        {"ticker": "KXCS2MAP-X1", "question": "Will Astralis win map 1 in the Astralis vs. FUT Esports match?"},
+        {"ticker": "KXCS2MAP-X2", "question": "Will FUT Esports win map 2 in the Astralis vs. FUT Esports match?"}
+      ]
+    },
+    {
+      "name": "cs2_game_X2",
+      "items": [
+        {"ticker": "KXCS2GAME-X1", "question": "Will FUT Esports win the Astralis vs. FUT Esports CS2 match?"},
+        {"ticker": "KXCS2GAME-X2", "question": "Will Aurora Gaming win the Aurora Gaming vs. Natus Vincere CS2 match?"}
+      ]
+    },
+    {
+      "name": "lol_game_X2_with_LoL_alias",
+      "items": [
+        {"ticker": "KXLOLGAME-X1", "question": "Will Team Secret Whales win the Deep Cross Gaming vs. Team Secret Whales League of Legends match?"},
+        {"ticker": "KXLOLGAME-X2", "question": "Will JD Gaming win the JD Gaming vs. Bilibili Gaming LoL match?"}
+      ]
+    },
+    {
+      "name": "atp_set_winner_Y",
+      "items": [
+        {"ticker": "KXATPSETWINNER-X1", "question": "Will Zizou Bergs win set 1 in the Zizou Bergs vs Jenson Brooksby match"},
+        {"ticker": "KXATPSETWINNER-X2", "question": "Will Jannik Sinner win set 2 in the Sinner vs Alcaraz match"}
+      ]
+    },
+    {
+      "name": "nascar_winner_AB",
+      "items": [
+        {"ticker": "KXNASCARRACE-X1", "question": "YellaWood 500Winner"},
+        {"ticker": "KXNASCARRACE-X2", "question": "Daytona 500Winner"}
+      ]
+    },
+    {
+      "name": "olympic_gold_AC",
+      "items": [
+        {"ticker": "KXWOFREESKI-X1", "question": "Will Matt Graham win the gold medal in Freestyle Skiing Men's Moguls?"},
+        {"ticker": "KXWOFREESKI-X2", "question": "Will Samanta Krampe win the gold medal in Cross Country Skiing Women's Sprint Classic?"}
+      ]
+    },
+    {
+      "name": "pga_makecut_J2",
+      "items": [
+        {"ticker": "KXPGAMAKECUT-X1", "question": "Will Will Zalatoris make the cut in Farmers Insurance Open golf tournament?"},
+        {"ticker": "KXPGAMAKECUT-X2", "question": "Will Tiger Woods make the cut in the Masters golf tournament?"}
+      ]
+    },
+    {
+      "name": "dpworldtour_winner_J",
+      "items": [
+        {"ticker": "KXDPWORLDTOUR-X1", "question": "Will Yurav Premlall win the Joburg Open?"},
+        {"ticker": "KXDPWORLDTOUR-X2", "question": "Will Rory McIlroy win the Dubai Desert Classic?"}
+      ]
+    },
+    {
+      "name": "kx_marmad_qualify_R",
+      "items": [
+        {"ticker": "KXMARMADROUND-X1", "question": "Will Wisconsin qualify for the Men's March Madness Sweet Sixteen?"},
+        {"ticker": "KXMARMADROUND-X2", "question": "Will Wisconsin qualify for the Men's March Madness Round of 32?"}
+      ]
+    },
+    {
+      "name": "kx_house_race_S",
+      "items": [
+        {"ticker": "KXHOUSERACE-X1", "question": "Will Republican win the House race for CA-05?"},
+        {"ticker": "KXHOUSERACE-X2", "question": "Will Republican win the House race for AZ-09?"}
+      ]
+    },
+    {
+      "name": "kx_nfl_wins_T",
+      "items": [
+        {"ticker": "KXNFLWINS-X1", "question": "Will the Arizona pro football team win more than 10 times this season?"},
+        {"ticker": "KXNFLWINS-X2", "question": "Will the Arizona pro football team win more than 12 times this season?"}
+      ]
+    },
+    {
+      "name": "wti_bare_comparator_format",
+      "comment": "Bare '<67' / '>75' (no space) should normalize alongside spaced forms.",
+      "items": [
+        {"ticker": "WTI-X1", "question": "Will the WTI front-month settle oil price be <67 on Feb 5, 2025?"},
+        {"ticker": "WTI-X2", "question": "Will the WTI front-month settle oil price be <76 on Feb 6, 2025?"}
+      ]
+    }
+  ],
+  "distinguish": [
+    {
+      "name": "sp500_vs_nasdaq",
+      "comment": "Same shape, different index — must stay distinct.",
+      "items": [
+        {"ticker": "KXINXU-25FEB04-T6374.99", "question": "Will the S&P 500 be above 6374.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXNASDAQ100U-25FEB04-T22799.99", "question": "Will the Nasdaq-100 be above 22799.99 at the end of Feb 4, 2025?"}
+      ]
+    },
+    {
+      "name": "btc_daily_vs_eth_daily",
+      "items": [
+        {"ticker": "KXBTCD-25FEB0511-T101749.99", "question": "Bitcoin price  on Feb 5, 2025?"},
+        {"ticker": "KXETHD-25FEB0600-T3389.99", "question": "Ethereum price at Feb 6, 2025 at 12am EST?"}
+      ]
+    },
+    {
+      "name": "above_vs_below_resolution_words",
+      "comment": "Different resolution_type semantics — must distinguish (preserves above/below word).",
+      "items": [
+        {"ticker": "KXINXU-25FEB04-T6374.99", "question": "Will the S&P 500 be above 6374.99 at the end of Feb 4, 2025?"},
+        {"ticker": "KXINXU-25FEB04-B6374.99", "question": "Will the S&P 500 be below 6374.99 at the end of Feb 4, 2025?"}
+      ]
+    },
+    {
+      "name": "eurusd_vs_usdjpy",
+      "items": [
+        {"ticker": "KXEURUSDH-25FEB0517-T1.04859", "question": "Will the EUR/USD open price be above 1.04859 at Feb 5, 2025 at 5pm EST?"},
+        {"ticker": "KXUSDJPYH-25FEB0517-T161.85900", "question": "Will the USD/JPY open price be above 161.85900 at Feb 5, 2025 at 5pm EST?"}
+      ]
+    },
+    {
+      "name": "mve_sports_vs_mve_oscars",
+      "comment": "Both collapse to <PARLAY_LEGS> at market_template but the prefix (event_template) differs.",
+      "items": [
+        {"ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202575AB92EA11E-CA5211E788A", "question": "yes Minnesota,yes San Antonio,yes Over 215.5 points scored"},
+        {"ticker": "KXMVEOSCARS-S20260094D3EA3B7-685228D4656", "question": "yes Jessie Buckley,yes KPop Demon Hunters,yes One Battle After Another"}
+      ]
+    },
+    {
+      "name": "ncaa_spread_vs_total",
+      "items": [
+        {"ticker": "KXNCAAMBSPREAD-25DEC29NICHAMCC-AMCC8", "question": "Texas A&M-Corpus Christi wins by over 8.5 Points?"},
+        {"ticker": "KXNCAAMBTOTAL-25DEC29JMUARK-169", "question": "James Madison at Arkansas: Total Points"}
+      ]
+    },
+    {
+      "name": "nhl_pts_vs_ast_distinct",
+      "comment": "NHL points and assists must stay distinct prefixes (different stats).",
+      "items": [
+        {"ticker": "KXNHLPTS-X1", "question": "Mark Scheifele: 2+ points"},
+        {"ticker": "KXNHLAST-X1", "question": "Mark Scheifele: 2+ assists"}
+      ]
+    },
+    {
+      "name": "nfl_td_anytime_vs_first_distinct",
+      "comment": "Anytime TD scorer vs First TD scorer must stay distinct (different markets).",
+      "items": [
+        {"ticker": "KXNFLANYTD-X1", "question": "San Francisco at Seattle: Anytime Touchdown Scorer: Kenneth Walker III"},
+        {"ticker": "KXNFLFIRSTTD-X1", "question": "Green Bay at Chicago: First Touchdown Scorer: Caleb Williams"}
+      ]
+    }
+  ],
+  "edge_cases": [
+    {
+      "name": "between_two_strikes",
+      "kind": "no_substitution_error",
+      "comment": "Multi-strike 'between X and Y' should normalize both numbers and not crash.",
+      "items": [
+        {"ticker": "KXINX-25JAN14-B5537", "question": "Will the S&P 500 be between 5525 and 5549.99 at the end of Jan 14, 2025?"}
+      ]
+    },
+    {
+      "name": "no_numbers_plain_english",
+      "kind": "no_substitution_error",
+      "comment": "Plain-English question with zero numbers should pass through unchanged (no DATE/NUM substitutions).",
+      "items": [
+        {"ticker": "KXCANADAELECT-MISC", "question": "Will the Liberal Party win the next Canadian federal election?"}
+      ]
+    },
+    {
+      "name": "non_mve_yes_no_question_NOT_collapsed",
+      "kind": "no_substitution_error",
+      "comment": "Questions starting with 'no '/'yes ' under a non-parlay prefix (e.g. KXNFLANYTD) must NOT collapse to <PARLAY_LEGS> (regression: prior version had a question-shape fallback that false-positived here).",
+      "items": [
+        {"ticker": "KXNFLANYTD-OTHER", "question": "No Touchdown: Anytime Touchdown"}
+      ]
+    },
+    {
+      "name": "parlay_oscar_winners_compound",
+      "kind": "no_substitution_error",
+      "comment": "KXOSCARWINNERS multi-nominee questions are compound predictions; treated as parlay-family.",
+      "items": [
+        {"ticker": "KXOSCARWINNERS-S2026-X", "question": "Will Anora,Adrien Brody,The Substance win Best Picture,Best Actor,Best Original Screenplay at the Oscars?"}
+      ]
+    },
+    {
+      "name": "parlay_cities_weather_compound",
+      "kind": "no_substitution_error",
+      "comment": "KXCITIESWEATHER multi-city compound questions; treated as parlay-family.",
+      "items": [
+        {"ticker": "KXCITIESWEATHER-S2025-X", "question": "Will the high temp in Miami, New York and Philadelphia be Miami: 70° or below; New York: 40° or below and Philadelphia: 42° or below on Jan 15, 2025?"}
+      ]
+    }
+  ],
+  "expected_improvements": [
+    {
+      "name": "nhl_pts_collapse_across_players",
+      "comment": "Across different players we'd ideally collapse via <PLAYER>, but v1 keeps player names. Not currently asserted; flagged for v2.",
+      "items": [
+        {"ticker": "KXNHLPTS-25DEC31BUFDAL-DALMBOURQUE22-1", "question": "Mavrik Bourque records 1+ points"},
+        {"ticker": "KXNHLPTS-26JAN02VGKSTL-VGKTHERTL48-2", "question": "Tomas Hertl records 2+ points"}
+      ]
+    },
+    {
+      "name": "ncaa_spread_collapse_across_teams",
+      "comment": "Spread bets with different teams could collapse with <TEAM> placeholder. v2 candidate.",
+      "items": [
+        {"ticker": "KXNCAAMBSPREAD-25DEC29NICHAMCC-AMCC8", "question": "Texas A&M-Corpus Christi wins by over 8.5 Points?"},
+        {"ticker": "KXNCAAMBSPREAD-25DEC30DUQDAV-DAV8", "question": "Davidson wins by over 8.5 Points?"}
+      ]
+    },
+    {
+      "name": "fx_kx_prefix_migration",
+      "comment": "KXEURUSDH and EURUSDH are the same FX contract type but Kalshi rebranded the ticker. Currently distinct event_templates; could be merged by stripping leading 'KX'. v2 candidate.",
+      "items": [
+        {"ticker": "KXEURUSDH-25FEB0517-T1.04859", "question": "Will the EUR/USD open price be above 1.04859 at Feb 5, 2025 at 5pm EST?"},
+        {"ticker": "EURUSDH-24OCT2117-T1.10359", "question": "Will the EUR/USD open price be above 1.10359 at Oct 21, 2024 at 5pm EDT?"}
+      ]
+    }
+  ]
+}

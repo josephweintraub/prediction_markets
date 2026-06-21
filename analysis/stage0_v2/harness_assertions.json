@@ -1,0 +1,1035 @@
+{
+  "collapse": [
+    {
+      "name": "crypto_updown_btc",
+      "description": "All btc up-down candle markets collapse to one template",
+      "slugs": [
+        "btc-updown-15m-1772898300",
+        "btc-updown-5m-1776565800",
+        "btc-updown-5m-1775796000",
+        "btc-updown-15m-1777314600",
+        "btc-updown-5m-1774122000",
+        "btc-updown-5m-1774175700",
+        "btc-updown-15m-1761333300",
+        "btc-updown-15m-1777075200",
+        "btc-updown-5m-1776488100",
+        "btc-updown-5m-1776903900",
+        "btc-updown-5m-1773627600",
+        "btc-updown-15m-1768346100"
+      ]
+    },
+    {
+      "name": "crypto_updown_eth",
+      "description": "All eth up-down candle markets collapse to one template",
+      "slugs": [
+        "eth-updown-5m-1774572300",
+        "eth-updown-15m-1772197200",
+        "eth-updown-15m-1761479100",
+        "eth-updown-5m-1773654600",
+        "eth-updown-15m-1773292500",
+        "eth-updown-15m-1770003900",
+        "eth-updown-4h-1762995600",
+        "eth-updown-5m-1771994100",
+        "eth-updown-5m-1774081200",
+        "eth-updown-15m-1761042600",
+        "eth-updown-5m-1777288200",
+        "eth-updown-15m-1769144400"
+      ]
+    },
+    {
+      "name": "crypto_updown_sol",
+      "description": "All sol up-down candle markets collapse to one template",
+      "slugs": [
+        "sol-updown-5m-1775013300",
+        "sol-updown-5m-1772302800",
+        "sol-updown-5m-1773162300",
+        "sol-updown-15m-1771467300",
+        "sol-updown-15m-1773419400",
+        "sol-updown-5m-1776770400",
+        "sol-updown-15m-1772930700",
+        "sol-updown-5m-1777091700",
+        "sol-updown-15m-1772386200",
+        "sol-updown-4h-1763456400",
+        "sol-updown-5m-1772653800",
+        "sol-updown-5m-1775316000"
+      ]
+    },
+    {
+      "name": "crypto_updown_xrp",
+      "description": "All xrp up-down candle markets collapse to one template",
+      "slugs": [
+        "xrp-updown-15m-1767933000",
+        "xrp-updown-5m-1774084800",
+        "xrp-updown-15m-1771360200",
+        "xrp-updown-15m-1771086600",
+        "xrp-updown-15m-1772492400",
+        "xrp-updown-15m-1766103300",
+        "xrp-updown-15m-1763055900",
+        "xrp-updown-15m-1773343800",
+        "xrp-updown-5m-1776727500",
+        "xrp-updown-15m-1769210100",
+        "xrp-updown-5m-1774845900",
+        "xrp-updown-5m-1773661200"
+      ]
+    },
+    {
+      "name": "crypto_updown_doge",
+      "description": "All doge up-down candle markets collapse to one template",
+      "slugs": [
+        "doge-updown-5m-1777260300",
+        "doge-updown-5m-1775377500",
+        "doge-updown-15m-1777252500",
+        "doge-updown-15m-1775304900",
+        "doge-updown-5m-1774174800",
+        "doge-updown-15m-1776435300",
+        "doge-updown-5m-1773912000",
+        "doge-updown-5m-1776632700",
+        "doge-updown-15m-1774870200",
+        "doge-updown-15m-1774314900",
+        "doge-updown-5m-1776441000",
+        "doge-updown-15m-1773612000"
+      ]
+    },
+    {
+      "name": "crypto_updown_bnb",
+      "description": "All bnb up-down candle markets collapse to one template",
+      "slugs": [
+        "bnb-updown-5m-1777301700",
+        "bnb-updown-5m-1774427400",
+        "bnb-updown-5m-1774703100",
+        "bnb-updown-5m-1773672600",
+        "bnb-updown-5m-1776830700",
+        "bnb-updown-15m-1774543500",
+        "bnb-updown-5m-1774617300",
+        "bnb-updown-5m-1775617500",
+        "bnb-updown-15m-1774358100",
+        "bnb-updown-5m-1776907500",
+        "bnb-updown-5m-1775492700",
+        "bnb-updown-5m-1777312200"
+      ]
+    },
+    {
+      "name": "crypto_updown_hype",
+      "description": "All hype up-down candle markets collapse to one template",
+      "slugs": [
+        "hype-updown-5m-1774135500",
+        "hype-updown-5m-1775629500",
+        "hype-updown-15m-1775919600",
+        "hype-updown-15m-1776336300",
+        "hype-updown-5m-1776254400",
+        "hype-updown-5m-1775804700",
+        "hype-updown-15m-1775343600",
+        "hype-updown-5m-1776896700",
+        "hype-updown-15m-1774827000",
+        "hype-updown-15m-1775670300",
+        "hype-updown-5m-1775942700",
+        "hype-updown-5m-1776246000"
+      ]
+    },
+    {
+      "name": "crypto_up_or_down_bitcoin",
+      "description": "All bitcoin up-or-down markets collapse",
+      "slugs": [
+        "bitcoin-up-or-down-february-24-10pm-et",
+        "bitcoin-up-or-down-july-1-1pm-et",
+        "bitcoin-up-or-down-january-7-9am-et",
+        "bitcoin-up-or-down-november-11-7am-et",
+        "bitcoin-up-or-down-december-3-1pm-et",
+        "bitcoin-up-or-down-november-10-11am-et",
+        "bitcoin-up-or-down-march-28-2026-11pm-et",
+        "bitcoin-up-or-down-march-21-2026-5pm-et",
+        "bitcoin-up-or-down-december-13-3am-et",
+        "bitcoin-up-or-down-april-8-2026-8am-et"
+      ]
+    },
+    {
+      "name": "crypto_up_or_down_ethereum",
+      "description": "All ethereum up-or-down markets collapse",
+      "slugs": [
+        "ethereum-up-or-down-november-28-6pm-et",
+        "ethereum-up-or-down-march-19-2026-5pm-et",
+        "ethereum-up-or-down-april-7-2026-3am-et",
+        "ethereum-up-or-down-april-17-2026-7am-et",
+        "ethereum-up-or-down-january-9-2am-et",
+        "ethereum-up-or-down-april-7-2026-8am-et",
+        "ethereum-up-or-down-october-15-10am-et",
+        "ethereum-up-or-down-january-20-4pm-et",
+        "ethereum-up-or-down-july-7-9pm-et",
+        "ethereum-up-or-down-june-24-5am-et"
+      ]
+    },
+    {
+      "name": "crypto_up_or_down_solana",
+      "description": "All solana up-or-down markets collapse",
+      "slugs": [
+        "solana-up-or-down-january-9-12pm-et",
+        "solana-up-or-down-september-13-8pm-et",
+        "solana-up-or-down-march-27-2026-9am-et",
+        "solana-up-or-down-july-16-8am-et",
+        "solana-up-or-down-april-11-2026-11pm-et",
+        "solana-up-or-down-february-19-7pm-et",
+        "solana-up-or-down-july-1-2am-et",
+        "solana-up-or-down-march-20-2026-4pm-et",
+        "solana-up-or-down-december-7-1am-et",
+        "solana-up-or-down-january-11-12pm-et"
+      ]
+    },
+    {
+      "name": "crypto_up_or_down_xrp",
+      "description": "All xrp up-or-down markets collapse",
+      "slugs": [
+        "xrp-up-or-down-october-17-6am-et",
+        "xrp-up-or-down-november-23-3am-et",
+        "xrp-up-or-down-july-21-10pm-et",
+        "xrp-up-or-down-july-28-4am-et",
+        "xrp-up-or-down-november-25-1am-et",
+        "xrp-up-or-down-july-30-6am-et",
+        "xrp-up-or-down-october-6-5am-et",
+        "xrp-up-or-down-april-21-2026-5am-et",
+        "xrp-up-or-down-november-11-4pm-et",
+        "xrp-up-or-down-july-23-6am-et"
+      ]
+    },
+    {
+      "name": "crypto_strike_bitcoin_above_NUM_on_DATE",
+      "description": "Strike-on-date markets collapse: bitcoin-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "bitcoin-above-98k-on-january-11",
+        "bitcoin-above-80k-on-december-27",
+        "bitcoin-above-92k-on-january-1",
+        "bitcoin-above-86k-on-january-14",
+        "bitcoin-above-126k-on-october-14",
+        "bitcoin-above-106k-on-november-16",
+        "bitcoin-above-66k-on-april-23",
+        "bitcoin-above-98k-on-november-13",
+        "bitcoin-above-104k-on-september-3",
+        "bitcoin-above-66k-on-february-21"
+      ]
+    },
+    {
+      "name": "crypto_strike_bitcoin_above_NUM_on_DATE_TIME",
+      "description": "Strike-on-date markets collapse: bitcoin-above-<NUM>-on-<DATE>-<TIME>",
+      "slugs": [
+        "bitcoin-above-69800-on-march-26-2026-7am-et",
+        "bitcoin-above-73400-on-april-11-2026-2pm-et",
+        "bitcoin-above-72600-on-april-14-2026-7am-et",
+        "bitcoin-above-64600-on-march-28-2026-11am-et",
+        "bitcoin-above-73000-on-april-16-2026-3pm-et",
+        "bitcoin-above-76400-on-april-22-2026-3am-et",
+        "bitcoin-above-69600-on-march-25-2026-2pm-et",
+        "bitcoin-above-71400-on-april-12-2026-12pm-et",
+        "bitcoin-above-74000-on-april-11-2026-3pm-et",
+        "bitcoin-above-68800-on-march-21-2026-10am-et"
+      ]
+    },
+    {
+      "name": "crypto_strike_ethereum_above_NUM_on_DATE",
+      "description": "Strike-on-date markets collapse: ethereum-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "ethereum-above-2600-on-march-26",
+        "ethereum-above-3500-on-november-16",
+        "ethereum-above-4000-on-october-3",
+        "ethereum-above-2400-on-march-29",
+        "ethereum-above-1900-on-february-28",
+        "ethereum-above-4400-on-october-15",
+        "ethereum-above-2800-on-november-24",
+        "ethereum-above-4200-on-september-30",
+        "ethereum-above-1500-on-february-25",
+        "ethereum-above-4000-on-september-22"
+      ]
+    },
+    {
+      "name": "crypto_strike_solana_above_NUM_on_DATE",
+      "description": "Strike-on-date markets collapse: solana-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "solana-above-190-on-january-19",
+        "solana-above-90-on-april-9",
+        "solana-above-170-on-december-22",
+        "solana-above-110-on-april-15",
+        "solana-above-180-on-december-9",
+        "solana-above-90-on-november-29",
+        "solana-above-40-on-march-11",
+        "solana-above-40-on-april-12",
+        "solana-above-170-on-january-7",
+        "solana-above-110-on-february-27"
+      ]
+    },
+    {
+      "name": "crypto_strike_xrp_above_NUM_on_DATE",
+      "description": "Strike-on-date markets collapse: xrp-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "xrp-above-1pt4-on-february-17",
+        "xrp-above-2pt4-on-november-6",
+        "xrp-above-2pt3-on-january-13",
+        "xrp-above-2pt2-on-november-7",
+        "xrp-above-2pt2-on-december-10",
+        "xrp-above-2pt9-on-october-16",
+        "xrp-above-1pt6-on-december-25",
+        "xrp-above-1pt3-on-february-16",
+        "xrp-above-1pt7-on-march-28",
+        "xrp-above-2pt4-on-october-28"
+      ]
+    },
+    {
+      "name": "sports_nba_<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: nba-<TEAM>-<TEAM>-<DATE>-<NUM>-moneyline",
+      "slugs": [
+        "nba-phx-bos-2026-03-16-1h-moneyline",
+        "nba-orl-lac-2026-02-22-1h-moneyline",
+        "nba-gsw-min-2026-01-25-1h-moneyline",
+        "nba-hou-orl-2026-02-26-1h-moneyline",
+        "nba-dal-okc-2025-12-05-1h-moneyline",
+        "nba-gsw-was-2026-03-16-1h-moneyline",
+        "nba-lac-sac-2026-04-05-1h-moneyline",
+        "nba-phi-det-2025-11-14-1h-moneyline",
+        "nba-uta-mil-2026-03-07-1h-moneyline",
+        "nba-cle-phx-2026-01-30-1h-moneyline"
+      ]
+    },
+    {
+      "name": "sports_nba_<NUM>-total-<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: nba-<TEAM>-<TEAM>-<DATE>-<NUM>-total-<NUM>",
+      "slugs": [
+        "nba-phi-det-2026-03-12-total-234pt5",
+        "nba-bkn-cha-2025-10-22-total-229pt5",
+        "nba-ind-tor-2026-02-08-1h-total-109pt5",
+        "nba-chi-mia-2026-01-31-total-233pt5",
+        "nba-orl-cle-2026-01-26-total-225pt5",
+        "nba-nyk-lac-2026-03-09-total-219pt5",
+        "nba-den-por-2026-02-20-total-239pt5",
+        "nba-ind-cle-2025-11-21-total-226pt5",
+        "nba-bos-cha-2026-03-29-total-207pt5",
+        "nba-orl-tor-2026-03-29-1h-total-115pt5"
+      ]
+    },
+    {
+      "name": "sports_nba_spread-home-<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: nba-<TEAM>-<TEAM>-<DATE>-<NUM>-spread-home-<NUM>",
+      "slugs": [
+        "nba-sas-min-2026-01-11-spread-home-2pt5",
+        "nba-bos-atl-2026-03-30-spread-home-4pt5",
+        "nba-mia-nop-2026-02-11-1h-spread-home-0pt5",
+        "nba-orl-det-2026-04-22-spread-home-9pt5",
+        "nba-lac-phi-2025-11-17-spread-home-6pt5",
+        "nba-uta-lal-2025-11-18-spread-home-11pt5",
+        "nba-den-phi-2026-01-05-spread-home-15pt5",
+        "nba-cha-mia-2025-11-08-spread-home-6pt5",
+        "nba-sac-was-2026-02-01-spread-home-8pt5",
+        "nba-den-min-2026-04-25-spread-home-1pt5"
+      ]
+    },
+    {
+      "name": "sports_nba_spread-away-<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: nba-<TEAM>-<TEAM>-<DATE>-<NUM>-spread-away-<NUM>",
+      "slugs": [
+        "nba-det-sac-2025-12-23-1h-spread-away-4pt5",
+        "nba-gsw-cha-2025-12-31-spread-away-6pt5",
+        "nba-cle-chi-2026-03-19-spread-away-12pt5",
+        "nba-phx-bkn-2026-01-19-1h-spread-away-4pt5",
+        "nba-cha-uta-2026-01-10-1h-spread-away-2pt5",
+        "nba-nop-uta-2026-02-26-spread-away-6pt5",
+        "nba-mil-chi-2026-03-01-spread-away-4pt5",
+        "nba-min-bkn-2025-11-04-spread-away-8pt5",
+        "nba-okc-sac-2025-11-08-spread-away-9pt5",
+        "nba-den-min-2025-10-28-spread-away-5pt5"
+      ]
+    },
+    {
+      "name": "sports_nfl_<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: nfl-<TEAM>-<TEAM>-<DATE>-<NUM>-moneyline",
+      "slugs": [
+        "nfl-tb-car-2025-12-21-1h-moneyline",
+        "nfl-gb-pit-2025-10-26-1h-moneyline",
+        "nfl-chi-sf-2025-12-28-1h-moneyline",
+        "nfl-ind-kc-2025-11-23-1h-moneyline",
+        "nfl-den-was-2025-11-30-1h-moneyline",
+        "nfl-bal-cle-2025-11-16-1h-moneyline",
+        "nfl-ari-cin-2025-12-28-1h-moneyline",
+        "nfl-ne-nyj-2025-12-28-1h-moneyline",
+        "nfl-chi-min-2025-11-16-1h-moneyline",
+        "nfl-ind-hou-2026-01-04-1h-moneyline"
+      ]
+    },
+    {
+      "name": "sports_cfb_<NUM>",
+      "description": "Same bet type across many matchups/dates collapses: cfb-<TEAM>-<TEAM>-<DATE>-<NUM>-moneyline",
+      "slugs": [
+        "cfb-army-navy-2025-12-13-1h-moneyline",
+        "cfb-boise-wash-2025-12-13-1h-moneyline",
+        "cfb-okst-ucf-2025-11-22-1h-moneyline",
+        "cfb-applst-jmad-2025-11-15-1h-moneyline",
+        "cfb-miaoh-buf-2025-11-19-1h-moneyline",
+        "cfb-wisc-ind-2025-11-15-1h-moneyline",
+        "cfb-navy-ntx-2025-11-01-1h-moneyline",
+        "cfb-umass-ohio-2025-11-18-1h-moneyline",
+        "cfb-boscol-lou-2025-10-25-1h-moneyline",
+        "cfb-utep-kenest-2025-10-29-1h-moneyline"
+      ]
+    },
+    {
+      "name": "esports_cs2_game1",
+      "description": "Esports game1 across many matches: cs2-<TEAM>-<TEAM>-<DATE>-<NUM>-game1",
+      "slugs": [
+        "cs2-oxuji-rust-2026-03-24-game1",
+        "cs2-mf-rstr-2026-03-25-game1",
+        "cs2-ill-nvq-2026-03-14-game1",
+        "cs2-ef1-ace1-2026-01-18-game1",
+        "cs2-big5-nem-2026-04-10-game1",
+        "cs2-mouzn-ruby1-2026-03-06-game1",
+        "cs2-fut-g2-2026-02-01-game1",
+        "cs2-ruby1-ww-2026-02-23-game1"
+      ]
+    },
+    {
+      "name": "esports_lol_game1",
+      "description": "Esports game1 across many matches: lol-<TEAM>-<TEAM>-<DATE>-<NUM>-game1",
+      "slugs": [
+        "lol-ly-fly-2026-04-21-game1",
+        "lol-ff1-gal-2026-03-25-game1",
+        "lol-znt-sec-2026-02-03-game1",
+        "lol-lng-jdg-2025-12-21-game1",
+        "lol-bro2-hle1-2026-01-22-game1",
+        "lol-g2-tsw-2026-03-16-game1",
+        "lol-vks-fur-2026-04-05-game1",
+        "lol-gam-dcg-2026-02-07-game1"
+      ]
+    },
+    {
+      "name": "esports_val_game1",
+      "description": "Esports game1 across many matches: val-<TEAM>-<TEAM>-<DATE>-<NUM>-game1",
+      "slugs": [
+        "val-bonk-pl-2026-04-12-game1",
+        "val-100t1-eg2-2026-02-07-game1",
+        "val-gs4-bjk-2026-02-09-game1",
+        "val-gdr-xc-2026-03-17-game1",
+        "val-tec-te-2026-04-19-game1",
+        "val-boom-xe-2026-01-10-game1",
+        "val-m80-srb-2026-03-26-game1",
+        "val-geng-fnc1-2025-12-06-game1"
+      ]
+    },
+    {
+      "name": "fed_decreases",
+      "description": "Fed rate decisions across bps/months: fed-decreases-interest-rates-by-<NUM>-bps-after-<DATE>-meeting",
+      "slugs": [
+        "fed-decreases-interest-rates-by-50-bps-after-september-2024-meeting",
+        "fed-decreases-interest-rates-by-25-bps-after-september-2025-meeting",
+        "fed-decreases-interest-rates-by-75-bps-after-january-2025-meeting",
+        "fed-decreases-interest-rates-by-50-bps-after-october-2025-meeting",
+        "fed-decreases-interest-rates-by-25-bps-after-september-2024-meeting",
+        "fed-decreases-interest-rates-by-50-bps-after-december-2024-meeting",
+        "fed-decreases-interest-rates-by-25-bps-after-july-2025-meeting",
+        "fed-decreases-interest-rates-by-50-bps-after-july-2024-meeting"
+      ]
+    },
+    {
+      "name": "fed_increases",
+      "description": "Fed rate decisions across bps/months: fed-increases-interest-rates-by-<NUM>-bps-after-<DATE>-meeting",
+      "slugs": [
+        "fed-increases-interest-rates-by-25-bps-after-september-2025-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-december-2024-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-may-2025-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-july-2025-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-october-2025-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-january-2025-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-november-2024-meeting",
+        "fed-increases-interest-rates-by-25-bps-after-june-2025-meeting"
+      ]
+    },
+    {
+      "name": "weather_seattle",
+      "description": "Weather threshold for seattle across dates collapses",
+      "slugs": [
+        "highest-temperature-in-seattle-on-february-16-2026-46-47f",
+        "highest-temperature-in-seattle-on-february-27-2026-46-47f",
+        "highest-temperature-in-seattle-on-april-13-2026-46-47f",
+        "highest-temperature-in-seattle-on-december-22-46-47f",
+        "highest-temperature-in-seattle-on-december-27-46-47f",
+        "highest-temperature-in-seattle-on-january-27-46-47f"
+      ]
+    },
+    {
+      "name": "weather_seattle_28",
+      "description": "Weather threshold for seattle across dates collapses",
+      "slugs": [
+        "highest-temperature-in-seattle-on-february-23-2026-48-49f",
+        "highest-temperature-in-seattle-on-april-18-2026-48-49f",
+        "highest-temperature-in-seattle-on-march-7-2026-48-49f",
+        "highest-temperature-in-seattle-on-march-16-2026-48-49f",
+        "highest-temperature-in-seattle-on-december-23-48-49f",
+        "highest-temperature-in-seattle-on-march-26-2026-48-49f"
+      ]
+    },
+    {
+      "name": "weather_seattle_29",
+      "description": "Weather threshold for seattle across dates collapses",
+      "slugs": [
+        "highest-temperature-in-seattle-on-january-28-50-51f",
+        "highest-temperature-in-seattle-on-february-28-2026-50-51f",
+        "highest-temperature-in-seattle-on-january-2-50-51f",
+        "highest-temperature-in-seattle-on-march-1-2026-50-51f",
+        "highest-temperature-in-seattle-on-december-14-50-51f",
+        "highest-temperature-in-seattle-on-february-2-50-51f"
+      ]
+    },
+    {
+      "name": "weather_wellington",
+      "description": "Weather threshold for wellington across dates collapses",
+      "slugs": [
+        "highest-temperature-in-wellington-on-february-23-2026-17c",
+        "highest-temperature-in-wellington-on-march-6-2026-17c",
+        "highest-temperature-in-wellington-on-april-26-2026-17c",
+        "highest-temperature-in-wellington-on-april-9-2026-17c",
+        "highest-temperature-in-wellington-on-april-27-2026-17c",
+        "highest-temperature-in-wellington-on-february-17-2026-17c"
+      ]
+    },
+    {
+      "name": "weather_wellington_31",
+      "description": "Weather threshold for wellington across dates collapses",
+      "slugs": [
+        "highest-temperature-in-wellington-on-february-6-2026-18c",
+        "highest-temperature-in-wellington-on-february-1-18c",
+        "highest-temperature-in-wellington-on-march-7-2026-18c",
+        "highest-temperature-in-wellington-on-february-3-2026-18c",
+        "highest-temperature-in-wellington-on-january-29-18c",
+        "highest-temperature-in-wellington-on-march-5-2026-18c"
+      ]
+    },
+    {
+      "name": "weather_seattle_32",
+      "description": "Weather threshold for seattle across dates collapses",
+      "slugs": [
+        "highest-temperature-in-seattle-on-december-18-44-45f",
+        "highest-temperature-in-seattle-on-march-16-2026-44-45f",
+        "highest-temperature-in-seattle-on-april-1-2026-44-45f",
+        "highest-temperature-in-seattle-on-march-17-2026-44-45f",
+        "highest-temperature-in-seattle-on-january-1-44-45f",
+        "highest-temperature-in-seattle-on-march-8-2026-44-45f"
+      ]
+    },
+    {
+      "name": "weather_wellington_33",
+      "description": "Weather threshold for wellington across dates collapses",
+      "slugs": [
+        "highest-temperature-in-wellington-on-march-1-2026-16c",
+        "highest-temperature-in-wellington-on-march-13-2026-16c",
+        "highest-temperature-in-wellington-on-february-14-2026-16c",
+        "highest-temperature-in-wellington-on-april-7-2026-16c",
+        "highest-temperature-in-wellington-on-february-28-2026-16c",
+        "highest-temperature-in-wellington-on-april-27-2026-16c"
+      ]
+    },
+    {
+      "name": "weather_wellington_34",
+      "description": "Weather threshold for wellington across dates collapses",
+      "slugs": [
+        "highest-temperature-in-wellington-on-february-2-19c",
+        "highest-temperature-in-wellington-on-february-26-2026-19c",
+        "highest-temperature-in-wellington-on-april-18-2026-19c",
+        "highest-temperature-in-wellington-on-march-28-2026-19c",
+        "highest-temperature-in-wellington-on-april-27-2026-19c",
+        "highest-temperature-in-wellington-on-february-6-2026-19c"
+      ]
+    },
+    {
+      "name": "trump_say_week",
+      "description": "Same Trump-say word across dates collapses: will-trump-say-transgender-this-week-<DATE>",
+      "slugs": [
+        "will-trump-say-transgender-this-week-february-15",
+        "will-trump-say-transgender-this-week-november-3-9",
+        "will-trump-say-transgender-this-week-march-22",
+        "will-trump-say-transgender-this-week-september-29-october-5",
+        "will-trump-say-transgender-this-week-november-10-16",
+        "will-trump-say-transgender-this-week-december-15-21"
+      ]
+    },
+    {
+      "name": "trump_say_week_36",
+      "description": "Same Trump-say word across dates collapses: will-trump-say-crypto-or-bitcoin-this-week-<DATE>",
+      "slugs": [
+        "will-trump-say-crypto-or-bitcoin-this-week-september-8-14",
+        "will-trump-say-crypto-or-bitcoin-this-week-march-8",
+        "will-trump-say-crypto-or-bitcoin-this-week-march-1",
+        "will-trump-say-crypto-or-bitcoin-this-week-january-25",
+        "will-trump-say-crypto-or-bitcoin-this-week-october-13-19",
+        "will-trump-say-crypto-or-bitcoin-this-week-april-19"
+      ]
+    },
+    {
+      "name": "trump_say_week_37",
+      "description": "Same Trump-say word across dates collapses: will-trump-say-maga-or-make-america-great-again-this-week-<DATE>",
+      "slugs": [
+        "will-trump-say-maga-or-make-america-great-again-this-week-december-1-7",
+        "will-trump-say-maga-or-make-america-great-again-this-week-november-3-9",
+        "will-trump-say-maga-or-make-america-great-again-this-week-december-22-28",
+        "will-trump-say-maga-or-make-america-great-again-this-week-august-25-31",
+        "will-trump-say-maga-or-make-america-great-again-this-week-february-8",
+        "will-trump-say-maga-or-make-america-great-again-this-week-september-22-28"
+      ]
+    },
+    {
+      "name": "trump_say_week_38",
+      "description": "Same Trump-say word across dates collapses: will-trump-say-sleepy-joe-this-week-<DATE>",
+      "slugs": [
+        "will-trump-say-sleepy-joe-this-week-december-1-7",
+        "will-trump-say-sleepy-joe-this-week-february-15",
+        "will-trump-say-sleepy-joe-this-week-march-15",
+        "will-trump-say-sleepy-joe-this-week-september-29-october-5",
+        "will-trump-say-sleepy-joe-this-week-march-22",
+        "will-trump-say-sleepy-joe-this-week-april-19"
+      ]
+    },
+    {
+      "name": "trump_say_week_39",
+      "description": "Same Trump-say word across dates collapses: will-trump-say-maga-or-make-america-great-again-this-week-<NUM>",
+      "slugs": [
+        "will-trump-say-maga-or-make-america-great-again-this-week-748",
+        "will-trump-say-maga-or-make-america-great-again-this-week-117",
+        "will-trump-say-maga-or-make-america-great-again-this-week-845",
+        "will-trump-say-maga-or-make-america-great-again-this-week-685",
+        "will-trump-say-maga-or-make-america-great-again-this-week-651",
+        "will-trump-say-maga-or-make-america-great-again-this-week-944"
+      ]
+    },
+    {
+      "name": "stock_strike_tsla",
+      "description": "Stock strike-on-date collapses: tsla-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "tsla-above-425-on-january-9-2026",
+        "tsla-above-380-on-march-31-2026",
+        "tsla-above-455-on-january-30-2026",
+        "tsla-above-470-on-january-23-2026",
+        "tsla-above-380-on-april-24-2026",
+        "tsla-above-480-on-january-9-2026"
+      ]
+    },
+    {
+      "name": "stock_strike_googl",
+      "description": "Stock strike-on-date collapses: googl-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "googl-above-285-on-november-28-2025",
+        "googl-above-360-on-january-30-2026",
+        "googl-above-300-on-march-20-2026",
+        "googl-above-260-on-april-30-2026",
+        "googl-above-285-on-november-14-2025",
+        "googl-above-305-on-january-16-2026"
+      ]
+    },
+    {
+      "name": "stock_strike_nvda",
+      "description": "Stock strike-on-date collapses: nvda-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "nvda-above-205-on-march-20-2026",
+        "nvda-above-210-on-march-20-2026",
+        "nvda-above-170-on-march-31-2026",
+        "nvda-above-210-on-february-27-2026",
+        "nvda-above-175-on-november-21-2025",
+        "nvda-above-200-on-april-17-2026"
+      ]
+    },
+    {
+      "name": "stock_strike_meta",
+      "description": "Stock strike-on-date collapses: meta-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "meta-above-680-on-january-30-2026",
+        "meta-above-680-on-december-12-2025",
+        "meta-above-740-on-january-30-2026",
+        "meta-above-730-on-january-2-2026",
+        "meta-above-620-on-november-14-2025",
+        "meta-above-610-on-january-9-2026"
+      ]
+    },
+    {
+      "name": "stock_strike_msft",
+      "description": "Stock strike-on-date collapses: msft-above-<NUM>-on-<DATE>",
+      "slugs": [
+        "msft-above-470-on-january-9-2026",
+        "msft-above-400-on-february-13-2026",
+        "msft-above-330-on-april-17-2026",
+        "msft-above-430-on-november-28-2025",
+        "msft-above-500-on-january-2-2026",
+        "msft-above-460-on-november-21-2025"
+      ]
+    }
+  ],
+  "distinguish": [
+    {
+      "name": "presidential_candidates_distinct",
+      "description": "Distinct presidential election candidates produce distinct templates",
+      "slugs": [
+        "will-a-candidate-from-another-party-win-nevada-presidential-election",
+        "romania-presidential-election-winner-will-daniel-funeriu-win-the-romanian-presidential-election",
+        "romania-presidential-election-winner-will-ana-birchall-win-the-romanian-presidential-election",
+        "will-a-republican-win-maryland-in-the-2024-us-presidential-election",
+        "romania-presidential-election-winner-will-nicuor-dan-win-the-romanian-presidential-election",
+        "will-a-candidate-from-another-party-win-ohio-presidential-election",
+        "will-a-democrat-win-maryland-in-the-2024-us-presidential-election",
+        "will-anamaria-gavril-win-the-romanian-presidential-election",
+        "will-a-candidate-from-another-party-win-pennsylvania-presidential-election",
+        "will-namal-rajapaksa-win-the-sri-lankan-presidential-election"
+      ],
+      "min_distinct": 10
+    },
+    {
+      "name": "senate_confirmations_distinct",
+      "description": "Distinct nominees for confirmation stay distinct",
+      "slugs": [
+        "confirmed-case-of-monkeypox-in-us-by-aug-31",
+        "will-john-fetterman-vote-to-confirm-pete-hegseth-as-secretary-of-defense",
+        "israel-confirms-it-has-nuclear-weapons-in-2025",
+        "mehmet-oz-confirmed-as-medicare-and-medicaid-administrator",
+        "will-lisa-murkowski-vote-to-confirm-robert-kennedy-jr-as-secretary-of-health-and-human-services",
+        "pam-bondi-confirmed-as-attorney-general",
+        "will-lisa-murkowski-vote-to-confirm-tulsi-gabbard-jr-as-director-of-national-intelligence",
+        "will-susan-collins-vote-to-confirm-lori-chavez-deremer-as-secretary-of-labor"
+      ],
+      "min_distinct": 8
+    },
+    {
+      "name": "trump_mentions_words_distinct",
+      "description": "Different mentioned-words for Trump produce distinct templates",
+      "slugs": [
+        "will-trump-say-pentagon-6-times-during-9-11-memorial-event",
+        "will-trump-say-scam-or-fraud-2-times-during-the-detroit-speech-on-tuesday",
+        "will-donald-trump-say-dictator-during-his-presser-with-zelenskyy-on-feb-281",
+        "will-trump-say-crypto-or-bitcoin-during-antifa-roundtable-on-october-8",
+        "will-trump-say-palestine-or-palestinian-this-week-december-29-january-4",
+        "will-trump-say-clean-coal-or-beautiful-coal-during-kentucky-visit",
+        "will-trump-say-phase-or-term-during-board-of-peace-events-on-february-19",
+        "will-trump-say-nuclear-during-signing-time"
+      ],
+      "min_distinct": 8
+    },
+    {
+      "name": "different_speakers_distinct",
+      "description": "Different speakers in Mentions produce distinct templates",
+      "slugs": [
+        "will-trump-say-blockade-during-fox-interview-on-wednesday",
+        "will-starmer-say-thank-10-times-during-the-next-prime-ministers-questions-event",
+        "will-powell-say-pandemic-during-april-press-conference-892-546-734-268-338-988",
+        "elon-musk-of-tweets-january-16-january-23-400-419",
+        "will-mrbeasts-next-video-get-less-than-70-million-views-on-week-1"
+      ],
+      "min_distinct": 5
+    },
+    {
+      "name": "different_cryptos_distinct",
+      "description": "Different crypto assets produce distinct templates",
+      "slugs": [
+        "btc-updown-4h-1774900800",
+        "eth-updown-5m-1774233900",
+        "sol-updown-15m-1776190500",
+        "xrp-updown-15m-1768407300",
+        "doge-updown-5m-1775174100"
+      ],
+      "min_distinct": 5
+    },
+    {
+      "name": "nba_bet_types_distinct",
+      "description": "NBA moneyline, spread, and total stay distinct",
+      "slugs": [
+        "nba-nyk-orl-2025-12-13-1h-moneyline",
+        "nba-mil-atl-2026-03-14-total-232pt5",
+        "nba-bkn-chi-2025-12-03-spread-home-8pt5",
+        "nba-world-stars-2026-02-15-spread-away-3pt5"
+      ],
+      "min_distinct": 4
+    },
+    {
+      "name": "different_leagues_distinct",
+      "description": "Different sports leagues produce distinct templates",
+      "slugs": [
+        "nba-lal-hou-2026-04-26",
+        "nhl-bos-van-2026-01-03",
+        "mlb-wsh-ari-2025-06-01",
+        "nfl-nyg-car-2024-11-10",
+        "cbb-nhvn-boscol-2025-12-06",
+        "cfb-tenn-fl-2025-11-22",
+        "epl-cry-tot-2023-10-27"
+      ],
+      "min_distinct": 7
+    },
+    {
+      "name": "different_weather_cities_distinct",
+      "description": "Different weather cities stay distinct",
+      "slugs": [
+        "highest-temperature-in-seattle-on-march-10-2026-46-47f",
+        "highest-temperature-in-seattle-on-march-20-2026-48-49f",
+        "highest-temperature-in-seattle-on-february-25-2026-50-51f",
+        "highest-temperature-in-wellington-on-april-11-2026-17c",
+        "highest-temperature-in-wellington-on-january-29-18c",
+        "highest-temperature-in-seattle-on-march-3-2026-44-45f"
+      ],
+      "min_distinct": 6
+    },
+    {
+      "name": "tournament_winner_candidates_distinct",
+      "description": "Each tournament-winner candidate stays distinct",
+      "slugs": [
+        "will-deagle-be-said-5-times-during-the-cs-iem-rio-2026-grand-final",
+        "will-faze-be-said-during-the-cs-iem-rio-2026-grand-final",
+        "will-team-liquid-win-iem-rio-2026",
+        "will-team-spirit-win-iem-rio-2026",
+        "will-jungle-be-said-during-the-cs-iem-rio-2026-grand-final",
+        "will-falcons-win-iem-rio-2026",
+        "will-no-kit-be-said-during-the-cs-iem-rio-2026-grand-final",
+        "will-five-seven-be-said-during-the-cs-iem-rio-2026-grand-final"
+      ],
+      "min_distinct": 8
+    },
+    {
+      "name": "oscar_best_picture_nominees_distinct",
+      "description": "Oscar best-picture nominees stay distinct",
+      "slugs": [
+        "will-everything-everywhere-all-at-once-win-the-oscar-for-best-picture",
+        "will-marty-supreme-be-nominated-for-best-picture-at-the-98th-academy-awards",
+        "oscars-best-picture-will-a-real-pain-win-best-picture-at-the-2025-oscars",
+        "will-avatar-fire-and-ash-win-best-picture-at-the-98th-academy-awards",
+        "will-sinners-win-best-picture-at-the-98th-academy-awards",
+        "will-the-banshees-of-inisherin-win-the-oscar-for-best-picture"
+      ],
+      "min_distinct": 6
+    }
+  ],
+  "expected_improvements": [
+    {
+      "name": "nba_1h_separated_from_full_game",
+      "description": "1H NBA moneyline must produce a DIFFERENT template from full-game moneyline (currently collapsed)",
+      "kind": "distinguish_groups",
+      "group_a": [
+        "nba-lac-det-2026-01-10-1h-moneyline",
+        "nba-chi-mia-2026-01-31-1h-moneyline",
+        "nba-den-gsw-2026-02-22-1h-moneyline"
+      ],
+      "group_b": [
+        "nba-mil-phx-2025-03-24-moneyline",
+        "nba-phi-nop-2025-03-24-moneyline",
+        "nba-chi-den-2025-03-24-moneyline"
+      ],
+      "current_status": "fails"
+    },
+    {
+      "name": "btc_updown_typography_unified",
+      "description": "btc-updown and btc-up-or-down typography variants should map to same template",
+      "kind": "collapse",
+      "slugs": [
+        "btc-updown-15m-1772898300",
+        "btc-updown-5m-1776565800",
+        "btc-updown-5m-1775796000",
+        "btc-up-or-down-15m-1758357900",
+        "btc-up-or-down-15m-1759303800",
+        "btc-up-or-down-15m-1759075200"
+      ],
+      "current_status": "fails"
+    },
+    {
+      "name": "valorant_alias_to_val",
+      "description": "valorant- and val- prefix variants must map to same namespace",
+      "kind": "collapse_namespace",
+      "val_slugs": [
+        "val-ge1-zeta2-2026-01-29",
+        "val-oas-spe-2026-03-16",
+        "val-aura1-krspar-2026-01-27"
+      ],
+      "valorant_slugs": [
+        "valorant-pandascore-team-heretics-mibr-2025-09-26",
+        "valorant-karmine-corp-gc-blvkhvnd-2025-10-11",
+        "valorant-gamax-esports-vs-the-ultimates"
+      ],
+      "current_status": "fails"
+    },
+    {
+      "name": "dota_team_pair_collapse",
+      "description": "dota- prefix should get team-pair <TEAM>-<TEAM> collapse like cs2/lol/val",
+      "kind": "collapse_after",
+      "slugs": [
+        "dota-2-betboom-team-vs-xtreme-gaming",
+        "dota-2-team-tidebound-vs-natus-vincere",
+        "dota-2-natus-vincere-vs-xtreme-gaming",
+        "dota-2-parivision-vs-heroic-453",
+        "dota-2-xtreme-gaming-vs-team-falcons",
+        "dota-2-nem-vs-wildcard"
+      ],
+      "current_status": "fails"
+    },
+    {
+      "name": "intl_soccer_lal_team_collapse",
+      "description": "International league 'lal' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "lal-ray-cel-2025-09-21-draw",
+        "lal-mad-sev-2025-11-01-draw",
+        "lal-osa-rso-2025-11-22-draw",
+        "lal-ala-cel-2025-11-22-btts",
+        "lal-bet-rea-2026-04-24-total-1pt5"
+      ],
+      "current_status": "fails",
+      "must_contain": "lal-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_sea_team_collapse",
+      "description": "International league 'sea' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "sea-tor-ver-2026-04-11-spread-away-2pt5",
+        "sea-nap-pis-2025-09-22-nap",
+        "sea-juv-pis-2026-03-07-btts",
+        "sea-mil-tor-2026-03-21-total-1pt5",
+        "sea-juv-ata-2025-09-27-ata"
+      ],
+      "current_status": "fails",
+      "must_contain": "sea-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_mex_team_collapse",
+      "description": "International league 'mex' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "mex-atl-san-2025-09-13-san",
+        "mex-tol-que-2025-10-18-que",
+        "mex-caz-pue-2026-01-17-btts",
+        "mex-ame-caz-2026-04-11-total-4pt5",
+        "mex-pue-caz-2025-10-31-caz"
+      ],
+      "current_status": "fails",
+      "must_contain": "mex-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_tur_team_collapse",
+      "description": "International league 'tur' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "tur-iba-kas-2026-04-24-total-2pt5",
+        "tur-ala-eyu-2026-01-31-eyu",
+        "tur-fen-gfk-2026-03-17-btts",
+        "tur-iba-kar-2026-01-17-draw",
+        "tur-kas-eyu-2026-03-15-draw"
+      ],
+      "current_status": "fails",
+      "must_contain": "tur-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_por_team_collapse",
+      "description": "International league 'por' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "por-scb-gui-2026-02-21-gui",
+        "por-spo-nac-2026-02-01-btts",
+        "por-gil-nac-2026-01-17-nac",
+        "por-cds-est-2026-01-31-cds",
+        "por-alv-aro-2026-04-24-draw"
+      ],
+      "current_status": "fails",
+      "must_contain": "por-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_j1100_team_collapse",
+      "description": "International league 'j1100' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "j1100-gam-fag-2026-04-19-total-2pt5",
+        "j1100-zel-fct-2026-04-18-spread-home-2pt5",
+        "j1100-kyo-cer-2026-03-14-cer",
+        "j1100-hol-ura-2026-05-09-draw",
+        "j1100-jef-hol-2026-04-11-btts"
+      ],
+      "current_status": "fails",
+      "must_contain": "j1100-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_den_team_collapse",
+      "description": "International league 'den' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "den-sjs-bro-2026-04-26-sjs",
+        "den-bro-ran-2026-02-08-total-3pt5",
+        "den-ode-fcf-2026-04-06-btts",
+        "den-vib-agf-2026-04-06-agf",
+        "den-ode-ran-2026-04-19-btts"
+      ],
+      "current_status": "fails",
+      "must_contain": "den-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_chi1_team_collapse",
+      "description": "International league 'chi1' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "chi1-cdu-cuc-2026-03-01-spread-home-1pt5",
+        "chi1-aci-cd1-2026-03-13-aci",
+        "chi1-aci-edv-2026-02-22-draw",
+        "chi1-ccu-cd1-2026-02-28-spread-away-2pt5",
+        "chi1-cdl-cu1-2026-04-17-draw"
+      ],
+      "current_status": "fails",
+      "must_contain": "chi1-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_kor_team_collapse",
+      "description": "International league 'kor' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "kor-dae-gwa-2025-11-08-gwa",
+        "kor-dae1-any-2026-03-02-dae1",
+        "kor-seo-bch-2026-04-21-btts",
+        "kor-jej-seo-2026-03-15-jej",
+        "kor-gwo-seo-2026-04-25-seo"
+      ],
+      "current_status": "fails",
+      "must_contain": "kor-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "intl_soccer_col_team_collapse",
+      "description": "International league 'col' should team-collapse to <TEAM>-<TEAM>",
+      "kind": "each_contains",
+      "slugs": [
+        "col-cry-fio-2026-04-09-cry",
+        "col-mai-sig-2026-03-19-total-2pt5",
+        "col-noa-az-2026-02-19-draw",
+        "col-she1-cry-2025-12-11-she1",
+        "col-bre-sam-2025-11-27-bre"
+      ],
+      "current_status": "fails",
+      "must_contain": "col-<TEAM>-<TEAM>"
+    },
+    {
+      "name": "lee_jun_seok_not_corrupted",
+      "description": "Korean candidate name 'lee-jun-seok' must not be corrupted (jun should not match <DATE>)",
+      "kind": "no_substitution",
+      "slugs": [
+        "will-lee-jun-seok-win-3rd-place-in-the-south-korean-presidential-election",
+        "will-lee-jun-seok-endorse-lee-jae-myung",
+        "will-lee-jun-seok-win-between-2-and-5-of-the-vote-in-the-south-korea-election"
+      ],
+      "forbidden_substring": "<DATE>",
+      "current_status": "fails"
+    },
+    {
+      "name": "cs2_terminal_date_collapses",
+      "description": "Terminal -YYYY-MM-DD should collapse to <DATE> even without trailing tokens",
+      "kind": "collapse",
+      "slugs": [
+        "cs2-fal2-mouz-2026-02-03",
+        "cs2-ill-ence-2026-02-13",
+        "cs2-oly-ursa-2026-03-08",
+        "cs2-alt2-allin-2026-01-03"
+      ],
+      "current_status": "fails"
+    },
+    {
+      "name": "winter_olympics_doubled_prefix",
+      "description": "Doubled 'winter-olympics-winter-olympics' should be deduplicated to single prefix",
+      "kind": "no_substitution",
+      "slugs": [
+        "2026-winter-olympics-winter-olympics-2026-alpine-mens-slalom-atle-lie-mcgrath-nor",
+        "2026-winter-olympics-winter-olympics-2026-alpine-womens-slalom-wendy-holdener-sui",
+        "2026-winter-olympics-winter-olympics-2026-speed-skating-mens-team-pursuit-china",
+        "2026-winter-olympics-winter-olympics-2026-speed-skating-womens-1500m-femke-kok-ned",
+        "2026-winter-olympics-winter-olympics-2026-biathlon-mens-10km-sprint-jesper-nelin-swe"
+      ],
+      "forbidden_substring": "winter-olympics-winter-olympics",
+      "current_status": "fails"
+    }
+  ]
+}

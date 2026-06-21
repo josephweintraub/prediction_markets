@@ -1,0 +1,1418 @@
+{
+  "counts": {
+    "rows": 34504792,
+    "n_ticker": 34504792,
+    "n_event_ticker": 11008162,
+    "n_question": 27488803,
+    "n_prefix_alphanumeric": 7166
+  },
+  "prefix_counts": {
+    "n_total": 7166,
+    "top_30": [
+      {
+        "prefix": "KXMVESPORTSMULTIGAMEEXTENDED",
+        "n_tickers": 16838583,
+        "n_events": 7848039,
+        "n_questions": 15899495
+      },
+      {
+        "prefix": "KXMVENFLSINGLEGAME",
+        "n_tickers": 5102078,
+        "n_events": 509779,
+        "n_questions": 4643918
+      },
+      {
+        "prefix": "KXMVECROSSCATEGORY",
+        "n_tickers": 2111323,
+        "n_events": 1361878,
+        "n_questions": 2016292
+      },
+      {
+        "prefix": "KXMVENFLMULTIGAMEEXTENDED",
+        "n_tickers": 1974043,
+        "n_events": 757261,
+        "n_questions": 1882573
+      },
+      {
+        "prefix": "KXMVENBASINGLEGAME",
+        "n_tickers": 1797505,
+        "n_events": 229137,
+        "n_questions": 1595884
+      },
+      {
+        "prefix": "KXINXU",
+        "n_tickers": 632190,
+        "n_events": 2023,
+        "n_questions": 632190
+      },
+      {
+        "prefix": "KXNASDAQ100U",
+        "n_tickers": 632113,
+        "n_events": 2020,
+        "n_questions": 632113
+      },
+      {
+        "prefix": "KXBTCD",
+        "n_tickers": 587762,
+        "n_events": 7879,
+        "n_questions": 508
+      },
+      {
+        "prefix": "KXBTC",
+        "n_tickers": 586307,
+        "n_events": 7879,
+        "n_questions": 508
+      },
+      {
+        "prefix": "KXETHD",
+        "n_tickers": 568695,
+        "n_events": 7878,
+        "n_questions": 7878
+      },
+      {
+        "prefix": "KXETH",
+        "n_tickers": 568663,
+        "n_events": 7877,
+        "n_questions": 7877
+      },
+      {
+        "prefix": "KXUSDJPYH",
+        "n_tickers": 270400,
+        "n_events": 2704,
+        "n_questions": 270400
+      },
+      {
+        "prefix": "KXEURUSDH",
+        "n_tickers": 270200,
+        "n_events": 2702,
+        "n_questions": 270200
+      },
+      {
+        "prefix": "KXXRPD",
+        "n_tickers": 235442,
+        "n_events": 3217,
+        "n_questions": 3217
+      },
+      {
+        "prefix": "KXXRP",
+        "n_tickers": 234928,
+        "n_events": 3210,
+        "n_questions": 3210
+      },
+      {
+        "prefix": "KXDOGED",
+        "n_tickers": 209548,
+        "n_events": 3507,
+        "n_questions": 487
+      },
+      {
+        "prefix": "KXDOGE",
+        "n_tickers": 208462,
+        "n_events": 3491,
+        "n_questions": 487
+      },
+      {
+        "prefix": "KXSOLD",
+        "n_tickers": 159830,
+        "n_events": 2168,
+        "n_questions": 108
+      },
+      {
+        "prefix": "KXSOLE",
+        "n_tickers": 159634,
+        "n_events": 2167,
+        "n_questions": 109
+      },
+      {
+        "prefix": "EURUSDH",
+        "n_tickers": 124997,
+        "n_events": 1487,
+        "n_questions": 124997
+      },
+      {
+        "prefix": "USDJPYH",
+        "n_tickers": 121048,
+        "n_events": 1226,
+        "n_questions": 121048
+      },
+      {
+        "prefix": "KXMVEOSCARS",
+        "n_tickers": 72689,
+        "n_events": 41734,
+        "n_questions": 66852
+      },
+      {
+        "prefix": "KXNCAAMBSPREAD",
+        "n_tickers": 49126,
+        "n_events": 4884,
+        "n_questions": 9931
+      },
+      {
+        "prefix": "KXNCAAMBTOTAL",
+        "n_tickers": 48326,
+        "n_events": 4861,
+        "n_questions": 4593
+      },
+      {
+        "prefix": "KXNHLPTS",
+        "n_tickers": 34024,
+        "n_events": 735,
+        "n_questions": 2383
+      },
+      {
+        "prefix": "KXMVECBCHAMPIONSHIP",
+        "n_tickers": 28418,
+        "n_events": 28326,
+        "n_questions": 27471
+      },
+      {
+        "prefix": "KXNHLAST",
+        "n_tickers": 23521,
+        "n_events": 736,
+        "n_questions": 1704
+      },
+      {
+        "prefix": "KXNHLGOAL",
+        "n_tickers": 22394,
+        "n_events": 740,
+        "n_questions": 7666
+      },
+      {
+        "prefix": "KXSHIBA",
+        "n_tickers": 18292,
+        "n_events": 479,
+        "n_questions": 479
+      },
+      {
+        "prefix": "KXSHIBAD",
+        "n_tickers": 18256,
+        "n_events": 478,
+        "n_questions": 478
+      }
+    ],
+    "bottom_30": [
+      {
+        "prefix": "KXRELEASELILDURK",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXALIENACT",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXUKRIMPEACH",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXSWINGFLIP24",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "EMERGENCYSTL",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXACKMANMAYOR",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXCRYPTOEXEMP",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "POPVOTEDJTIA",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXSOLANAATH",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXELONSPACE",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXPROGMAYORSWEEP",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXIRANMEET",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXNCAAFAAC",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXCANADAELECT",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXEXITPOLLWOMEN",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXSCOTUSCHANGE",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXSTARSHIPDOCK",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXACQUIREPUMPFUN",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXHARDFORKBTC",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXCHOPSTICKS",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXDEMVASWEEP",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXCOLONIZEMARS",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXDEMINIMIS",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXDEBTLEVEL",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXMARRIAGEBEAST",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXRAINNOSB",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXRADIOHEAD",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXGERPOLLAFD",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "GPT5",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      },
+      {
+        "prefix": "KXNFLNOSCOREQ",
+        "n_tickers": 1,
+        "n_events": 1,
+        "n_questions": 1
+      }
+    ]
+  },
+  "samples_by_prefix": {
+    "KXMVESPORTSMULTIGAMEEXTENDED": [],
+    "KXMVENFLSINGLEGAME": [],
+    "KXMVECROSSCATEGORY": [],
+    "KXMVENFLMULTIGAMEEXTENDED": [],
+    "KXMVENBASINGLEGAME": [],
+    "KXINXU": [],
+    "KXNASDAQ100U": [
+      {
+        "ticker": "KXNASDAQ100U-25FEB21H1400-T22479.99",
+        "event_ticker": "KXNASDAQ100U-25FEB21H1400",
+        "question": "Will the Nasdaq-100 be above 22479.99 at the end of Feb 21, 2025 at 2pm EST?",
+        "contract_subtitle": "22,480 or above",
+        "yes_sub_title": "22,480 or above",
+        "market_type": "binary",
+        "strike_type": "greater_or_equal",
+        "floor_strike": 22480.0,
+        "cap_strike": 0.0
+      }
+    ],
+    "KXBTCD": [
+      {
+        "ticker": "KXBTCD-25MAR1016-T92499.99",
+        "event_ticker": "KXBTCD-25MAR1016",
+        "question": "Bitcoin price  on Mar 10, 2025?",
+        "contract_subtitle": "$92,500 or above",
+        "yes_sub_title": "$92,500 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 92499.99,
+        "cap_strike": 0.0
+      },
+      {
+        "ticker": "KXBTCD-25FEB2219-T106499.99",
+        "event_ticker": "KXBTCD-25FEB2219",
+        "question": "Bitcoin price  on Feb 22, 2025?",
+        "contract_subtitle": "$106,500 or above",
+        "yes_sub_title": "$106,500 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 106499.99,
+        "cap_strike": 0.0
+      }
+    ],
+    "KXBTC": [
+      {
+        "ticker": "KXBTC-25FEB2100-B88375",
+        "event_ticker": "KXBTC-25FEB2100",
+        "question": "Bitcoin price range  on Feb 21, 2025?",
+        "contract_subtitle": "$88,250 to 88,499.99",
+        "yes_sub_title": "$88,250 to 88,499.99",
+        "market_type": "binary",
+        "strike_type": "between",
+        "floor_strike": 88250.0,
+        "cap_strike": 88499.99
+      },
+      {
+        "ticker": "KXBTC-25MAR1010-B78375",
+        "event_ticker": "KXBTC-25MAR1010",
+        "question": "Bitcoin price range  on Mar 10, 2025?",
+        "contract_subtitle": "$78,250 to 78,499.99",
+        "yes_sub_title": "$78,250 to 78,499.99",
+        "market_type": "binary",
+        "strike_type": "between",
+        "floor_strike": 78250.0,
+        "cap_strike": 78499.99
+      }
+    ],
+    "KXETHD": [
+      {
+        "ticker": "KXETHD-25FEB0400-T2699.99",
+        "event_ticker": "KXETHD-25FEB0400",
+        "question": "Ethereum price at Feb 4, 2025 at 12am EST?",
+        "contract_subtitle": "$2,700 or above",
+        "yes_sub_title": "$2,700 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 2699.99,
+        "cap_strike": 0.0
+      },
+      {
+        "ticker": "KXETHD-25FEB0218-T3099.99",
+        "event_ticker": "KXETHD-25FEB0218",
+        "question": "Ethereum price at Feb 2, 2025 at 6pm EST?",
+        "contract_subtitle": "$3,100 or above",
+        "yes_sub_title": "$3,100 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 3099.99,
+        "cap_strike": 0.0
+      },
+      {
+        "ticker": "KXETHD-25FEB0117-T3569.99",
+        "event_ticker": "KXETHD-25FEB0117",
+        "question": "Ethereum price at Feb 1, 2025 at 5pm EST?",
+        "contract_subtitle": "$3,570 or above",
+        "yes_sub_title": "$3,570 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 3569.99,
+        "cap_strike": 0.0
+      },
+      {
+        "ticker": "KXETHD-25FEB0318-T3039.99",
+        "event_ticker": "KXETHD-25FEB0318",
+        "question": "Ethereum price at Feb 3, 2025 at 6pm EST?",
+        "contract_subtitle": "$3,040 or above",
+        "yes_sub_title": "$3,040 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 3039.99,
+        "cap_strike": 0.0
+      },
+      {
+        "ticker": "KXETHD-25JAN3018-T3299.99",
+        "event_ticker": "KXETHD-25JAN3018",
+        "question": "Ethereum price at Jan 30, 2025 at 6pm EST?",
+        "contract_subtitle": "$3,300 or above",
+        "yes_sub_title": "$3,300 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 3299.99,
+        "cap_strike": 0.0
+      }
+    ],
+    "KXETH": [
+      {
+        "ticker": "KXETH-25FEB2123-B3010",
+        "event_ticker": "KXETH-25FEB2123",
+        "question": "Ethereum price at Feb 21, 2025 at 11pm EST?",
+        "contract_subtitle": "$3,000 to 3,019.99",
+        "yes_sub_title": "$3,000 to 3,019.99",
+        "market_type": "binary",
+        "strike_type": "between",
+        "floor_strike": 3000.0,
+        "cap_strike": 3019.99
+      }
+    ],
+    "KXUSDJPYH": [
+      {
+        "ticker": "KXUSDJPYH-25FEB0416-T153.53900",
+        "event_ticker": "KXUSDJPYH-25FEB0416",
+        "question": "Will the USD/JPY open price be above 153.53900 at Feb 4, 2025 at 4pm EST?",
+        "contract_subtitle": "153.540 or above",
+        "yes_sub_title": "153.540 or above",
+        "market_type": "binary",
+        "strike_type": "greater",
+        "floor_strike": 153.539,
+        "cap_strike": 0.0
+      }
+    ],
+    "KXEURUSDH": [],
+    "KXXRPD": [],
+    "KXXRP": [],
+    "KXDOGED": [],
+    "KXDOGE": [],
+    "KXSOLD": [],
+    "KXSOLE": [],
+    "EURUSDH": [],
+    "USDJPYH": [],
+    "KXMVEOSCARS": [],
+    "KXNCAAMBSPREAD": [],
+    "KXNCAAMBTOTAL": [],
+    "KXNHLPTS": [],
+    "KXMVECBCHAMPIONSHIP": [],
+    "KXNHLAST": [],
+    "KXNHLGOAL": [],
+    "KXSHIBA": [],
+    "KXSHIBAD": [],
+    "KXRELEASELILDURK": [],
+    "KXALIENACT": [],
+    "KXUKRIMPEACH": [],
+    "KXSWINGFLIP24": [],
+    "EMERGENCYSTL": [],
+    "KXACKMANMAYOR": [],
+    "KXCRYPTOEXEMP": [],
+    "POPVOTEDJTIA": [],
+    "KXSOLANAATH": [],
+    "KXELONSPACE": [],
+    "KXPROGMAYORSWEEP": [],
+    "KXIRANMEET": [],
+    "KXNCAAFAAC": [],
+    "KXCANADAELECT": [],
+    "KXEXITPOLLWOMEN": [],
+    "KXSCOTUSCHANGE": [],
+    "KXSTARSHIPDOCK": [],
+    "KXACQUIREPUMPFUN": [],
+    "KXHARDFORKBTC": [],
+    "KXCHOPSTICKS": [],
+    "KXDEMVASWEEP": [],
+    "KXCOLONIZEMARS": [],
+    "KXDEMINIMIS": [],
+    "KXDEBTLEVEL": [],
+    "KXMARRIAGEBEAST": [],
+    "KXRAINNOSB": [],
+    "KXRADIOHEAD": [],
+    "KXGERPOLLAFD": [],
+    "GPT5": [],
+    "KXNFLNOSCOREQ": []
+  },
+  "sibling_audit": [
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D",
+      "n_tickers": 576,
+      "n_distinct_questions": 576
+    },
+    {
+      "event_ticker": "KXINXU-25AUG18H1500",
+      "n_tickers": 400,
+      "n_distinct_questions": 400
+    },
+    {
+      "event_ticker": "KXINXU-25JUN09H1500",
+      "n_tickers": 400,
+      "n_distinct_questions": 400
+    },
+    {
+      "event_ticker": "KXNASDAQ100U-26JAN08H1500",
+      "n_tickers": 400,
+      "n_distinct_questions": 400
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567",
+      "n_tickers": 210,
+      "n_distinct_questions": 210
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S20263EF2D0EF2BB",
+      "n_tickers": 178,
+      "n_distinct_questions": 178
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025EF0A650C703",
+      "n_tickers": 142,
+      "n_distinct_questions": 142
+    },
+    {
+      "event_ticker": "KXMVENFLMULTIGAMEEXTENDED-S20255FCBD17C21F",
+      "n_tickers": 122,
+      "n_distinct_questions": 122
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025DC86338A1EE",
+      "n_tickers": 122,
+      "n_distinct_questions": 122
+    },
+    {
+      "event_ticker": "KXUSDJPYH-25NOV1310",
+      "n_tickers": 100,
+      "n_distinct_questions": 100
+    },
+    {
+      "event_ticker": "EURUSDH-24SEP2409",
+      "n_tickers": 100,
+      "n_distinct_questions": 100
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2026ADD5339C32B",
+      "n_tickers": 98,
+      "n_distinct_questions": 98
+    },
+    {
+      "event_ticker": "KXMVENBASINGLEGAME-S2025E1D33897245",
+      "n_tickers": 77,
+      "n_distinct_questions": 77
+    },
+    {
+      "event_ticker": "KXXRPD-26FEB2216",
+      "n_tickers": 75,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXETH-25FEB1513",
+      "n_tickers": 75,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXSOLE-26MAR0121",
+      "n_tickers": 75,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXXRPD-26JAN2319",
+      "n_tickers": 75,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXBTCD-25AUG1815",
+      "n_tickers": 75,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025244164F54FE",
+      "n_tickers": 59,
+      "n_distinct_questions": 59
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S20265CACE334409",
+      "n_tickers": 45,
+      "n_distinct_questions": 45
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20255823F7E0BA2",
+      "n_tickers": 31,
+      "n_distinct_questions": 31
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S202520810D14261",
+      "n_tickers": 20,
+      "n_distinct_questions": 20
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025886BA8CFA86",
+      "n_tickers": 18,
+      "n_distinct_questions": 18
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20256903F56BBE2",
+      "n_tickers": 13,
+      "n_distinct_questions": 13
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025D8ECFB0DBFB",
+      "n_tickers": 12,
+      "n_distinct_questions": 12
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S20256351BF7F2AE",
+      "n_tickers": 7,
+      "n_distinct_questions": 7
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025B2C06219827",
+      "n_tickers": 7,
+      "n_distinct_questions": 7
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025F4334CD7425",
+      "n_tickers": 7,
+      "n_distinct_questions": 7
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025E3B3031A25D",
+      "n_tickers": 7,
+      "n_distinct_questions": 7
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025B2DA50E7D51",
+      "n_tickers": 5,
+      "n_distinct_questions": 5
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2026027C36FD86A",
+      "n_tickers": 5,
+      "n_distinct_questions": 5
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202531393D780C4",
+      "n_tickers": 4,
+      "n_distinct_questions": 4
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S2026FDA69CEE63A",
+      "n_tickers": 4,
+      "n_distinct_questions": 4
+    },
+    {
+      "event_ticker": "KXMVENFLMULTIGAMEEXTENDED-2025FDB11850D96",
+      "n_tickers": 4,
+      "n_distinct_questions": 4
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202520E3722E48B",
+      "n_tickers": 3,
+      "n_distinct_questions": 3
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202539E7735AA79",
+      "n_tickers": 3,
+      "n_distinct_questions": 3
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025CF3115AD93F",
+      "n_tickers": 3,
+      "n_distinct_questions": 3
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025BAE512B210F",
+      "n_tickers": 2,
+      "n_distinct_questions": 2
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20264726D2E750F",
+      "n_tickers": 2,
+      "n_distinct_questions": 2
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S20263F81130126C",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20267CF4C857E46",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S2026C389D19B898",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025B07CF416323",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2025B8583AE40CE",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202609714DA7B09",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20251A792D4DA31",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S2026BD84F22BAE7",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S202594FDA6549F4",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVESPORTSMULTIGAMEEXTENDED-S20261FBFDD1AFF0",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    },
+    {
+      "event_ticker": "KXMVECROSSCATEGORY-S20262D7AA5728A8",
+      "n_tickers": 1,
+      "n_distinct_questions": 1
+    }
+  ],
+  "sibling_detail": [
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D",
+      "rows": [
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-42DD257AFCC",
+          "question": "yes Kirk Cousins: 200+,yes Darnell Mooney: 20+,yes Terrance Ferguson: 10+,yes Blake Corum: 30+",
+          "yes_sub_title": "yes Kirk Cousins: 200+,yes Darnell Mooney: 20+,yes Terrance Ferguson: 10+,yes Blake Corum: 30+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-62368C9D651",
+          "question": "yes Matthew Stafford: 200+,yes Kyren Williams: 12+,yes Puka Nacua: 90+,yes Blake Corum: 40+",
+          "yes_sub_title": "yes Matthew Stafford: 200+,yes Kyren Williams: 12+,yes Puka Nacua: 90+,yes Blake Corum: 40+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-68C223335B6",
+          "question": "yes Matthew Stafford: 275+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Kyren Williams: 65+",
+          "yes_sub_title": "yes Matthew Stafford: 275+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Kyren Williams: 65+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-658EB9D08EB",
+          "question": "yes Kirk Cousins: 175+,yes Bijan Robinson: 30+,yes Darnell Mooney: 20+,yes Tyler Allgeier: 20+",
+          "yes_sub_title": "yes Kirk Cousins: 175+,yes Bijan Robinson: 30+,yes Darnell Mooney: 20+,yes Tyler Allgeier: 20+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-1FBFA7490B9",
+          "question": "yes Matthew Stafford: 200+,yes Darnell Mooney: 20+,yes Terrance Ferguson: 20+,yes Bijan Robinson: 60+",
+          "yes_sub_title": "yes Matthew Stafford: 200+,yes Darnell Mooney: 20+,yes Terrance Ferguson: 20+,yes Bijan Robinson: 60+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-D7B5966EE94",
+          "question": "yes Kirk Cousins: 200+,yes Kyle Pitts Sr.: 50+,yes Davis Allen: 10+,yes Tyler Allgeier: 20+",
+          "yes_sub_title": "yes Kirk Cousins: 200+,yes Kyle Pitts Sr.: 50+,yes Davis Allen: 10+,yes Tyler Allgeier: 20+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-0FA52A2CDDD",
+          "question": "yes Matthew Stafford: 225+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Bijan Robinson: 70+",
+          "yes_sub_title": "yes Matthew Stafford: 225+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Bijan Robinson: 70+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-142BFC0CA57",
+          "question": "yes Matthew Stafford: 175+,yes Bijan Robinson: 30+,yes Kyle Pitts Sr.: 50+,yes Kyren Williams: 50+",
+          "yes_sub_title": "yes Matthew Stafford: 175+,yes Bijan Robinson: 30+,yes Kyle Pitts Sr.: 50+,yes Kyren Williams: 50+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-B254CC1530F",
+          "question": "yes Matthew Stafford: 270+,yes Kyle Pitts Sr.: 40+,yes Puka Nacua: 100+,yes Kyren Williams: 60+",
+          "yes_sub_title": "yes Matthew Stafford: 270+,yes Kyle Pitts Sr.: 40+,yes Puka Nacua: 100+,yes Kyren Williams: 60+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025DB0DC44912D-A26CDFFF700",
+          "question": "yes Matthew Stafford: 175+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Tyler Allgeier: 10+",
+          "yes_sub_title": "yes Matthew Stafford: 175+,yes Bijan Robinson: 30+,yes Puka Nacua: 90+,yes Tyler Allgeier: 10+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        }
+      ]
+    },
+    {
+      "event_ticker": "KXINXU-25AUG18H1500",
+      "rows": [
+        {
+          "ticker": "KXINXU-25AUG18H1500-T5539.9999",
+          "question": "Will the S&P 500 be above 5539.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,540 or above",
+          "contract_subtitle": "5,540.0099 or above",
+          "floor_strike": 5540.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6139.9999",
+          "question": "Will the S&P 500 be above 6139.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,140 or above",
+          "contract_subtitle": "6,140.0099 or above",
+          "floor_strike": 6140.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6464.9999",
+          "question": "Will the S&P 500 be above 6464.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,465 or above",
+          "contract_subtitle": "6,465.0099 or above",
+          "floor_strike": 6465.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T7259.9999",
+          "question": "Will the S&P 500 be above 7259.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "7,260 or above",
+          "contract_subtitle": "7,260.0099 or above",
+          "floor_strike": 7260.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6704.9999",
+          "question": "Will the S&P 500 be above 6704.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,705 or above",
+          "contract_subtitle": "6,705.0099 or above",
+          "floor_strike": 6705.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6709.9999",
+          "question": "Will the S&P 500 be above 6709.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,710 or above",
+          "contract_subtitle": "6,710.0099 or above",
+          "floor_strike": 6710.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T5699.9999",
+          "question": "Will the S&P 500 be above 5699.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,700 or above",
+          "contract_subtitle": "5,700.0099 or above",
+          "floor_strike": 5700.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6019.9999",
+          "question": "Will the S&P 500 be above 6019.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,020 or above",
+          "contract_subtitle": "6,020.0099 or above",
+          "floor_strike": 6020.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T6859.9999",
+          "question": "Will the S&P 500 be above 6859.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,860 or above",
+          "contract_subtitle": "6,860.0099 or above",
+          "floor_strike": 6860.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25AUG18H1500-T5684.9999",
+          "question": "Will the S&P 500 be above 5684.9999 on Aug 18, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,685 or above",
+          "contract_subtitle": "5,685.0099 or above",
+          "floor_strike": 5685.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        }
+      ]
+    },
+    {
+      "event_ticker": "KXINXU-25JUN09H1500",
+      "rows": [
+        {
+          "ticker": "KXINXU-25JUN09H1500-T6434.9999",
+          "question": "Will the S&P 500 be above 6434.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,435 or above",
+          "contract_subtitle": "6,435.0099 or above",
+          "floor_strike": 6435.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T6624.9999",
+          "question": "Will the S&P 500 be above 6624.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,625 or above",
+          "contract_subtitle": "6,625.0099 or above",
+          "floor_strike": 6625.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T5389.9999",
+          "question": "Will the S&P 500 be above 5389.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,390 or above",
+          "contract_subtitle": "5,390.0099 or above",
+          "floor_strike": 5390.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T6184.9999",
+          "question": "Will the S&P 500 be above 6184.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,185 or above",
+          "contract_subtitle": "6,185.0099 or above",
+          "floor_strike": 6185.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T5099.9999",
+          "question": "Will the S&P 500 be above 5099.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,100 or above",
+          "contract_subtitle": "5,100.0099 or above",
+          "floor_strike": 5100.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T6734.9999",
+          "question": "Will the S&P 500 be above 6734.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,735 or above",
+          "contract_subtitle": "6,735.0099 or above",
+          "floor_strike": 6735.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T4979.9999",
+          "question": "Will the S&P 500 be above 4979.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "4,980 or above",
+          "contract_subtitle": "4,980.0099 or above",
+          "floor_strike": 4980.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T5034.9999",
+          "question": "Will the S&P 500 be above 5034.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,035 or above",
+          "contract_subtitle": "5,035.0099 or above",
+          "floor_strike": 5035.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T6094.9999",
+          "question": "Will the S&P 500 be above 6094.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "6,095 or above",
+          "contract_subtitle": "6,095.0099 or above",
+          "floor_strike": 6095.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXINXU-25JUN09H1500-T5254.9999",
+          "question": "Will the S&P 500 be above 5254.9999 on Jun 9, 2025 at 3pm EDT?",
+          "yes_sub_title": "5,255 or above",
+          "contract_subtitle": "5,255.0099 or above",
+          "floor_strike": 5255.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        }
+      ]
+    },
+    {
+      "event_ticker": "KXNASDAQ100U-26JAN08H1500",
+      "rows": [
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T25159.99",
+          "question": "Will the Nasdaq-100 be above 25159.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "25,160 or above",
+          "contract_subtitle": "25,160 or above",
+          "floor_strike": 25160.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T24549.99",
+          "question": "Will the Nasdaq-100 be above 24549.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "24,550 or above",
+          "contract_subtitle": "24,550 or above",
+          "floor_strike": 24550.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T26549.99",
+          "question": "Will the Nasdaq-100 be above 26549.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "26,550 or above",
+          "contract_subtitle": "26,550 or above",
+          "floor_strike": 26550.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T24959.99",
+          "question": "Will the Nasdaq-100 be above 24959.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "24,960 or above",
+          "contract_subtitle": "24,960 or above",
+          "floor_strike": 24960.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T25169.99",
+          "question": "Will the Nasdaq-100 be above 25169.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "25,170 or above",
+          "contract_subtitle": "25,170 or above",
+          "floor_strike": 25170.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T25029.99",
+          "question": "Will the Nasdaq-100 be above 25029.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "25,030 or above",
+          "contract_subtitle": "25,030 or above",
+          "floor_strike": 25030.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T27479.99",
+          "question": "Will the Nasdaq-100 be above 27479.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "27,480 or above",
+          "contract_subtitle": "27,480 or above",
+          "floor_strike": 27480.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T24449.99",
+          "question": "Will the Nasdaq-100 be above 24449.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "24,450 or above",
+          "contract_subtitle": "24,450 or above",
+          "floor_strike": 24450.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T24459.99",
+          "question": "Will the Nasdaq-100 be above 24459.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "24,460 or above",
+          "contract_subtitle": "24,460 or above",
+          "floor_strike": 24460.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        },
+        {
+          "ticker": "KXNASDAQ100U-26JAN08H1500-T25019.99",
+          "question": "Will the Nasdaq-100 be above 25019.99 at the end of Jan 8, 2026 at 3pm EST?",
+          "yes_sub_title": "25,020 or above",
+          "contract_subtitle": "25,020 or above",
+          "floor_strike": 25020.0,
+          "cap_strike": 0.0,
+          "strike_type": "greater_or_equal"
+        }
+      ]
+    },
+    {
+      "event_ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567",
+      "rows": [
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-7655A9D1450",
+          "question": "yes De'Von Achane,yes Jaylen Waddle: 7+,yes De'Von Achane: 10+",
+          "yes_sub_title": "yes De'Von Achane,yes Jaylen Waddle: 7+,yes De'Von Achane: 10+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-33E65B87FDF",
+          "question": "yes Jaylen Waddle,yes Greg Dulcich: 1+,yes Darren Waller: 30+",
+          "yes_sub_title": "yes Jaylen Waddle,yes Greg Dulcich: 1+,yes Darren Waller: 30+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-550B4652787",
+          "question": "yes De'Von Achane,yes DK Metcalf: 3+,yes Kenneth Gainwell: 20+",
+          "yes_sub_title": "yes De'Von Achane,yes DK Metcalf: 3+,yes Kenneth Gainwell: 20+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-057A1E640E5",
+          "question": "yes Darren Waller,yes Jaylen Warren: 3+,yes Calvin Austin III: 30+",
+          "yes_sub_title": "yes Darren Waller,yes Jaylen Warren: 3+,yes Calvin Austin III: 30+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-463033EAC84",
+          "question": "yes Pat Freiermuth,yes Malik Washington: 3+,yes De'Von Achane: 28+",
+          "yes_sub_title": "yes Pat Freiermuth,yes Malik Washington: 3+,yes De'Von Achane: 28+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-6DA63647D99",
+          "question": "yes De'Von Achane,yes Darnell Washington: 1+,yes Kenneth Gainwell: 20+",
+          "yes_sub_title": "yes De'Von Achane,yes Darnell Washington: 1+,yes Kenneth Gainwell: 20+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-F1E4E3CB06B",
+          "question": "yes Jaylen Warren,yes Jaylen Waddle: 3+,yes De'Von Achane: 10+",
+          "yes_sub_title": "yes Jaylen Warren,yes Jaylen Waddle: 3+,yes De'Von Achane: 10+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-BBE93E7D171",
+          "question": "yes Jaylen Warren,yes Pat Freiermuth: 2+,yes Jaylen Warren: 15+",
+          "yes_sub_title": "yes Jaylen Warren,yes Pat Freiermuth: 2+,yes Jaylen Warren: 15+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-87EE6865B0C",
+          "question": "yes De'Von Achane,yes DK Metcalf: 4+,yes Darren Waller: 28+",
+          "yes_sub_title": "yes De'Von Achane,yes DK Metcalf: 4+,yes Darren Waller: 28+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        },
+        {
+          "ticker": "KXMVENFLSINGLEGAME-S2025C5A211BE567-2AD354F8068",
+          "question": "yes Jaylen Waddle,yes Jaylen Waddle: 5+,yes DK Metcalf: 50+",
+          "yes_sub_title": "yes Jaylen Waddle,yes Jaylen Waddle: 5+,yes DK Metcalf: 50+",
+          "contract_subtitle": "",
+          "floor_strike": 0.0,
+          "cap_strike": 0.0,
+          "strike_type": "custom"
+        }
+      ]
+    }
+  ],
+  "format_sample_size": 9872,
+  "date_format_hits": {
+    "long_month_day_year": 1593,
+    "month_day_no_year": 2782,
+    "iso_datetime": 0,
+    "iso_date": 0,
+    "slash_date": 0,
+    "quarter": 0,
+    "time_with_tz": 1079,
+    "hhmm_ampm": 0,
+    "end_of_year": 0
+  },
+  "questions_with_no_date": 5651,
+  "strike_format_hits": {
+    "dollar_amount": 3,
+    "comma_grouped": 1,
+    "decimal_2plus": 641,
+    "decimal_1": 3016,
+    "bps": 0,
+    "abbreviated_number": 0,
+    "percentage": 0,
+    "range_between": 17,
+    "threshold_above_below": 3640,
+    "or_above_below": 0
+  },
+  "questions_with_no_strike": 6214,
+  "digit_count_distribution": {
+    "0_digits": 1355,
+    "1_digits": 101,
+    "2_digits": 426,
+    "3_digits": 404,
+    "4_digits": 583,
+    "5_digits": 659,
+    "6_digits": 1176,
+    "7_digits": 753,
+    "8_digits": 650,
+    "9_digits": 389,
+    "10_digits": 420,
+    "11_digits": 297,
+    "12_digits": 370,
+    "13_digits": 297,
+    "14_digits": 275,
+    "15_digits": 209,
+    "16_digits": 210,
+    "17_digits": 226,
+    "18_digits": 265,
+    "19_digits": 152,
+    "20_digits": 655
+  },
+  "questions_with_zero_digits": 1355,
+  "zero_digit_examples": [
+    "yes Cincinnati,yes Buffalo,yes Carolina,yes Green Bay,yes Los Angeles C,yes Dallas",
+    "yes Jessie Buckley,yes One Battle After Another,yes Sinners,yes One Battle After Another,yes Sinners,yes Golden,yes Sinners",
+    "yes Oklahoma City,yes Portland,yes Michigan",
+    "Matt Grzelcyk: First Goalscorer",
+    "yes Duke,yes Portland,yes Oklahoma,yes Michigan,yes Army,yes Texas,yes Montana St.,yes LSU,yes TCU,yes Iowa",
+    "yes BUF Sabres,yes MIN Wild,yes EDM Oilers,yes DET Red Wings,yes CBJ Blue Jackets,yes SEA Kraken,yes TB Lightning,yes BOS Bruins",
+    "yes Reinier de Ridder,yes Drew Dober,yes Raul Rosas Jr,yes Max Holloway,yes Decision,yes KO/TKO/DQ,yes Submission",
+    "yes Bayern Munich,yes Wolfsburg,yes Arsenal,yes Chelsea,yes Manchester City,yes Bilbao,yes Atletico,yes Osasuna,yes Barcelona,yes PSG,yes Como,yes Inter",
+    "yes New England,yes Denver,yes Indianapolis,yes Las Vegas,yes Kansas City,yes Dallas",
+    "yes Portland,yes MIN Wild,yes DAL Stars,yes DET Red Wings,yes BOS Bruins,yes SJ Sharks,yes UTA Mammoth,yes WSH Capitals",
+    "yes Bijan Robinson,yes Jonathan Taylor,yes Travis Etienne Jr.,yes TreVeyon Henderson,yes Amon-Ra St. Brown,yes Derrick Henry,yes Jalen Hurts,yes Jaxon Smith-Njigba,yes Davante Adams,yes Puka Nacua",
+    "yes Charlotte,yes Sacramento,yes Denver,yes Milwaukee,yes Oklahoma City",
+    "yes Philadelphia,yes Houston,yes Minnesota,yes Iowa,yes Missouri,yes Kentucky,yes Villanova",
+    "yes Rome Odunze,yes Ja'Marr Chase,yes Josh Jacobs,yes Travis Etienne Jr.,yes Jaylen Waddle,yes Chicago,yes Los Angeles C",
+    "yes Toronto,yes Houston,yes Orlando,yes Los Angeles L,yes Atlanta,yes Oklahoma City,yes San Antonio",
+    "yes Indiana,yes Carolina,yes Buffalo,yes Pittsburgh",
+    "yes Green Bay,yes Dallas,yes Denver,yes Detroit,yes Los Angeles R,yes Tampa Bay",
+    "yes Houston,yes New York,yes San Antonio,yes Atlanta,yes Orlando,yes Phoenix,yes Utah",
+    "yes Rico Dowdle,yes Ja'Marr Chase,yes Ladd McConkey,yes Jaxon Smith-Njigba,yes Trey McBride,yes Christian McCaffrey,yes James Cook III,yes Emeka Egbuka",
+    "yes Akron,yes Ball St.,yes Florida St.,yes Central Michigan,yes Florida,yes Charleston Southern",
+    "yes New England,yes Carolina,yes Chicago,yes Cincinnati,yes Green Bay,yes Houston,yes Los Angeles C,yes Seattle,yes San Francisco,yes Buffalo",
+    "yes Presbyterian,yes Lafayette,yes Wofford,yes Kentucky,yes UNC Asheville",
+    "yes D'Andre Swift,yes Josh Jacobs,yes Bryce Young,yes Davante Adams,yes Josh Allen,yes A.J. Brown,yes Jauan Jennings,yes Nico Collins",
+    "yes Michael Carter,yes Troy Franklin,yes Dalton Schultz,yes Jameson Williams",
+    "yes Chicago,yes Washington,yes Golden State,yes Miami,yes Utah",
+    "yes Boston,yes Green Bay,yes Philadelphia,yes Atlanta,yes Buffalo,yes Cincinnati,yes Denver,yes Kansas City,yes Los Angeles C,yes Houston,yes Minnesota,yes Baltimore,yes New Orleans,yes Detroit,yes Tampa Bay",
+    "yes Detroit,yes Cleveland,yes Houston,yes Milwaukee,yes Los Angeles L",
+    "yes James Cook III,yes Philadelphia,yes Cincinnati",
+    "yes Boston,yes New York,yes Philadelphia,yes Los Angeles C,yes Atlanta,yes Oklahoma City,yes Phoenix",
+    "yes Indiana,yes Houston,yes Los Angeles L,yes Philadelphia,yes Chicago"
+  ],
+  "many_number_examples": [
+    "yes Donovan Mitchell: 2+,yes Donovan Mitchell: 2+,yes CJ McCollum: 2+,yes Donovan Mitchell: 25+,yes Pascal Siakam: 20+,yes CJ McCollum: 15+,yes Donovan Mitchell: 2+,yes Pascal Siakam: 4+",
+    "yes Pascal Siakam: 1+,yes Jalen Brunson: 1+,yes Victor Wembanyama: 1+,yes New York,yes Michael Porter Jr.: 20+,yes Bam Adebayo: 20+,yes Pascal Siakam: 15+,yes Victor Wembanyama: 10+",
+    "yes Cincinnati,yes Dallas,yes Minnesota,yes Houston,yes Kansas City,yes Atlanta,yes Seattle,yes Jacksonville,yes Philadelphia,yes Bryce Young: 175+,yes Baker Mayfield: 175+,yes Sam Darnold: 175+,yes Brock Purdy: 175+,yes Aaron Rodgers: 175+,yes Joe Burrow: 175+,yes Caleb Williams: 175+,yes Jared Goff: 175+,yes Bo Nix: 175+,yes Quinn Ewers: 175+,yes Trevor Lawrence: 175+,yes Cam Ward: 175+",
+    "yes Daniel Jones: 200+,yes J.J. McCarthy: 200+,yes Tua Tagovailoa: 200+,yes Trevor Lawrence: 200+,yes Mac Jones: 200+,yes Drake Maye: 200+,yes Bryce Young: 200+",
+    "yes Matthew Stafford: 200+,yes Sam Darnold: 200+,yes Jarrett Stidham: 175+,yes Drake Maye: 175+,yes Kyren Williams: 40+,yes TreVeyon Henderson: 30+,yes Seattle wins by over 2.5 points,yes New England wins by over 3.5 points",
+    "yes Jordan Love: 200+,yes Emanuel Wilson: 2+,yes Josh Jacobs: 3+,yes Romeo Doubs: 4+,yes A.J. Brown: 4+,yes Dallas Goedert: 3+,yes DeVonta Smith: 40+,yes Josh Jacobs: 50+,yes Saquon Barkley: 60+",
+    "yes New York,yes Chicago,yes Los Angeles C,yes Donovan Mitchell: 20+,yes Scottie Barnes: 10+,yes Over 214.5 points scored,yes Over 229.5 points scored,yes Over 211.5 points scored,yes Over 216.5 points scored,yes Over 209.5 points scored,yes Over 231.5 points scored",
+    "yes Jamal Murray: 20+,yes Michael Porter Jr.: 20+,yes Stephen Curry: 25+,yes LaMelo Ball: 15+,yes Jalen Brunson: 20+,yes Desmond Bane: 15+,yes CJ McCollum: 10+",
+    "yes Oklahoma City,yes Jalen Brunson: 25+,yes Paolo Banchero: 15+,yes Jalen Williams: 10+,yes Shai Gilgeous-Alexander: 25+,yes Houston,yes Baltimore,yes Carolina,yes Chicago,yes Philadelphia,yes Jacksonville,yes Josh Allen: 175+,yes Drake Maye: 175+,yes Justin Herbert: 175+",
+    "yes Matthew Stafford: 225+,yes Sam Darnold: 200+,yes Puka Nacua: 95+,yes Jaxon Smith-Njigba: 92+,yes Kyren Williams: 56+,yes Kenneth Walker III: 40+",
+    "yes Shai Gilgeous-Alexander: 2+,yes Shai Gilgeous-Alexander: 7+,yes De'Aaron Fox: 8+,yes Shai Gilgeous-Alexander: 25+,yes De'Aaron Fox: 10+,yes Shai Gilgeous-Alexander: 2+",
+    "yes Desmond Bane: 15+,yes Franz Wagner: 10+,yes Paolo Banchero: 20+,yes Giannis Antetokounmpo: 25+,yes Victor Wembanyama: 20+,yes Alperen Sengun: 25+,yes Kevin Durant: 25+,yes Chet Holmgren: 15+,yes Jalen Williams: 15+,yes Shai Gilgeous-Alexander: 25+,yes Devin Booker: 15+",
+    "yes Anthony Davis: 2+,yes Cooper Flagg: 2+,yes Amen Thompson: 2+,yes Kevin Durant: 2+,yes Amen Thompson: 4+,yes Dallas,yes Anthony Davis: 15+,yes Cooper Flagg: 25+,yes Kevin Durant: 20+,yes Kevin Durant: 4+,yes Over 220.5 points scored",
+    "yes Matthew Stafford: 200+,yes Sam Darnold: 200+,yes Jaxon Smith-Njigba: 6+,yes Rashid Shaheed: 2+,yes Cooper Kupp: 30+,yes Kyren Williams: 50+,yes Kenneth Walker III: 50+,yes Sam Darnold: 5+",
+    "yes Chet Holmgren: 15+,yes Jalen Williams: 19+,yes Shai Gilgeous-Alexander: 25+,yes Chet Holmgren: 8+,yes Oklahoma City wins by over 12.5 Points,yes Over 225.5 points scored",
+    "yes Jalen Johnson: 1+,yes Cade Cunningham: 1+,yes Jalen Johnson: 8+,yes Cade Cunningham: 6+,yes Detroit,yes Jalen Johnson: 15+,yes Cade Cunningham: 20+,yes Jalen Johnson: 10+,yes Cade Cunningham: 6+,no Detroit wins by over 21.5 Points,yes Over 223.5 points scored",
+    "yes Alec Pierce: 20+,yes Josh Downs: 20+,yes Michael Pittman Jr.: 32+,yes Tyler Warren: 20+,yes Christian McCaffrey: 20+,yes Jauan Jennings: 40+",
+    "yes Philip Rivers: 175+,yes Trevor Lawrence: 236+,yes Tyler Shough: 175+,yes Cam Ward: 200+,yes Geno Smith: 200+,yes Jaxson Dart: 175+,yes Josh Allen: 200+,yes Jalen Hurts: 175+,yes Baker Mayfield: 200+,yes Jonathan Taylor: 70+",
+    "yes LaMelo Ball: 15+,yes Jamal Murray: 15+,yes Nikola Joki\u0107: 25+,yes Alperen Sengun: 20+,yes Kevin Durant: 20+,yes Luka Don\u010di\u0107: 25+,yes Jimmy Butler III: 10+,yes Stephen Curry: 25+,yes Devin Booker: 20+,yes Philadelphia,yes Buffalo,yes Houston",
+    "yes Bo Nix: 225+,yes Troy Franklin: 5+,yes Terry McLaurin: 4+,yes Courtland Sutton: 50+,yes Marcus Mariota: 20+,yes Denver wins by over 6.5 points"
+  ],
+  "snapshot_distribution": [
+    {
+      "raw_rows_for_ticker": 1,
+      "n_tickers": 34504792
+    }
+  ],
+  "question_stability": {
+    "1": 200
+  }
+}
