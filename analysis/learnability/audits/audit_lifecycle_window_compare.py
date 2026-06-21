@@ -1,6 +1,6 @@
 """Study B — rigorous 3-way SE FLB across candidate lifecycle windows.
 
-For headline dims, run the existing flb_per_slice_v3.run_flb_per_slice across
+For headline dims, run the existing flb_per_slice.run_flb_per_slice across
 several candidate windows. Output side-by-side spread comparison.
 
 Candidate windows (lo, hi):
@@ -15,14 +15,14 @@ Each window × each dim → one FLB call. Output saved with window label.
 """
 import sys, os, json, time
 sys.path.insert(0, "/home/ubuntu")
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
-sys.path.insert(0, "/home/ubuntu/learnability")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 from pathlib import Path
 import numpy as np
 import pandas as pd
 from config import OUTPUT_DIR as PIPELINE_OUTPUT_DIR
 from data_loader import get_connection
-from learnability import flb_per_slice_v3 as flb
+from learnability import flb_per_slice as flb
 
 OUT = Path("/mnt/data/learnability/output")
 V4_DIMS = OUT / "phase1_v4_contract_dimensions.parquet"

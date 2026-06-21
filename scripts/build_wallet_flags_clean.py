@@ -1,7 +1,7 @@
 """Recompute bot wallet_flags on the CLEAN trades dataset (config already repointed).
 Backs up the raw-based cache, writes new flags."""
 import sys, os, shutil, time
-sys.path.insert(0, '/home/ubuntu/pipeline/analysis')
+sys.path.insert(0, '/home/ubuntu/prediction_markets/analysis')
 sys.path.insert(0, '/home/ubuntu')
 from data_loader import get_connection
 from bot_filter import build_wallet_flags

@@ -8,10 +8,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 from bot_filter import build_wallet_flags
 
-ANALYSIS = Path("/home/ubuntu/analysis_final")
+ANALYSIS = Path("/mnt/data/analysis_output/paper")
 TABLES = ANALYSIS / "tables"
 FIGS = ANALYSIS / "figures"
 TABLES.mkdir(exist_ok=True); FIGS.mkdir(exist_ok=True)

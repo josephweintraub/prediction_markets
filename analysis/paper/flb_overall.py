@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-ANALYSIS = Path("/home/ubuntu/analysis_final")
+ANALYSIS = Path("/mnt/data/analysis_output/paper")
 TABLES = ANALYSIS / "tables"
 FIGS = ANALYSIS / "figures"
 

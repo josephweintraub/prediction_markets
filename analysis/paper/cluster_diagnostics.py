@@ -19,12 +19,12 @@ Output:
   tables/cluster_size_distribution.csv    — cluster-size summaries
 """
 import time, sys
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 import duckdb
 import pandas as pd
 from pathlib import Path
 
-OUT = Path("/home/ubuntu/analysis_final/tables")
+OUT = Path("/mnt/data/analysis_output/paper/tables")
 OUT.mkdir(parents=True, exist_ok=True)
 
 TRADES = "/home/ubuntu/pipeline/output/trades.parquet/**/*.parquet"

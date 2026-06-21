@@ -17,8 +17,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, "/home/ubuntu")
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
-sys.path.insert(0, "/home/ubuntu/learnability")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 
 from learnability.dimensions_v4_addons import (
     build_slug_documents, build_qcluster_index, cluster_at_tau,

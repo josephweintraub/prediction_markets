@@ -12,8 +12,8 @@ ENV VARS:
 """
 import sys, os, json, time
 sys.path.insert(0, "/home/ubuntu")
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
-sys.path.insert(0, "/home/ubuntu/learnability")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ from config import OUTPUT_DIR as PIPELINE_OUTPUT_DIR
 from data_loader import get_connection
 from bot_filter import build_wallet_flags
 
-from learnability import flb_per_slice_v3 as flb
+from learnability import flb_per_slice as flb
 
 AUDIT_LO = float(os.environ.get("AUDIT_LO", "0.50"))
 AUDIT_HI = float(os.environ.get("AUDIT_HI", "0.80"))

@@ -6,8 +6,8 @@ the D10-D1 spread per (slice, lifecycle_bin). One trades scan; no 3-way SE
 """
 import sys, os, json, time
 sys.path.insert(0, "/home/ubuntu")
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
-sys.path.insert(0, "/home/ubuntu/learnability")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 from pathlib import Path
 import numpy as np
 import pandas as pd

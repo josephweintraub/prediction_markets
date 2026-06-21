@@ -12,7 +12,7 @@ import duckdb
 import pandas as pd
 from pathlib import Path
 
-OUT = Path("/home/ubuntu/analysis_final/tables/postevent")
+OUT = Path("/mnt/data/analysis_output/paper/tables/postevent")
 OUT.mkdir(parents=True, exist_ok=True)
 
 TRADES = "/home/ubuntu/pipeline/output/trades.parquet/**/*.parquet"

@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-OUT = Path("/home/ubuntu/analysis_final/tables/postevent")
-FIGS = Path("/home/ubuntu/analysis_final/figures")
+OUT = Path("/mnt/data/analysis_output/paper/tables/postevent")
+FIGS = Path("/mnt/data/analysis_output/paper/figures")
 OUT.mkdir(parents=True, exist_ok=True)
 
 sns.set_theme(context="paper", style="white", font="DejaVu Serif")

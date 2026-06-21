@@ -16,7 +16,7 @@ Optimization: pre-aggregate to (trader, day, market, decile)
 Outputs: tables/flb_canonical_deciles.csv, figures/flb_canonical.png
 """
 import sys, time, os
-sys.path.insert(0, "/home/ubuntu/pipeline/analysis")
+sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
 
 import duckdb
 import pandas as pd
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-ANALYSIS = Path("/home/ubuntu/analysis_final")
+ANALYSIS = Path("/mnt/data/analysis_output/paper")
 TABLES = ANALYSIS / "tables"
 FIGS = ANALYSIS / "figures"
 CACHE = Path("/mnt/data/pipeline_data")

@@ -13,7 +13,7 @@ import seaborn as sns
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-ANALYSIS = Path("/home/ubuntu/analysis_final")
+ANALYSIS = Path("/mnt/data/analysis_output/paper")
 FIGS = ANALYSIS / "figures"
 FIGS.mkdir(exist_ok=True)
 

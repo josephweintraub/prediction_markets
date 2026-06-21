@@ -1,6 +1,6 @@
 """Summary statistics for the post-event / extreme-favorite trade question.
 
-Outputs (saved to /home/ubuntu/analysis_final/tables/postevent/):
+Outputs (saved to /mnt/data/analysis_output/paper/tables/postevent/):
   table1_price_buckets_v2.csv     — share of trades & volume at extreme prices
   table2_lifecycle_v2.csv         — for trades at p≥0.995, distribution across market lifetime
   table3_by_category_v2.csv       — same, broken out by event-slug category
@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 
-OUT = Path("/home/ubuntu/analysis_final/tables/postevent")
-FIGS = Path("/home/ubuntu/analysis_final/figures")
+OUT = Path("/mnt/data/analysis_output/paper/tables/postevent")
+FIGS = Path("/mnt/data/analysis_output/paper/figures")
 OUT.mkdir(parents=True, exist_ok=True)
 FIGS.mkdir(parents=True, exist_ok=True)
 
