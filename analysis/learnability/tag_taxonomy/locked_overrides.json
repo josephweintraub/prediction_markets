@@ -1,0 +1,4220 @@
+[
+{
+"condition_id": "0xdd22472e552920b8438158ea7238bfadfa4f736aa4cee91a6b86c39ead110917",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc6485bb7ea46d7bb89beb9c91e7572ecfc72a6273789496f78bc5e989e4d1638",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3733a1b647e7364095736ab0966465d896a84cf3b6bc1695ca1f26c3239b3868",
+"topic": "Finance",
+"subcategory": "Earnings & Corporate Events",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0xc3d4155148681756bfe67bb41d8d0882a8a122e7d3762b3591bf6598c9bd198b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6d0e09d0f04572d9b1adad84703458b0297bc5603b69dccbde93147ee4443246",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1d2787cb8aed975d092b2799ed6f4083e9445f7420cdc09e9d47e7d54356c6cd",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x655e5ca101c466b6293aa15e06173b78b293221803d56e35551f708cd82eb352",
+"topic": "Culture",
+"subcategory": "Celebrity Events",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd86a816093fcd0a0e1ca440bc5ce199bd3c5a8d6139e044b076958164f8c5423",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x763cc84a3cde36b9ce12a8afe6d3e1e3e46e50692e8ec47636c7803c1033cfab",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4c5701bcde0b8fb7d7f48c8e9d20245a6caa58c61a77f981fad98f2bfa0b1bc7",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa93b28a6384aefff4e7d5adb2061c444e4a0e95b8ad17755f9cee123c7099b35",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x43ec78527bd98a0588dd9455685b2cc82f5743140cb3a154603dc03c02b57de5",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xebddfcf7b4401dade8b4031770a1ab942b01854f3bed453d5df9425cd9f211a9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9872fe47fbf6284e5399c0f41d6d2c8fb310d2f4d2d50635ab3b36f6a0a7f5b0",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x265366ede72d73e137b2b9095a6cdc9be6149290caa295738a95e3d881ad0865",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x46d40e851b24d9b0af4bc1942ccd86439cae82a9011767da14950df0ad997adf",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0xd4bbf7f6707c67beb736135ad32a41f6db41f8ae52d3ac4919650de9eeb94ed8",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6903b766f5fda3d5b02f4472a6b4154419e78b7fd126c0b29ce17bb8e20b20cc",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xef8cf8b45ef7e3a607a72b6e1d56bede869fdd81795b63db847de1090bf11c41",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "panel 3/3 R6"
+},
+{
+"condition_id": "0x17815081230e3b9c78b098162c33b1ffa68c4ec29c123d3d14989599e0c2e113",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x55c551896c10a74861f2fd88b4f928694310114704cc74b29b9760d1156cade6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe93c89c41d1bb08d3bb40066d8565df301a696563b2542256e6e8bbbb1ec490d",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0e4a0c937b8934c2475613b6322b3f8edc8dedc24762e01e42b0e6f87424a089",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7beceb04f7b1d4f0dde80b58c6f43c23b8ad54b21c693e172c974f480b46483c",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcd1b6b71a1964f15e2c14809594cbfa0d576270e8ef94c8c24913121097e09e5",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7c6c69d91b21cbbea08a13d0ad51c0e96a956045aaadc77bce507c6b0475b66e",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7cb525e831729325d651017f81cbcb6f1adde5011c7b2283babea00b4ae93ae7",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x9823d715687a0a82d2a03731792e83bf58a0409f10def1379e00e4d67a95ba69",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x25aa90b3cd98305e849189b4e8b770fc77fe89bccb7cf9656468414e01145d38",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa4f51ae09144ebedb1e4329a28597dcb25217be1050fb76b86335837943bf519",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xac9c6628a5398bb2a06f566854270a9fbc7f2badec4329d3b5fdc1407291c35b",
+"topic": "Politics",
+"subcategory": "Scandals/Legal",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf2ce8d3897ac5009a131637d3575f1f91c579bd08eecce6ae2b2da0f32bbe6f1",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3488f31e6449f9803f99a8b5dd232c7ad883637f1c86e6953305a2ef19c77f20",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe546672750517f62c45a5a00067481981e62b9c20fa8220203232c9dc8fd2093",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x230144e34a84dfd0ebdc6de7fde37780e28154f6f84dd8880c7f0e58d302d448",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x32707ae194389a70f25314ec934851daba12d893da616c492ffe8b655b7759a9",
+"topic": "Culture",
+"subcategory": "Box Office & Streaming",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4e2dd28f54a645ac62743a49116dfae0b6fd22ef4187ee2a340d1346ca612bcf",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x36e8ca24d2a13435f519f15580d42b45cdbe3bc425fb39a7c2733260357af0fa",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x37963e2b3194455fe768cd470571640c758c049b7cda6967449a43a8bd5c835f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x35cc41270f5cdfd59b45e68ab85dc51b0b900d286a6c74ea006b8572d9ff5934",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7da35195ac3c7bf167f88ab0c27067a99020e36de67d39968b71d9debcdd925e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x306d10d4a4d51b41910dbc779ca00908bd917c131541c5c42bbbc736258d2d56",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x70de1b06646805d289744df352ed58b5612fafb3d0322e483243c32cb110f8a7",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0x8ee2f1640386310eb5e7ffa596ba9335f2d324e303d21b0dfea6998874445791",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x244c75b2c6095b2e67699c10d0c6548d757d58a1ffea32ad6882c9a389803bd4",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xce0f82dc8bb789ffd3bc2928db80bbc539fa04dd223d6e15e2d81eabf8e279fe",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x61b66d02793b4a68ab0cc25be60d65f517fe18c7d654041281bb130341244fcc",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6114a8a3f9ac214f48a7e20d169f1c7a5c84082cb6f7058ed9fe1137b11fd0e7",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd1e760f57415093db2e8378b79fe37ec8dc9ad09ee57f6f0cdc2468ae29fea23",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x77b4a1d4cd398a86c18b6bb9b5218917dc9f04b01a3cd4bae1c71ea345f15fa8",
+"topic": "Tech",
+"subcategory": "Product & Model Releases",
+"basis": "panel 3/3 R6"
+},
+{
+"condition_id": "0xb018023b67a978fa9a4d43a13f6f0a8e29b1516c36b4721b3983eafdc86b3bf9",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x305df84a4e3cdedb1a70ddec73949c64311247dbf7f41c236ee6a795dcc3d347",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfcd2fb666c5a346faee448e63267346a3ec394a52bce4c199877559da91cd2c1",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1fc1e5595adab4d8160b2fe72cfed61131e3d5e61b5c334160d1729d7380ab16",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0xbba16a21398862877d2ba91d7221be625b4514066580c91c6acbc32b03fe7997",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x61ce3773237a948584e422de72265f937034af418a8b703e3a860ea62e59ff36",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xde04b189b3f19eaccda02529a3ea67abfc46bff5c0c8fc42d8a2d0ed7b8f0d41",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf9425f69ce7fbde7ee54887ea24b164d2d4c06b594c4d4f94b1921cd79321b19",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcdb1f0400949238a63d3e88243d2ada08cd9c2a71985ced9f0cfd5e66354cf90",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5ccfe1b69a582d2985db08a8481a0d74c314b1fce9b4711ae2efb2c6467fe6aa",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x59c211bdc7743b11eefa59e0d87802445980cf27e63dbdad2f6668ea0f139fdb",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa5ac4cdcfff44ddfb0d332d33575f766414465786fb7d4350782db40d5e9da11",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x5c37735c8442b1a29a42a163c62c02fa640ca054f46375649bfb3e867439a35d",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9e9071636d176562592a98dfede865385ba0cff7864cfa01f0479ca6e9e26e1b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb92f22143e7b48609a82573fa8197dc73683a15acb467b0f51ee63da7e3f520b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3329697f75e759b7fb781e52314d4322492a6d0816e8465d90091af88a3f4219",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xad80eb89c63afba0adaede4350c2dae8088d0faf00d598d72edd3446929019c8",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x37a6de1b21803e5f3fb1965116218215d79963af4f7e51659696366267a63a03",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x87d67272f0ce1bb0d80ba12a1ab79287b2a235a5f361f5bcbc06ea0ce34e61c5",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4037ced85ebd734a30727e948abfe77b19fc2ce7ee0560a933d0c080fe076516",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x02dc46f4354c1cc447577db82ba62cca1bda737bd67b73fe966ce1bfe580868f",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6cf8b2ebe77711ab5c32fac330b8d493640cf25d278fa98bf65ddcfcb891171e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcb111226a8271fed0c71bb5ec1bd67b2a4fd72f1eb08466e2180b9efa99d3f32",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe443dab97ad8b7f58558cc7a6a3932d156031e962a451e0461e9a4578d78fe84",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x62b0cd598091a179147acbd4616400f804acfdff6f76f029944b481b37cbd45f",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x70909f0ba8256a89c301da58812ae47203df54957a07c7f8b10235e877ad63c2",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3b2f19935f2a969634a7aca52b69cf653d957ec6243bdfcb97dd830003e90624",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd6c49a94948e365aa74c09eef54d907b7ca534b243c387c375305d5cdd1afef3",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xced9f9d90c94db9f1e1dbd7d9fba82fe4fa7431c0d4e91e28896c8ac2d6acadd",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x53f82bd52566e30ae3f8131cb92095dd92ecdf2b0204af0edc226ee194e923fe",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfc85294228f82de21e18774b133a6db99ddaf4ebe5bf8c4f6c356ae4901d1165",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7dcaa5bd1b8842fb522b076001dcab4621e4146085a5cf2d4371fab60c3a014f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfef657b2f9ed83dd3db24c61d115203e836f9967289cd3281b6b91dcd7338104",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7412d284c8f63791fec807f9b1f61c6fe61163621775a3dc8686cd2575272abe",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x478dfc905dd9f44631e7b3a2a76f8aaf5680bc77fd17fe79179664b0ca819a18",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x789c947a9415600d30d56a4aae88d4111996679b0caed166d0c96242fdce92a2",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x257b18205f908aef01ef2d1d50e6fea7d29cf5486fe04031d8b101394476faed",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x24fb7c2d95c93a68018e6c4a90d88043bb67d32fd1454924cef8ebdd550228f3",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd6e0317cee513cc3afdc1954ac576b241ad2287536e88b17fd3a77b4c3d0976e",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaf51603d78545c838490bafe178ee9ff4c23d0c2161f15e0e530d3735229ad3f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x653483009043f1663360bc35ed8fb542d3f9453916082d20ff025adaa2fe7032",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x341f95039c52c92771e5bc889c2482ef8472bf82a1a5d222051eb0b62a6cf23f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc5a29d7da91c765c5b8b45dc5f86147558ad0d16bb18e7ca14a74e3b5e3ebf9a",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x675bba4df50fd123f7fbfbafa67e9b75f4092d85ce0f9148ce78fc945964c856",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x518a5b030b205706b8ffe6bbad9bd3de59548348e5c0471827f5de21e513333c",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x14018049e265a2d88f284be9588e2e3542e3a3df08ccdb344d28355dd7fdd8ef",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3bc69cb672591e4fcd2ef856b64b219a906e15d4601b50066ac81a446574dfaf",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa8b744720006da3c08b4dc8a61a5ce930542f550fcf8d27380ae898de636799d",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8183a221622f2d5d2b46da86c80d55a61f43d35829589e03c1efae9d072638c5",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x32cfa52198e85e070d1b17d1b53c5c3a6aaae7736cdc33fa6aa04d353f0c2811",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x293fb49f43b12631ec4ad0617d9c0efc0eacce33416ef16f68521427daca1678",
+"topic": "Crypto",
+"subcategory": null,
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x67443cb1ffb2bf180f7df5b6ca7adff63f7e8e933c7e41405ba118f3e9f8befb",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf2a89afeddff5315e37211b0b0e4e93ed167fba2694cd35c252672d0aca73711",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd02f8e3b72040d933427396f9f0a9cb740a0adefcec46e345211fa0fc5b975e9",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x232342e2a9200b203703a816f9d99d1c6a872333567af16f43d67a255e1a6aa8",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x63634b4e14297a748923f86dca4fa0c6c659db0f5fadeeb8e419e48e20759c34",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4f3421fb2daf5cca7430ed8d8132463963081572d75434393a1808fdb8829fe8",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3ceb5b631318be5000758200590efe2b308a581d6787c3e7bc050bfd8f627627",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x90f5098954615b11f095156ac37913a70f8c7cf2978ab6b61d8d789bab1cf2d9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0c4cd2055d6ea89354ffddc55d6dbcef9355748112ea952fc925f3db6a5c457f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7b52405ad0e0d31bfe970940b67d77f24ecedeab8a2361c11148c02a006e325c",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0c0fbd8b82167afa7d8549d04d9e8f7accb3ae0e93395935ca7c2c03977f4760",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9b6fef249040fd17e9c107955b37ac2c3e923509b6b0ff01cc463a331ddeb894",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe99cc59f32b10d23acf196d1a0e8264ea30fca198428acadd3464b06ff60e771",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3a26ca6425e2d98f14935670bc22cdb0744defc6f6d83c65f8c413a921c5c70c",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6c3d5fba5442f3e725eb89b7cffcc341ca3105cddaac09c1e4bc8e7010f0fe40",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd7540d64e03b1894ececcbb54c02b88d9c5c0e854ba66ec4e1ece20477994ac5",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb6b3d7a2037b3faa7e1306d741840d453432902d73cc9a146a035e40271eae73",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd4d00e5bf8b960cc37c74c1ec19e41e00b0706add203ddcfbb65ad006c5c223a",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xadc74c7282d955d2603b56ba7eee2831b295bb71596a056e46e5848b13562377",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x49508de1a82f3bacb7aa0cb80f33b06b147d648f6318e9e3732e949466b7026f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3c6bcb7da14ea576e5af25547dbd96f2bb24ac34e748e76aecff2ee9195dd1ac",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x881a3ffa618b6ae0ab95a5637e310afb1afc2d99c921bfe3235b15eccfce0344",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x098e2be3df8ab529940c567819f8ef007cf007820e9d627642a5bbfaa42af372",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc40cbb2d7f5d2c43c624bd5b1d0b18cd3d0682b3937363ec7c1ad1d13bee107e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x924a2942747dd75703321a7c8d809c68f6a514c3b0f2a2e64274e02310634669",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcc5ffe6f0dd2ebbdae948dff2ebb541c17fb03eecd9e152bd0c91646d4e0049a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xabb86b080e9858dcb3f46954010e49b6f539c20036856c7f999395bfd58d01e6",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x54a1d0da9b18ac0dd1b1ae10fad2eb782427733e4ad2f14f190b979bbb5c7d65",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x75f14012151c638174d87bdd4a758fac9270555bb3a525e55d447e1f3233e1e0",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc3c4c99a9b9173154a4b121e3a996c685a2a481a7da0aea144eb600886d85560",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7976b8dbacf9077eb1453a62bcefd6ab2df199acd28aad276ff0d920d6992892",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6b24a578e8644f45e49130da20267e466163dc35fee34dd23357a68530d34381",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x9f41a3e4a2ef548cf207c22a48dbaf73e28dda5ec014c145217f428aaf3769e3",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd009ac14bccdd12925a2d9f8d910411556e4ed153337abb18a97b97fabcf7db0",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd6f28c879d79f518b1ac0aea7a3e9e012fb8c1431687791b6a1eb6569e9da853",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x784d67eb3b205e7f6543b09d8737d5dc1c2a14d43a102bbb59f7f4f94fc56135",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaa145cf5714455f546afe53037b8712df749ba96c04820c2d41f37f877f29697",
+"topic": "Mentions",
+"subcategory": "Political Speech Mentions",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x87822b3d4ccba1835d698354b01c050b55f20c5f34b14908bff4ea5a6d58af4c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc04462123e838b52edd396aeb20c6b1486cb82c01d3d8932d531d1e0dd612c80",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb3dbb0f2e1df15cc820e0cde749eb112bf160994ec53a8ac57dceff9dbe5007e",
+"topic": "Mentions",
+"subcategory": "Political Speech Mentions",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe8d095422da9f6c3ceed727a4b6251177f618b002d2a698bfccb48716c7aa469",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x441e51dcff7c576a75d9a72d920b1e55e7173bcd9905dc499c5000fb39588b3c",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6a8c775d3a7ab901a5c4595dbc33478d654dc3b293be2b80fd64500cabbfcc37",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe70fd51f42e61fc309d8e57019a7b76c8dc7bd19b473351d56ff1e125ae0d9d4",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa8a63360ae663bec3cff1f34357c9a73378767f6ef1853f15de47701027fd141",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x30d55d8124ee1e12dabe89201badc45669b81dff69e4ce44d961f32878ec178a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x375409bc5eeeff961e82b479caeccc20f33d15738e5bce1186d628aa3d9dfb1f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x561cd8d035bac38ed04e23d7882a126da38d7ead9d6679f722ad62c0c9d54ad2",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0d14f5dc9fb3250ec888b1ac8d9fe9a0ce06f9d3ea60fdf138e8690622fea84c",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2d606a51f902a4d934a4b810dd77cb28bb8e40268f42354057b5a47f9799efad",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x204d24f3a0f5dd5fca825292bdeab6a97af3978b2caa2b21bb37e610eddfff5d",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7bed81b0bd1cbe7cae0ad49fcf2d9e068d1ea2da49a36e638712daa55712a184",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd72622d154dfe65b9c019d6afcfe75a55717e5c502db611f555b101aafbf6ec5",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0923f4cd56ffdd032deca9984f9779303b58c6ef9317c0c6490acccb477ba150",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x05beef793157deb1cc34e2d3159539f461b73c7eeaa3b5348617c10eed5509d0",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7e84002d49c772d2083afaec7fbe129481f7ef8d269973dfa9b14c7fe9ee0b03",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf3a7a2365b6ec113117184bb2d1b020577355a1028fde0b32671c4cfbbbbd589",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf2d034812c1e871421eb6ca9afd30f2a03f0494fc910cc4cabc4515685b610cb",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x58f4542341fcc66a2197877b7487ebe901b689ec42bcdbb0a070f5536d91459e",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x825bc4151fd9c139c4f0400c1a6f5d60cf67b2d04f12d69fd9fb5de67b13e4bc",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9170008ce066642f6dfe51292fe526bd842bd9ffa121ec9b053de8dfc1444123",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xeda024367dd24ff6425696d2020d4938a6143d8c58829c09e3030556d788d68a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x713641f745d71f6ec61f906237ffca3c8583f251e49384429a63ceb0ccdb2d37",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xafc235557ace53ff0b0d2e93392314a7c3f3daab26a79050e985c11282f66df7",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xf220061c0e83defd413070f97fb55660485ca8540c43be13d9e71082ca2cad57",
+"topic": "Geopolitics",
+"subcategory": "Regional Spillover",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x68c8641a89ffa9cd42c09216f63ed188b42302103edfa691c3f70fc55e7fc195",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc69bb8590ecd5f8be946fc6efc4b5783b005e3e121e057f6297fa8e0b8852f1c",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6ef34d5c7937cb8a1eb22234ddce8fe3eb1595e1f35c7d4f2101c58f3506e580",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x106ccc4508432a065a67394837d4c2c529a8d77ed69fa3ba90b81eedf5236598",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa886b40d69b4733df3086a6b3f106ab783e1ac7fa91fea42ad807a00ed0f6846",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb4961db4b70b4ebeebce6dee9816eda7a18443ae2d25240a70a0614a01f44ed2",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head (combat & racquet)",
+"basis": "panel 3/3 R8"
+},
+{
+"condition_id": "0xd7bd58d09efa1ff15be61cf30587e79444971ab125d55b2a88bf6ec04623a0d8",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4a68d828f7263f34391484404380c34efa9566f12a08a88553ddbe8e285c3ae9",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x04b6d6630d49e6513355ff045c96439c929335cb0d18da7792dea6c2fc717ead",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x04e07c6085d96ecc1ac7568d6cb640f09e4d300a25afc763b67f15d8f2c8597c",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0xb222caecba4942b88a87adc145f1c27eb822e6fa2d238731e66074c89125f31e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x825979da04e73c1f0df28132de975b19a53b54faf7e672e822aa10c9031c1201",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8ee22fe88cca072ae19d757cea3c4ace6712d149d633185f85f583bd8fa73ed5",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5ce0d897bd66142c43a38204a67ad85bc3e0643382258411a5aa58ca3e825082",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0b4cc3b739e1dfe5d73274740e7308b6fb389c5af040c3a174923d928d134bee",
+"topic": "Other",
+"subcategory": null,
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x421bc1929df1429cf2cb94f80c1ce6a3ed0d1f0b7a2749b9890075f94eb549e9",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4e4a7df876b0c04f0b8b29b9073eddfbaf5c787192da825ae7ca1031bc8cfd15",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb232c915770ea41eb3ec3dbb2c7209c727759237383850f51045be7ffa3975e5",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xab6faa3e66abacc484bbb4bd31ae5e2a56d6f6252b5023631f1bd9e5299fa2f8",
+"topic": "Culture",
+"subcategory": "Awards & Voted",
+"basis": "panel 3/3 R5"
+},
+{
+"condition_id": "0xba6c5ece6d70e46fc4fe5dfd73db248bc1a1a162bebc05e9b2cd8b91293cccce",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa5501b4dc0c99c382b1c2871ad9141c7f58509a0f962f70a38bb6566ec570049",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8df5a4256840dee05851250c0490da7593597faff3a7f9a156ccbbda7fec76f8",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa638577415195ac2ca0e8ab8befd45e3991612be6d2cf64e661abc6350c7900a",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x2153377bdb8920a0d3227e9a2a68ddb9a001025918b695fe55f66677836e62c6",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2de8d7b9d103366e37f3a448db8289c5c571dec5c0b9eeddbc673546d4bd9322",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2a7a6ab8f4984f1ae82eacd7fb408832a50e63162ac6b98fff1fe094b8e9d3b5",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xee922ba545ca6b4c9a8837b2827634cfc86ac6e0e74b2026c7f1212629a46fa0",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4b73d2b80fcc70e12ba15b7c7ebe0c0a05a425d9b0c7707b03d3ae918c0e4d4b",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xde00758fcf1165cfce32dc4f85f021e71da12e40c4b9140117c9beddd090776d",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb8c1bd306a8a4cedfb280e114e655c5092b3f37edccae05cd877d7f21a5774ce",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0e07d28fc57cf979bb6b09fa7ca9e7530c86fa5ac16bf0171a53d58cfd420e6b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xffdd774123c13df21ce755bfd4f65bde47a74f1377ea73c8b130d84c59831173",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x14fd8ab261d14215058b77a9541a5013ccc3d3eb677276a9de54445a31acd194",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x813451b970c8aae23a9b2441fd9be8367e8691a636323ced76f6fd1914c1e0a8",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5fc28bfcb6f16080415695b53f1f60820f403a94ce16696eea2f0085d823bc92",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfe4ddfdf4e6b6188967331f5932c8ec6dcbc815572ef9f3566b5d903a708b61f",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd8d889f4c49f58d98538d08182a07c27206f0e98f9f0a125eda3abf94305c8f7",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc6f7e4a015ec643eb49c749da19553a2257add76278a252805a12dfa85103269",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2ee656b8bc037e24df53a6b1e33bd9ad12c913c065f564d965ebbfc79b5a4a8b",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1f2bb0bfc3c7b3c9ab678ce9e89cf68bd6daa83385c4834f669cb00c540276f2",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd90bf5f45f24c5de7881707cb5374f3d991388a2d220fa7e0fe2be912cd7642a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1480b819d03d4b6388d70e848b0384adf38c38d955cb783cdbcf6d4a436dee14",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe88dc3c12f17baf276d8a018cdc6ff3b40e7c3be42d646a0fc8e06696db97c33",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xffe381a80c1e36f9e0b03a542aa8fe56e74a67d2566a4e29396d4427aa4244c9",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x366f89649caea042c96ee741b185461ec7faa408a2664ec44469a0061924b537",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8404e511c42018ce709291c768824b49651d8713c8abdab85b19b7ee82a09d0d",
+"topic": "Esports",
+"subcategory": null,
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x40bbdd26dc08406eedcb913efee7f7faddf50e16fc21caedb4972d57fd71e0d1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6a67b9d828d53862160e470329ffea5246f338ecfffdf2cab45211ec578b0347",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x34d650cd671bfe703a0bbb2b2aab0387afb6292a6cdf4a08836245246b4f7b54",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x436c765bcbdca98b4b773fc87be547dd1a3b7155eece9870bcb997e89b184950",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc635cfc916000aff903b80fe81472fd8e6cdccb88f616e8d8befb78db66552d3",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x64123306a517e078fa636231a9cc9339a46bcfe3fadf62c92fdb031881c5d0d8",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x74da675b5e1363b2215f24f29a13c067ff00220e2ac884a0fac7a94a51aa016e",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbcacd5a055f5a9ced6f69f122216c073dd6987d08253fc07bbcc168fa5b81d55",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5ec80dc407457301f282a2b44341947afc700dfaa7923d14c8894e04bc63b03f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9d1e122ce82f7acd66088e2e6216ca732b38fee26cee312156e854f975c28776",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb803598e76d5fb6841e1f4dec4adc2e6f43fab996eb2a552f9cccfc5938b15cb",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2f00e48e914ba6606867a6347e90c48cc1fd4da66cc196a191786637f40848e9",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x41e47408f8ab39b46a9d9e3c9b15ebd62f1d795eb072ff46df3d376c09eb583e",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x93ec7298069d02293cf8cf4261e0c6bcee2f83b4a4ff11ffb9abaa8c4261c681",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0xe06a7e94cf2fa8dc2085b7610fe16e9be1cde6654f34d365c13da1149b276c61",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xebb200cb08bbe89c2523a345947d083a992e27cc479cf1b5568407751e026d2c",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x09cbe3e796661a1d820580145488ad2ccb9ad1e720efcd64b448bb77b97007c1",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x17e2f3347e34d8a13572baf10c9b4eb3291217868a0fb84b37f36c80f8e2105a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0d09f8cb4ac601074c02828328a893fdab030ece3ca682faaef89d82c43daec2",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x836b850fc838195374862551a36f1c8691d96ff01e58b0a071f0fc1a0e357fb1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbc28e92d1fa999e842caf926cff56a580fb477f26d8c44c99aa29beb78062241",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x02f8dd15d4c674a75fccbd0e00f0cf1256101c45ef41f6d0c5dfde9c36d4141e",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1db02ba50e2312a62b4104de691cc7a76065d8d0da40decf93eb1b914a3217b7",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8f0f5125028c535d93f548225a4a2479a03793a49705973c763423aa43bdc59d",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdcc87b9ca36015e396bd0eebca29e854a136ed2b0b701049d1ee9da6bee3eb35",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x221b05db581e0beb3bd140683b89b06f6bb565f67674fb7243c6d3789ee18b96",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd5fca9b9146866df0df3211bb9008d884a2648e3b15ca6ec51d4a5b50084d9d6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd28f9dfab98d6b2a8a22d8ff7e8d109678fc8275710be17c96825301efce4a69",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x30cfb887558b20373a984da60c372fe5a90c0296aa6d8bb413a8aa7543846da2",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1070c27e30447364ed6602778729203d29aaa8860cb0a24779eb3a26f68b245f",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x4e0f29885709d63bfcff29e80f4a8df1da9e97906ba9e21577b46a70858d8e06",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0xbc67af13da50b8d9282d5f332b8835f8ab039c8f584a78695fddf1450a1c8679",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9e56a92abcf4996105ab15ce5612742bc33f4b9097bb6a4ec5f1468e6f2580c5",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf488aacaba74914fe181c68d8b6195e13c4ec8b6c1b215c299d297666297200e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7a04d6df56abc69278d849cb3fff7995d776b77b29ebaab6823bd7f0569df9af",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf2e51acfbb6d0414dc2ace81b7dc2af7c165e443dcb91f6caa7aab6d6ab4f06d",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdde06286a7b9464d344f410ab0b3d2ebc6469904e72c27fd982f65fdbf78768d",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd6c186dd4a5167684c27462d0bb541bd22ca4861298c00ade1991c6240364762",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "panel 3/3 R6"
+},
+{
+"condition_id": "0x184228c1bfc9502d38f6f9984667f3da7b2f955616f195a3ba28b51fb0539bfe",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6e9f90a6f471b52d03499a81586ca478519474eb152f1327c8c767f020d62529",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb361c29b5481164886627cb175ed76792df30902e66ec329c0a3853f807fe8e9",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x773abaa5fe55e5cde51a261f444b7921652a4e059ead6b3be9fe56499c2d4609",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xea1f601faf600380da04e1ce3d46fc4c7dfea5e6247550b2b513761cb40f0a9f",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x215be7e1cbc744ce1a85fb891db92b53f933712b5a556e556657c3254f63d260",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa5bfa29f27399fce767abbff2d875bb5ad7a236748fb2818762641c4c1992632",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xceb6dfaa2cf5abc9d47ebc867b984a7715104944249274e8a483a2e17473e5f5",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x10cacd5e8672cbd40b6d746998440b4b86a51579120cc14f150594a4175a9304",
+"topic": "Sports",
+"subcategory": "Props/Drafts/Fantasy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x42973552f8bcfc9269fba8492766f2c20a22243cbba154cf695acaff88ec96c7",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0221121b0f6acc9552c43795bac9b0fcc4e7ea0ea9b717b33372b7795f1ac25d",
+"topic": "Crypto",
+"subcategory": null,
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0x63b1697d66131bce1b4d406599548bb6007671197a1596b6403335f2592a61f1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbbc6689d0f6d57ea42168836712237c7308b3e0118c8914d31b6126d0f3254c5",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x450810ae738a0ff820d3248f2b24937f63fb8c8cf422ed2a915125adb4d9d3c8",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xad6d309aaa500d96855996e84da00dfb2379548a693ca684d0877cf94fec05d1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7883a3c40bb01cbd3b9ec9e3b73d75af705e300c9369f27178739cf3f4fa089a",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x030ffc12d4619622e3d318526e306008bc1fbf982fe95e92b649c9f40a135ad3",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8246b715242536356d2938f90df8b50271fcf6d7586495249e2e9f75a1101981",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x48880e3355f031da13b5ed1142d209396bdec61acf6c0945234ff6e5edab9ebf",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9bb9f7c70674e2043580bf634753858eded9b360252c06f891688b95a542ac46",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x362c61cfb577a719526b03e7596a3ef3d6d9aadf5292e2e2391c2cdf62892730",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9c66114d2dfe2139325cc7a408a5cd5d2e73b55d919e2141b3a0ed83fc15895d",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0xa6b3d50d6d1b60296fcf781134fb363ce9c6fe39f47fb03131b7d8af259fce66",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbd603617895e199d4042781ee55a7a9614af3130ca8e90d257424ca246f66197",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x729a3298ae0559a4eebd1320216c8c9b8d51381ce5ce690da7e8df1f951a923a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd35868afa9257d08411f4c7d61601213fc3d9fa1ebbc1d963572263904be2616",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x80b4f6ca982ba1ff550316f725193f5f29761bf65770e37f11fa4b9736f1f7c1",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x497d6cf1098ea666aed470ead36e66ab5a9d54ff29cdf6357708a20aa1808e6e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa75053ffa630e41fdc08a0885fe0614716ecb13061ac460914bfe498038d5364",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9769f78cbc95a5ed11895e6064bac471d8fd8f930b260cf581b68d3f58630d27",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb20072387cd12bc73f3a6fd30fdd5aa1644c8f72f958803d90fc05c51db0ac49",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x4ba348328e4d4ddee9e6734c9a369b2e8138611651f9f6dc8f59dea51df6c734",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xde92d563a6d742a4750c8c83a9c490ee5b02bd5d972a1765ab41c0f9095ef6c0",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xffffb2874475ae9c1e3a0e3c3c4b4e329eb3105427aa484f357bf41c5fd77c4f",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbe18b72dc5fe801642372b31cf9351a9a35799a06773323a7104e97ebf4d4ec9",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc5821602b440e61665dce5dcdc0fd20153864ba185d26a13e9be80fe98bb9e97",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4b02efe53e631ada84681303fd66d79ad615f3d2b6a28b4633d43d935f89af58",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa0811c97f529d627b7774a5b188e605736b745a1f892c39e16c5a022fdb84b8b",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x796e791e7058571e460278814fc7a3183752285338f1400087b98bef3c447908",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdb1ae961e30733e7857ebb425b5f6449fa8032de13f32c1c6e447a0c3801ca04",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x7ebb07134794576c154f06fbaa1cc61a5292d58e280ce98207977771c0326c27",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe76d397afa47ea028b914eec69543c69f9bbec8c313bd3a1dba022bd050b4c22",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x051e0ea5b3c394114eacf8ce5e944ca63cbb6ccdef1d086cadc5dd129a3804e6",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd1747284d6048b2a3dcfbee489db405f36de18f9590197dd0e5c9f0c246bf050",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd6f4c41fd20b8c6d5b48d528ead981d8fdf3da99d05018443e2d5bc60085e3dd",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc90f95af1a5d4e392fe9cc484f1b1a0983687865e7b85910ae89300c2076e4a1",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4ea1a572e24ed7db20d3550ab0108603150b68f6829750ec331d90cce58a459a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdb80cb224aaad81b579dd475129a43112827b1661fee3feec79122523ae5b933",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5bdcf0fd010eba1a55a0f3de9be6612fc72038279a734e994ce2e34664a3cfe4",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "panel 3/3 R8"
+},
+{
+"condition_id": "0xb8724de28f0dcdb71b55abc89f54a5788f7d7fc364160ec6a45b941d5c332988",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb13e67e43f3ea7015f472f56660e58fb41e761c0dee63862b379feefafb6efbe",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xea236b37f6ba053c48240dafea9b4b745ce43aebd44d8911df35302d1ac951a3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc319ae3e39f6a0b441fd02d37058ee8af4133967a205c88c9243972deceddbee",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1945a8b23e313ed7423b6b6fd556f9ab5578900376b565a61dc480a5f4f35d21",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x663b88d3a8f2341bb8d878709dc78632bcaf7512e577bd15521e5d8ed933efbc",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8b203037c7c0e21b500314f8398d2a8ea294b7ce1f4f9185f426425a3505bc45",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcaaa1338d38b5c614196c9a926dd84babc3984442f2ec9b937a16284a199ec3a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbc54d73527785bdc7b443cfdf3b0d59558c5ac2bbffca23425ecfbd161b07317",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xae70ab9bf1c3726fe430a2ba8b517697ae24e0f0ab554b876a5b521153068882",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x215625b9e962f3f499f832c77dd4caa400bd8435369b5fd65e8673c8b2c4da66",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x21559998482bf5dfbcaf0f5409edd34eebd84c8998df622f9da8ff1e1f248a26",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3ac961dca3c4f0fc34bf94c661962012ab5e8bcdcadfc99affa06eddde00b29f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x005d2eab3e9c9b0418c45c8e97303668d88630a7287261180dc5edf700f197f9",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5b8e32e1fbc08f9e7ab47d24593e67b950d95c13899a79a92921bfc106d0d7e1",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x348cd9adf4f6855f58bd9c6dbf9ff251c4142ef77233a5dc95c65b4b61cd2187",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xcb06319aa9e029904c93c1df7d10b7ce7d6aab2b25b8f661e0cf57ea048a1567",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9714a3fec906de2b561a39e764df29320444cc69a53bec753a52270012019712",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x822e61527476cabf98927e3aad385c5ecdae7086f945535f2c1fd9ae8dbfa46e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3265b10daeb30dbcc3214bd02e488551d0a5d3028392f4152e4750b943fbfc91",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8e6ff03d48ea73396ca8c8eac6a8cada2a7507545a78901c4769776be351eaf5",
+"topic": "Politics",
+"subcategory": "Scandals/Legal",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x41c6341dd79903aca4bb0c29f5a7976946c3774d2fd72f38cbb7de7092144520",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe4b9a52d2bb336ff9d84799b70e72e8e5f4507df881af60f3f4daeb9f541a80e",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8ecd1d15e521b7d1020ad5596cc981c8764e9dcfbc3648f582e1a5138aee7185",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc58cfb7397c4f3f803f5c20135cafa7f6d2c87cf3bb1e6138042b95d828e1866",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0f8ef3cc906ba7ba94a44724738df44bdd5f73e59e40c9c8b4ff8569e349643c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x65f204a8ebbaa472d668cc4fdbe4dd45249405a7e0acea43b7930a216e5bfdc7",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x70752303a2d5fafa21bd6df7c7b90d63ab8ec71b56a7cf3fc49a9617633fd87a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x29283b56d3eec6d1d89fff51793d9d2e01579d2379b1d3e9ebda175d3561e809",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x580ffec1f7b057910f9f596c80d203870f3028b04784a982d158d3581514299e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xff0cfa9506cfa95759e4c7591654195bd26e3011f9882b51439135e04f2b69f1",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5401278f7f9c9df79552148e2b280dea9ea91431a77c2c46686b8bec598970e7",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcef981d46a1039b6ae02f578d2208302a8a3d63465d24363a1d65a86835a1ae8",
+"topic": "Culture",
+"subcategory": "Celebrity Events",
+"basis": "panel 3/3 R5"
+},
+{
+"condition_id": "0x64300d0e8784825451fc7832a2cbdecb34de8baf54d7066f2bd7ac3c241ff1e1",
+"topic": "Sports",
+"subcategory": "Props/Drafts/Fantasy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5fd3d8604616935f40f6e57ba23f1b57ed8550f2a9df09b2c8be044c4c2489b8",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5e5482b1e2afa7bed0b9a0c3c8ad33a83dd6cc6d649666cdf1977be64c42c82a",
+"topic": "Politics",
+"subcategory": "Scandals/Legal",
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x19ee98e348c0ccb341d1b9566fa14521566e9b2ea7aed34dc407a0ec56be36a2",
+"topic": "Finance",
+"subcategory": "Earnings & Corporate Events",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0x24f38479176af2d71f64161d53bde777aef49ef1c03066510174d43a8d2a43fe",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2158d1f83118f06d7399d5000e9c44f317eb8a0801a6f588d261bf2cf2310445",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xeeb92ddd77d671d1f9ea1f5727208d1fa91896a6d1f657fdcd7c9d578fe5c46c",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x81a58e23bb2a6af50c841b7d65dc703175999cd1a0d3e522180823acfc262fcb",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x037c9d29c04a2f6a5373ae7db7779cb40a751ca372de1e55999397a8f571c67e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x812d8819cda5c57e824719de0381d8e207a45b5b71da31a6425f6c2f181a3fc4",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x20af55ab35186377b81219db6cb8615240cba42cea41731091be9484a5f5b122",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc44edcfdedb422bae8ff1803e2178d1ee025fc41efd81400ccbede709e018841",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc111415f3e8d30760497cafd642d2672ce63c476769e4ddf95472e02e3931aea",
+"topic": "Culture",
+"subcategory": "Box Office & Streaming",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xef5604329fee713a68f4faa9d3014614c7486525864a11f2ebb054179a0c362e",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x6747bae2269c348786d0c0c0f4286ac006f13f16325d4dcbab954b46de029f19",
+"topic": "Culture",
+"subcategory": "Creator & Internet Metrics",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe1c67f75aac5b10dc28f1a2fbb79b079fc7f7320abfbd6a950a50c372979569b",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9a0da0f25f94fce088c88803b296d48dd19717370dbafa97484f3ddac70ee4dc",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x053f95738ace6c99e1571e0461feed7392fb646efa0d37ec775237e14152ecc6",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbcb33ad98c8141b10f2350ef687eddf0660484ecc15be42ecdae64339e64dce1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa4ff70673e8d6f76261400c0ffd9d7970bf6d8aec5f8f44b20434e59e3e3141e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x963e78843fc55b202a8191d8bce016c79c31943ed711d6b29c0bc1fd19c81c30",
+"topic": "Culture",
+"subcategory": "Celebrity Events",
+"basis": "panel 2/3 R8"
+},
+{
+"condition_id": "0xf9915c09cfdb45b8ba1335620c1da05d12913ad1d43bbb15832a93609212c27e",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0256ef63427ed0d9eefa1422eee948165a2a215b0741a339025fb08b2cf6e15d",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb199b50c41036d63dbf69a754810f580daf37cfdcaa0ff16c9f7d9e8c2f6eb24",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3535fb2f4aef6619dde8b367cb5e5d209526bb496d5d9778428c58a0252435e3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd9fb1184af0064e5e34b129f5b79afa5a17b7e32f2953ab05efed82315fee6d4",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7f695758278e6d4d9e63df862afa88d664d3402a3d26e4d32ae05121cdbddba6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x127721b6a12d0d47c6f9fe7eddebb8af81461374fd89d0ff01d2da76bf7b3668",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x52a9a4b7a35c757a59ad12148cfb59c2eb31b95a52067fc6ee30e31c65469195",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x46dbd48d6bde5b81edb480e0f676a2cdda6c6b592c4d86a9367c7ad5a9870195",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x198d833c085ed0c858165192e9fd446c5392dbcdedd1132d89c578c0b5c29b2f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6220c4164a293367cd40eba018dd6e67c78e4d48e74158845cc9361230bcb34d",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0e521f1ab1dfa3a37423f2ee229f7fc4907a9ef52fade96d112f11aa35591b71",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2865bc483dd523f4a36eb961f7467c8635ee9a13f39748bad55f645ce1f61512",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "panel 3/3 R5"
+},
+{
+"condition_id": "0xec759fdefb182af4237d9e42a7c715be7a4213afacb484ddc066290a0f84221f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4e2887e913cd6e091c9b07b5e4013b24f372453efa6f11a0b0c5f65371729cf4",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6f05c7bc5ad978f8f9916f05d30a7f752e02b81508c56d82ed7c9245bca163b0",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x23dbb60ade08c2664ac29488325afbc0136735bc7beb9180d9c0cb72620b0b13",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa78ecba9c4273564cce4b810db46bb36cc35db9cd52fc4e067c77f85af1c1048",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaeea5f917fc5746387b5f9c0a4263dba035dbb3f0ac6ad72bf92183d21e26739",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8530b96422523df2024c4242021b58da538c5e94ba525e8f9893c3fc2f469160",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x35bc1bf05846a2d4a72ff03f1c93b8f41ec6a45241a2292ddbb2c919dd7a68f3",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x365eee5f424708fd861ea3f0d4d03d515e34b513303a30d097f2b35867f11dcd",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x94a2b2a1b9227e44fc464614e63dfca6d4082310291c35623c3d34b70aa53693",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xba9b415a5b642f5b483c6ca06641e5b0db60ed7ac60e4011d0c99282c67cc201",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3904885b86a86a2e20b76d92e3eb91ba5e9d6cd3ed294ee759c5f638fe8ec9bb",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2cd24d17f5680dc6e7b7d67c712a223ae85550745597e81bd2d2b8d073443951",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5c2e6aef8af5931e9bfa3750364626d754531d2fada2885d45c356b175962a25",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x78a7554bdf3861f7557bc637ae5298d948fbe26632e10042b34b8a0f6724cc4a",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdc42f4785d777459645f7d5373c8f6eddbb30b703e1316ac17c527b22694f1b7",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x872c8e9a4e4808a2ab714c267bd8a93f63cb739c853d7e4de2b42009e73f9b3f",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x4aa64e62f39f54545369c372da7de8bfc6b2e178b5c0f121a0177a225eca9eeb",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x34b8fa269775d034f3d98b6848e0a7c5212efcaa0c98e6f8fb54c5d6f72b3705",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf426c69674c6637f2b458c76d9920faa814d4daa8c308e0b8ba554dda509cb8b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x64396449b471b10b006285fa49dd9a5df535694de7b4c703fdeb0d88d5c4cd33",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0fe5bb2f2da60b0bcb4855dc0cc3101dd1028f6639479bdeefecacb0102869a8",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa6ae199ce172475dd0e29d7584810a15a1d4608398d2f42d7ca39bfac45ed52b",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf48f79d8e60ab1efa76e53bec8c005611bfdc097cc0e51dc2f612709c04f5acf",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x7190eccbd0677d5d0ae8cdf598b37e945a346915c666dda11468dc9970657a56",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x23fd2b26c4e095465ba0d2ebce8d5eda57009ddc59aad8b68ab19ca968b41eed",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcb239105ed21a2420ba4d85090b9bc32755c56601ffdc528afd17fd6282fe930",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x506f80bcf76bc75e6b31a250e2d754f347c4c231665326931d58bdb339ba1913",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3cd6e52603d80ddbbdac9b1a4d43f9b7faa6aae4fae4d0fdfad3bd58454da7d3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x22e7b5e35423e76842dd3a5e1a21d13793811080d5e7b2896d0c001bd5e97d54",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x747dc809fb79e1b05be09c42d6179459a58de2ef3e40f02484a4e1260f741f75",
+"topic": "Other",
+"subcategory": null,
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x7061e7ce4d7744677b6c3a7d1db0f82eb90c342104167386619d75777a6083c1",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x16c981b47490212bbb7d70edcccc419a84ff5771bc85c1b7abae37128975953e",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x80059ff4e694f878c0498f6f3a067ee7ca62dc2fc46251a4287b58355ce47bc5",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5f1b1caf70eb994bfff2986727a05a3ac9f7ec8b0da4017f7732596d023e5a07",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4cd77d456c83e7d8c569a8fb8f6396c3f40154f657e6d970733e2b1b6a7110ff",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb6d6f15a1b5d08753653f1867ccd6126badfbe182a75159a330dc7b15336b309",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x01dffa7abae7e5d9b7fb44b06d537c5ac932e2ca422ab4b53366672f5e2dc7d6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb11173b63944f4f273bf31da413d07384284bcf7a3053be15a560a9b80d171df",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x339ea91e747d04777adfb737a264debeddd1b90f527abe02ce2cbee395455169",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9aa6086535a4b3145e9f7378dd58a7a8c30c4b15bd4fe17eb6990817f5cd3cd9",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd595eb9b81885ff018738300c79047e3ec89e87294424f57a29a7fa9162bf116",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x0d2b2dbef0efeeb942f4de41dabe268552a07426b8fc19a8b85d602f6af5653d",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2f4d4813b59746d5ced985170530331befb399a25acc8540061e0ac8224c9aa2",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5412ae25e97078f814157de948459d59c6221b4c4c495fdd57b536543ad36729",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x35155be9ad199e97505970a5dfb2b4bca7a9d1bb7b731389a590091997998a78",
+"topic": "Tech",
+"subcategory": "Product & Model Releases",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3f56bae1879b7336e2e77fd2955557216cd305cff2481844e799050b364a3ef8",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9c23593b309f27a4e05f059032d59c2a37f8bb10d126ac7e22014593a07fa9a6",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x26ed2c7b22d8bbf6789e76bdcd88c22b605df53e88c7b57fb3dc48b7ab259a8f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc88e812beb27442554b9231273f6cdda7c96022afc1a5b2a841f03c17dbceaaf",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe5535e41e78edb730150ac1a497fbef7cef536022168771cb51a6b702705ebb1",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x42d812af0840d50685b0aaa0cc0a4b3c07a680cd12a85d88a377558f3621c78c",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x88d67705780a3d922317ecb0c78a947a306174d0510df2ae89394d5abfb28206",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6edc6c77c16ef3ba1bcd646159f12f8b8a39528e500dcff95b9220ccfbb75141",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa1d97efb8a19de58d995edf58b882c4f99ef356c8a564af8daf888a7610edea1",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe202539dfbeced92dc4112f134a205c80ca6cf4db32bd82f05b291c297219fd8",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xda368e1f843931105e33e4d00c06e20f962ffc233389b8df15f53efc9d3d2984",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8fc141205ebce5adf437bfdf4d0c5ff58ff24293b79c9431991346c208bb48ed",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x66b906b8205f48a26beb8e553bbb1e7954e87e4f6e1d539823441221d1806e8f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf8dbde8b6e038775a673947e59da2de15a2127272b50b9877400fdbf7cfc3026",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1459fcca779f3b97a765d02ac9a881892244aad836604fa8a534b4e365ae5b4b",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfc9ee9c25abd5b966088767214c22dcf3ad1c72548e9a1dbef9d4328c170e5b5",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x831493dce463d9adcad78c492f2cbec6ecdac31f4e8c5a894fdac68c130549d4",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xc5300759dc2089042380795fe7384010a6b6ebdf9e6da7ed3f786d9a5f61c563",
+"topic": "Finance",
+"subcategory": "Index & Commodity Price Markets",
+"basis": "panel 3/3 R3"
+},
+{
+"condition_id": "0x4ad8fd3e8ec4efcc378cc15ab8da7eb71cece5cb30ad4495b515ce9bcc2b325f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5dc96d5b6d416507a833231f23a08c69cd04592031519e2d225e2d9860e978cf",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf8f63bb47b2a7c2e0c1be3cedf4075079b11c07476d76a9469065b0c4791961a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x89f0c865380f678336c390ddc4fe63bd14b77852d8b84845b315715c73a41bd6",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7cab9da787443beec1eb5e399afd46fffdc27b5f00e0293a1d6a9996c948ac52",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xea17b1284d10617a57f910b2ea63bdef481b1724a4b899d454ff104bea67b657",
+"topic": "Culture",
+"subcategory": "Creator & Internet Metrics",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa70fc3695a65833b91b45df6db6015096f3e1471b70352ca411b4209010e7633",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7f869993ad783e083661147cfcb54e6304a3d1d1cf4fef3c21d97114c258ffb1",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7f4378c2e8fb0a4673813e5a5d6f5a773765bab522186932a0465f326a05328d",
+"topic": "Mentions",
+"subcategory": "Political Speech Mentions",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x00ad3bb5284b0b2314b1a2d42812fe292f606619c6278bd95c9d905816c240f6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x876047c0df88886ddbe468fe811bc75a667da45a552d798e626ecfc5c60d52d9",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcf263497b4bd594b3eaf650de77df2483c3443a929e815a4bb8ce2b8cce50de1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdce84960dce38aa4a5800a5eba7c9ac34d2ce49ba9d44c42572c472d468af264",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5bc9ab2b40953e2baf98609e054d089e87937b78a3c8a634cc1fc50c392166a4",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xee784c8b7f486432b010dca9e45ed33bb3364edc72394331a3517c8dc2ec0c66",
+"topic": "Politics",
+"subcategory": "Scandals, Legal & Political Events",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xfa59099fbda1e0f0058ed3cbd57e939fe90ab6d9b57d53bd488bcadf75c191d4",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x09b3e4c716df2579afa0ede1bf00edd84f8cbe1e335785f90336e7a909c52f8e",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7949174f6cb3b0781fbd1a63a51fb7d2e72ac2d7cff1628f2c62477b64734bff",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x902b551eabdaeaf91d9679365ad4bdf258fbd1b85246dee247b30aa8e3d4f4a2",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd73f60114a0e7169a55082daef1228cb27fa50c939eea22cb0589f6bac6ce5d3",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xeed6da09683149b433aeb802bd8d3f78a6b6d8799fa75bd0d73c3f87c6b2b592",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0x939eeb2dea216749bd409bedde483c3f2bfb0e24d4f2d34461c0b21c6e91f010",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x309b383d4c3f4a97d25213570c5f1e795d87ea2161c24aa09d82da8b201e0f25",
+"topic": "Esports",
+"subcategory": null,
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x446e2d8e2ffbe7db85cd2239892df5447e73325b3552d07d5d6901b2eff95a59",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5159f1aeb43719d812fd7bdde72da589fafe0ab0cff7a861d9a20b2511571d96",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x200369a7fc4dad910665c5a77e1c0c0d16237f79c637928bf0c5112cac2db708",
+"topic": "Culture",
+"subcategory": "Awards & Voted",
+"basis": "panel 2/3 R8"
+},
+{
+"condition_id": "0xe64f063b9e2b02f8ac679ebacfb938088c1ddde2a953a1ebfd4a92b802910371",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x680efda99a9c43cae7a318972ec3156a6b100b48a43d12478bcbcea85eb58ed7",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdeb615a52cd114e5aa27d8344ae506a72bea81f6ed13f5915f050b615a193c20",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd189af84a1c6c02b579796a1eb08af597232d33455c42d9c0f5c98eccb4292cb",
+"topic": "Culture",
+"subcategory": "Creator & Internet Metrics",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x405534c03f82e56a397478db7b068dbb683fb46c976265f650ba6510200749da",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcccb7e7613a087c132b69cbf3a02bece3fdcb824c1da54ae79acc8d4a562d902",
+"topic": "Culture",
+"subcategory": "Entertainment Releases",
+"basis": "panel 3/3 R6"
+},
+{
+"condition_id": "0x1d54eb5eac2cee8f595f3097c65da7d07f8ab5dee63d7c0c6883eb70e1e9af30",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x09e8f0db05570a5048fdccdae58a52c608aa6cf640ced2190dcbeb52ce52f491",
+"topic": "Finance",
+"subcategory": "Index & Commodity",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2010ff3939e8e664dd57369aa907bbaa6d03ae18be27fe3ab2f4cdcb95a8b2ab",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x03bc660a4df5faeaee8e66d0e7bc4f2200b543340b7f7a5c83bfa1fecafa9ead",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc775ae21fba7d1949f6da0c45a880b5ab1a19c39d9c2f4f1b93f37af0bc014d9",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x31e0d4320eb9666e93e20f989061f3eee82e80de9caff260cdeb9c0a4946093b",
+"topic": "Crypto",
+"subcategory": "Listings/Launches/FDV",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x61a1278884fa70d68d4bcaaf72fad55bbdb063cac28c6947472ca91635fab10f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfbb80ea5f8fc02ee7df8bd4f58790e1d04b874078a49a7b7028a74a2075100c9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe87b10afe191706bb36b22526b65983e2a88a12ccce36827e857e16791973493",
+"topic": "Culture",
+"subcategory": "Box Office & Streaming",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8b369e10358094a99ffe7f85a81a8e8ca68c611eee0fe63a2efa790ad045bcd6",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xab66a7d5745fc4da8a30a67665ee1de894b740644e643a6c6ec39b17212e4df5",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7a4e96623e5baf75e3a039b1fdae23b288f84333f8d3c1ae6dbfbf6075330325",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x077fc0c447abfc7e094713e86d62acc20480560a6eb60bfbfc86a1c5f00b9339",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe84b1fdc087f4153ebf15cfc07f065dd5a66f3caf370b4547ea8e02100be95be",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x414378275cb214b747245942be889ee1e077c56d1c00eb4d726629c95f22b5a5",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe0173375b7eaccb836f7b92d28a9a2d1cc69e54e5a65fae89a5d7e49aadd332e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbe5219d1c82daaa110a20c0b50dae77f681f05eb43094e05ea24fe833c5ec47f",
+"topic": "Economy",
+"subcategory": "Tariffs & Trade Policy",
+"basis": "panel 3/3 R3"
+},
+{
+"condition_id": "0x0433839be2e0889423ff0a0efae939272899d09c284d309b346d3991d003c4c0",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0074ba8b521e1cb18ef3befdfa5e586a3d9c3b0aefae2eb2d80f99b1e594f7a1",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3d109c1fe77572356951368f363ea16c6d8fd0fe78bd0ef2a51af572ae9a4c67",
+"topic": "Culture",
+"subcategory": "Box Office & Streaming",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x655b4bfdfa55a95c24d6e9bf7e7cd62f1b57da9a1f4c7f40f090b8ba847dffa2",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2603d5576c488e4f2a4fa41677917044e796917b2ff251d639b635062fe6b068",
+"topic": "Crypto",
+"subcategory": "Coin Price Targets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9df495a416820c808be8e808a60ce835e4cdf86dcd370440d3223b0504a5ab62",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcba24842ceac7a40d2a8b9adde1f4407999b6505193b9fd68156ae76fbffa706",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5eb681cc36248c64a48aa01096f2287834ac836d814541cd96da9924752cae06",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3fbc68160eebf3b359b077b0e5ea8c7052031e84ec159c5002666302f67b508c",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7d0aaf81bbd3fd73b6a1651cce08a452c0cbf9c0cbb4520ce0f981065b639d88",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x976c4dae5c4e9fedcc755eedd7848a2268b72a6b7033d517f2738d738b1e0c0a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2133d63b8c6f4aba47b0c4efd92dacce0e2ccdb39b81bfc85039ee706c41c9e3",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8fbcb151e2c988df5a43abb02298014b7daf34c008f3eed9188dd16a2a19bec1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1c16b60c7e7ddb559964cd64c8f7d5c33adc83c3fbd0fd124587a8adc1ded8dd",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6aa39e488afd5dd8e1cd995258c28c3c485dbc4d467d4eb4d94fc6f30e172833",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xd08c51ab1dd3c9ea3ddaae80b06cc2aedf67f2609c52148a3465345bb1d6e49e",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0f49db97f71c68b1e42a6d16e3de93d85dbf7d4148e3f018eb79e88554be9f75",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x393557eaf4c3ec53cf4a341d12263914944220359b6f02b703109ce220257641",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x746f66fb1859ce9f795b0bbe0b4fede7666bfe4de95b2aa280296b25f763deee",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xac1b6017f9447f21dfd69829b5d7b084aef5893f7ddd6abdca8d95f40238f398",
+"topic": "Tech",
+"subcategory": "Product & Model Releases",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7b830121eb0c58c5f4161ecd626af187d199ba1ed7a705a696ebf93e84a1423f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6924e1f680ceef1cf6cc14a4704a3b455b0816f04e1e09523fac4c2769aaa56a",
+"topic": "Politics",
+"subcategory": "Scandals, Legal & Political Events",
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0xc4435df23facee8c4cd86090310c7835c2a0425646b2588b0a02e67fa42f444e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3e218c99a1335641b3a5ee6c887521d19b0c28fddd6b99c254a07968e35c0b1b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x30d49ac0a4ce091a98c3950d5bb84063676596a889890300adf24b0e2c410e3a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4c7aee76714c3a69885cbf6a09c754529b255d038b9547d5cec1836906a0aecb",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcddc048c672ee233890b99b18885dbd510e3db3d67c53afb408ddc93f9aadff4",
+"topic": "Other",
+"subcategory": null,
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x67e68c5eee8ac767dd1177de8c653b20642fee48f0f2a56d784e4856b130749d",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb7dd41c16cd5b59e543ffcdab6a0d876f5ccef5329ea42ef1798d80c9a2b8499",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc90381f6021b8dc8d07dd3d783d3927f34706f8ce1ed097b21cc92f31b5be076",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8063a2c9fa21c4a1470b33fee132d6d61fb5b7dcd667dcac3bb82ae15ad70c0d",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x5341e90b72330a8eb96cb685dcffe51ad41783cc12e91b6858b9bd996b3d5b63",
+"topic": "Mentions",
+"subcategory": "Political Speech Mentions",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6622b219b4b0796651304f85f279b18797edd2a818be471ecd82dd2d7d8d4ac7",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbfa45527ec959aacc36f7c312bd4f328171a7681ef1aeb3a7e34db5fb47d3f1d",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x68e3c4e0dd8f82d010060032006fd157401b0bd8e04bd2953ae293e31eb99bf6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3d10d4d304861811a9ec2e63ecf5db2b8839f3110332e0e8f89c0556f76b05a4",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2fc1e1bcf0aed6eebd7056480133ebea59d0c8666bd07f2498c14bf958f700ae",
+"topic": "Politics",
+"subcategory": "Appointments",
+"basis": "panel 3/3 R2"
+},
+{
+"condition_id": "0xdaf176c727f45efe8bf877d8311e11f203a8fd6bc7fcfd886bdd31748beaf44f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1970bcce75e3674660917ae4685b433a9b1e0152d810a8d7c346dfd5e00694c2",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x68fbeb8d823552abf9d35f3ebdb8619a1a1d51b650da9101be62f09308fd18d2",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd343b2f246e33cfc1acfe4812958e4f19486dcb74e82889ba585408d06470ff1",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8e7a03cb1970e2ad6533b01892403516b6b3f5b5fa90ed7d104c28b27e40ba00",
+"topic": "Finance",
+"subcategory": "Earnings & Corporate Events",
+"basis": "panel 3/3 R4"
+},
+{
+"condition_id": "0xed85b5d16739e076cd5cc3a705467df14abc2f23d1b16ae26cd660e8e0b38c54",
+"topic": "Politics",
+"subcategory": "Legislation & Government Action",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x40e783a12a83c36df40550c3f5a2433ba55a9cd312c31d808cc0c2c3ea747b1d",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfee07be730188c94cd3644ed6f107fa3ea2dfab9989ce8d39aeeae064766abe3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6ff0aea2be61472090f3fb1a452ee0a284ce7f47fb63f69e0051317bb29a5ef5",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x08d56195e88cedb87eeff396bd35e8b67d031e586169b3bc937b3095b3cdfe43",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x541156e5fabe5db85b1ce45765724984175016e0855ea32528eee04a2e30bd1b",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x864d4155b62431499f469772de81ea9b7daa1c87b78047e4aa9cc2fbcd222640",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x46666ceb4c63814f38a8c83784ae10e1c2e1ef52e2db648372bd86dea521cf64",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9188ea717e5239143863359214202750c93c32ca3a7a78c584b93478326b844b",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xed76e3c271f4e24a3db2436cdf2c314cda43909fbc94c2bc34631a01cd67d3ae",
+"topic": "Esports",
+"subcategory": null,
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4edfcf9fd9889864290d34f1902ef51420989e5922b8208bf46bc0689ce6adbe",
+"topic": "Tech",
+"subcategory": "Product & Model Releases",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x870bb248c96c52dcf35390a66542471c5bba2896942d6bc97ade41a418646ba8",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x00cf3efc18a950cf442049aa0770903f0ab8606212499e0e4196bf74c102c456",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x06f20c6de170545a11ec43be696b001bad1cd290d44de2db7db0849bf792f8f9",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa1f3c8115c6145f1c2bde3328ce1a21e89d0dd00385667cdf76bfb89a993e00b",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x434719e5e807306706d17205f2bc15e4901184084c4e8ea472127f47a365bbdf",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4b4fbe43a08490c88bcf6843d10014ace45b42109fa68df291aec3c76bbd8aa3",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd5659eea81cada0bac656f5a9099861786cbae6755e2e1ac2c9e9441908b551f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9d4f94f82de9d13ff1d3318639ab9000ee2533949e525343156f374fb00bd9b1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2135ffcb43ba9103bb6acf7116d2d5aa98bef6d9eb3dc9c85ea00cb79513f3ec",
+"topic": "Geopolitics",
+"subcategory": "Military Strikes & Kinetic",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2d55f622bc12e23dc1f1bb4db8360c28c92155f9376bf73953c0756ee1387b2f",
+"topic": "Culture",
+"subcategory": "Celebrity Events",
+"basis": "panel 3/3 R5"
+},
+{
+"condition_id": "0x9814196ae917e1c962ce23612be50554586828a996b06c800d502a137001bc25",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6a1048bfe5eb87c5529277963b33d42a40ee2c8478c8bc6307352e27bec8e221",
+"topic": "Politics",
+"subcategory": "Scandals/Legal",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xca1d1139b0c3a29983407f499476ae642482788e841a277eb86faeeb9fa4a85c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9e030ad2c9ecc0037a1056f1641d913bddd5c7b26c100267fb8b22a4fb64936e",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd0766f4f45e377e80b50661fb6b6a0cda84840548a69c54f0c39c520490cab9e",
+"topic": "Politics",
+"subcategory": "Scandals, Legal & Political Events",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x344327632a0ab1c28b40003f14bfe75cb7d5bd65c58b4e34199cfc17a77104fe",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc4c3dbcc37a957a817599b0bf9fb5bd6b62b19210b0f527fec57cb75c7ed150a",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3150ba668d15e1c248c71bcff71c67f1adf87063db7047f27f15ebbc9a1a6a0d",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xee512df0318ec5405f477a02ac1bd4b2d824aa2338a87e046d90cc4872f64599",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa90ce8b69a218dced329076162df3b79f99596d1dc71d93bd30a64a2c8b6ba3e",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7d9a8b8c29c55a7b5dce59aa1556be274bb5c6fb2ee431237c3f656603c96583",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x91bc2d5c57d20851caa4bbf821e9d7d3b488e041f21f00d256bc43caa9e1c4c9",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xed4fa0c7a11d55f2c3bcb5e13d94d10b0dced33d7f195748990be092b70952c3",
+"topic": "Sports",
+"subcategory": "Individual Head-to-Head",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1fa4b0ca71298cf5c9bbe85914c37ce5796b82b297cc4faadcd9ad18501efda0",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbb4d51e6364066d92eb6f9b8413dd7193de70966736044463b205834805a1f3b",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcd215b8330a35098a1a3f6c46b6492347edb5e74c1e0a95ac4d3d54aece6c262",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x53098776eb95dbbd2e899c4fcd787a043ba725f55433948da2fbd00abdfcd3ae",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc8f1cf5d4f26e0fd9c8fe89f2a7b3263b902cf14fde7bfccef525753bb492e47",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf05b4b55336a4c1c7b44c726911d2b559732cff7bad339084de86ae364dc85f6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2fcf3968f5feff8c544b1be614f1c7aed22f5051949478bc0b39f9e966cab02a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc587bda904f031a973ad3cb57128ca011bfab0f45e6cb3734ed2227c4d4be419",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xde3f9e35b32a99b679ad3f4ecfc25062071face5ac28cd83a3c6554be65b578e",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x90b9d20ece132c342654f98e0826e972134b10f58d4789c2662bdc00eee44b13",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8ec18580b64a06864f892eb5c597f83deb05e29684c475f118e55d137fb5e000",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x214093035e429b91df322bd20c55d9f611f741f67472a63f7623a9afc0cffa57",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0fb23b9a75c931152a17dcc8f659fd401c6e911f47a0e4088d5394581be0b3bd",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7b461ba0d582c03577966cfdf0da2a5cb9696a26b954b5ed1890f82d6f2a3c88",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x68baa454e91a8bb7d71defad47d94dda99bfa684f06ef0d14cfde366e26ffe2a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x29c64bffbe80724944b355dab89b0b106715fece2ccb8be6c81402e4e008999c",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcee0d9074a1f8766b4f66d806608a4097d027c94f85de367410fbbb166a29424",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5376e032a8f5a389b55aeafb39b6985bfb323f8392e304bc48b1b01e9cd39850",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9fe071491383995e02ebf6f0a98cfef5d102c79953b9b82c8e2cae33908154d2",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4d4bceee5f59f75230c6438f69fc913a6da7afa4098ce0734655045c02a730fc",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x15869f0d05e99ad5789f647685b2eedbbe4201f8910a2bdb70e5716bd3674e8f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf2cea45ec282af4f302d2ab85ede73678cd692ebf8c3ab6d52bfa5e19f44c553",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xacc23a9c2a560142bda18884949374d6a9d920b0e44c57b43bc4e8911727b01f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaf503d0b1bc9cbca253451ad26d5a984aa845a2d229fbe52ad3e09cdc516da9e",
+"topic": "Esports",
+"subcategory": null,
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x85980a4d08e4cf7911782b632108d17b124171c1e1610cf7861e260c6daf3538",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd10bc768ede58b53ed400594240b0a0603134a32dab89ec823a18759cbc180ca",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x09ad4955c170d46c6d80b5f554435b19e229ff7dbe55370892b64782336cc3b9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0ac23db1e56971022bc7e822b907a2466c618b34104ea72bc9fa95e41c86a9c6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7abed80b88301210ee83b7b14ec41bc9a5161e1af07254fbb26c6e2bf7182766",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x092471f61558dabaf1ccac4444921db0c974a5734a0dcb55896be0eeff2fd775",
+"topic": "Mentions",
+"subcategory": "Political Speech Mentions",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbbbece074c2d4010e39e39c85ed67b1131180fcea616073c893fb6beaf51d783",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2d3c4fc5cde6dfb43448402b912e41bd4453e3f030448ed026bff8f1a0bc072e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x42631e1a8c8e6389422b58b8e15b1b551892b9833651aa3bab25afab124354b5",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4567b275e6b667a6217f5cb4f06a797d3a1eaf1d0281fb5bc8c75e2046ae7e57",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x72af7d77091bd2209f78a45a13876beefc734768177dbc0c8171f515ba1a52a7",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x61d9486c0f7e14ed98f3b177b6adcb3cd45646c92e8bbfbf209789b86472d4b6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc720fcfa9e29346a976902f87e0f0f3bdc31d43af501b4fdef4f1780a30dd359",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc510176cf39d73295354fc797d84b510d050b45d29d6c9735ee18cdbc4fd6463",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe2c2cba80ca7e745aef3ff3c3a359db4d862f2b0ea40a9821bb137bb9e31b40f",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "panel 3/3 R8"
+},
+{
+"condition_id": "0xa4ddc18895cc7b14810283ef8f113939abffd3969c6a0e37f1897110c67e6f73",
+"topic": "Other",
+"subcategory": null,
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x36db77c539bcc8c7bf0686c1b99f30c5a5eed1f53d3b3a27a071550c81f83701",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd997dc2a212a7d6673375a3b016db1fb214247142f8cde0cbf07f8e6d789877c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x6bd56627aa21311850825edb27e53434a0e17a4f782be0086bc07f71eee00d0d",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x65c752289ab1e3b4fde40b3909d9c0fc2b35849ad950a38cab30d19a80457a9a",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe883f2fda25a605a184bb5fe583afce6cc21ea0b348b6a3728ec3067553c548d",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xae6d3d20bc8f742922dc40880cd8a8671c10385a9912fa7cd670fba0643dfe96",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x64d31a2af85518c6718a5757a35b840f08eca20c1e22c0eb1e96ec01cc55b8b6",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7ad403c3508f8e3912940fd1a913f227591145ca0614074208e0b962d5fcc422",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x18b1c135d0a40c5894da9412e77311827d9caf16cf4cd6591b247a34730af919",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xbee2cd40473495f713c69b9dfbce9fc2837fa4011568222c83c83bb773e35053",
+"topic": "Politics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3dc47a72ac6bb265e9cefebd2a2eeed00966394cb2d07245b5c94138b60e82a3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe6bcc2f1dd025ce5e1833190f7c60a71171c94f805df55b9ab0ded695ec93565",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1dd1595fb6b528bd285ea3af2e8a80a5b6a07f6eefd23b280a525652084e676c",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9cd77217b2ab264fe4f6d302f662c0a91f349fe5798f1f98d70bb2311712791b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xfd6176f8c9a59105f80e060a77c4099881c5f2d9e0ceab88e55cf978462fab7f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x81a537b379a35e4e17c286d3b37394e94bd74c1779bbe9a13670eb991b201a3a",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x23481b811978194fa175143ed7cd8d0000878ca59c408fd552e33535f7aa771e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1d519b87999e3d4e90e1e8f57b5eee73a0ba488ff3fdb70867f294733aba84a9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x909659c9436228e2be56d5582ba6188166f2f8bf3c596335512c8f2e380d01ec",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf232b565995e4b3a3e7fa6cef775eeff1cecd20ad7c013cb9fc8dadabfe279a9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8dbf6b51f302fd401065706245c144e93fe209abce183199433d4484b3ed8aff",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xefe6300fd8a053cca53df8f1bd536c5f571a136392c0516e7b16e39f1addecb0",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa2b7d292821eafb97059947b9d834512deda11b7866e0f7b299bcb035071d626",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x00f89ad58499dfda366bf9182878c81d9ec6a73cdf4bf9a85b9d24474debf684",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x74dba1ce1ae9dd535414e85f2d9ab5ea32c0fb1acc9b7130b67e6d91217e24e1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3367d22cd2a673014f1960742afdf8601040a8ad856dc0a98bd1a44ee99504e2",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd94b47bdeba16ae948bfb147bda059f3543d6fca73291644dfff5268bba7a797",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xde3d62becec90cd596e01294346786f5a9406a026e105c054d0f7e62cffdcf8f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xf3a4ebc0e59aadc6c37a49f7e50c34233925d15868fbdef7a83c4da274e1dfb3",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x32b09f6390252b37d674501527e709016d55581b2c1e544bd4b8167f5f732f4c",
+"topic": "Culture",
+"subcategory": "Viral & Novelty",
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x596b82d8371efcfcc2fd5312d5dde04f5e9aa1f0c61fd3f93be2a8be09e0da5f",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4273517fc8141d57ad1528ede46efdceebdb6a4da746d5de5bad216564209a1e",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb8e6d129a06d0ccb21d7b32eb529ea455eddba3cf29bfa097112202cbdf5bf21",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc62b78f7a1b56a4e2cc713a0633fe4cd2a6a5dce6cd3b4eec0bd292a6cbdff71",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaa5cdb6830cbfa2ca711b7cf93bd42cf4f8e062d44ea188c0b8ec1fb2924c083",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe29b33ef5bf351c8a22bfd79f8b58e62649d54ceee6f9735387cef79f52fecae",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7c97f7315ac9a2e0eabe9b2b9caa8369feff95180483b5168a5274b69762690c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x7a6491e3c906af3657b9b5cf2b371b454f1ddb91b4f4ca3344caaabf424a8056",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4c325469d9b516ef4e6b8f73a81a12607dec075e3c2fd454f91765aaeafc4760",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2053d8515f1b8cbeea4ccdb56e60e89c2617e43a8660d95166b8e71d27865277",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x20d0bc282552ac5ec6f61cd7101cb42a5948cae07e7651bdf40ede1a8b2c5eac",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x88d573d2ba5e43e1320cf0eb733452feb4cb4a1d4780dcb05ac6ee6830c2e4c3",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9ca9ea6bcad843f3e94c213ad978b4f21d712d90f9a28372d9248ec99bb7193a",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x97b92c6c26b31dc3be183b76b1c39167806611396793eda0edf084d29b76fa46",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xaf15f055f10713cbd3c7c30cece5c20c4ff00a76e51da59d635bb5160654bd34",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe39adea057926dc197fe30a441f57a340b2a232d5a687010f78bba9b6e02620f",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcf72b0f49af9446288a897ac1d73afa72549d98de7860bb17dacc3c4379a2c58",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x890fc3ba40458db0b67560691aa1597344c2a0560d18e80f586a4b35f510b4ce",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0xa9549c44687993a9a154347c6907092341459b927efaa3f2b49009ca2c4e40a1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa59bb6bb91e5c1e4d533864520fbd3bb75d6d0ebb813b4cd8a8b88479bfa8966",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb5c0abeecb5502e6e8d83155c27819174d8317af3c425c3afc5a8c45257a3793",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4e9460ea6d2a4f26fbb8bd8d30f8b825e6b8016e4a645f407cf38497e19ba523",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb314f5dbf75919a34d4997e8b22e6793505e3377a690eaa11a75a2547e926bee",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd7a0d72b19ca48b06b0029684677f581e32f133c367d7a19c2f1e4ad07066af7",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe1d5733322fd2215f136412f419d9ff805d097f78c68de3261515ff736895f2b",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb91be12388b3d4079c3ed9b5783cb42d8c33051d37746a49300227e0f45fc089",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xca68152902c3581ab42feb04921b8b1cd3c4e80d06f255ae077259fca0bba15c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x21ad31a46bfaa51650766eff6dc69c866959e32d965ffb116020e37694b6317d",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x48b0b0bca515f68fccf95af4793dbd0edbfec1f8ec6e8df2c0f69ba74f8c4722",
+"topic": "Politics",
+"subcategory": "Scandals/Legal",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4a9d58d4da874e26708f5bdb014eb07a06aeebb927068d169d43831595386557",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd65891729ce093cc12236856837eba1a0872fc7998fd4294c21346f7db68079c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x895e01dbf3e6a33cd9a44ca0f8cdb5df1bd2b0b6ebed5300d28f8da7145145e4",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4197bf7e572f1dd731669d33d05532c6d3b8cba71fb83dc69d789110e39c41b4",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x38bb9355fd91f6d7053465caefbbf691bd4a81ec1b08edcca656fc9dde259b14",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x8bf1c1536ecb1c08fe13c6b71e8ab1f58bf3461c4cb79f5f1679f869a06aef86",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x80971af8befc488bbdd6dcc075d388793851a0ea1c46f7ffd353b190691c7199",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x0cf91d3955d89ec43b8ac1e918b159fa1a62531f29b26093273c4048337a84d7",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xce9a5fa30fe74e323b4a8f15afbb0b7a41a537aa880779ddf7dee22223b2f34a",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x37ec4c6b57a18b16eed1241f6155ee7ff45bc1697d7848f15ac33d406e38ed00",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5f3b3456b2d6ef0d6f15d7492162725057be78d738d2465456e2835f1d89046c",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd0c4c60c8e68ee15974df3aa7d217225e98020fab9fcdb32d10f8e3d285e1619",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb3298af85e00aafad937c119444a5f2800a55343b7482eb75581f6e454432501",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa460c6bcf298f0c8412df5807a1dbb733f83a2bae69a57854f405a6148151258",
+"topic": "Sports",
+"subcategory": "Field/Outright Winner",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4f02b9cf70e514964fcb9aa2f7873d2b0d1aa0986da096cce7e6687e78da00f3",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xe2bdf6c18c8ab5ad5d3be5f95dd749e88d1dee7ac7c4dbf5101013a5c055e3df",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x733a3bb1f78a42bdf60092866ceb931664fb1dae1d66d3a6d2cf7b72cec96400",
+"topic": "Finance",
+"subcategory": "Earnings & Corporate Events",
+"basis": "panel 3/3 R3"
+},
+{
+"condition_id": "0xf2cb33c6634ee4676b642e728715c68441fb8d8c90f730ba0b5c3cd1f436a4be",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x98933c78b5e277b62d91a6c174b412218de000b54c4c67ec8673bf561cec6e81",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x05297f854d3b757d5e51a1a29c7f225a80b14b2a161d6b7f9a61677da7a80ced",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x70f1a7d2cd490b640676d5e31470bcbe16fef40087de1af8b6f6e44e299b5784",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xea649be6ea3447f3c145a173883c68a89faf4edda1f85109b76baa93b3ee7a87",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x32903694997a5c09afee30904970f9fab2a5fb4ec45f572f194341185574f1a4",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xc586d15be76278848a26c761c2fcf70f8cebca71815cfab83e656ff5c6ec13a9",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9ad06dd68a4075ba2ac99fc138f7c1506f236851233b0ec79a130a348af19a82",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x3d675f1c88099a57c12abca632cf926be1bf430125168321de06234e9930fe1a",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x5969cbb46aca5319b19e19a3c6f63de098950b675bf268f30f4d035508da1957",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xa1b9197a70166b28f64766c468da80dbfced6e64efac9b80d87cac9c0e1540aa",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x6f062353f0d41ff7d4ceda7cf424c60eed845754b78c111317e72f917b3f1089",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1d916047bbca1be9808076a0590c17ff113fb92986a4b4bc7f0f962642158827",
+"topic": "Other",
+"subcategory": null,
+"basis": "panel 3/3 R9"
+},
+{
+"condition_id": "0x17902b9490c6a73152772316b4705935c5c6801ba269f2afc81686532e34fb9a",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xcacd424332319971356c757c025b45a4eb5643b919fb3bd2f84051afea599b13",
+"topic": "Geopolitics",
+"subcategory": "War/Ceasefire/Diplomacy",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xdd3d104667774208eae2239f576122ecdd1c04ba81cc14d26d22a36b33887977",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x9eb7ac1524fdacb46ceb8758454f0004c7b117eae76e6295852643644bb862c1",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x4ede078cae84a5877ac32d7fb48811e5c23549a1904b7df06ff7935c6d79d831",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xb81d9a63be774f9c3db1b96af4d0e869128643a29c6eb922c0d8a20137880120",
+"topic": "Sports",
+"subcategory": "Team-Sport Game Markets",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x06ea9c02b4c6a2f7f07f78e21411bd367636564edb27c72cd038b556aada1a64",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0xd4e77ba6f29fc093509d24f508631abd445ecf506bbdc9c4c80e60256a318527",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x24258776d0a926b4550b0f213267b95ba0a7741fc972d0b3c2b5f6bf8ced2c50",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x2a28cc33492516116690a20d290f9922acbe0ed367ff52a6082154474c7f2971",
+"topic": "Economy",
+"subcategory": "Monetary Policy (Fed)",
+"basis": "blind+vote agree"
+},
+{
+"condition_id": "0x1dd7704a6d05cca078564bc0bac541261425bc9252acc5634639f5161daf45f9",
+"topic": "Geopolitics",
+"subcategory": "Regime & Leadership Stability",
+"basis": "panel 3/3 R1"
+},
+{
+"condition_id": "0x502a94e5c525766d5ee7f16c6568131ba1b2cbadb69c703af05a6ef00336ed64",
+"topic": "Politics",
+"subcategory": "Elections",
+"basis": "blind+vote agree"
+}
+]
