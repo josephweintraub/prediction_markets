@@ -1,0 +1,32 @@
+{
+  "_comment": "Explicit v2 label semantics vs the baked v1 map, plus documented resolutions of every curated entry whose `primary` field held an instruction instead of a category. Authoritative tag->category values remain final_tag_map_v1.json except where changed here.",
+  "topic_changes": {
+    "_rule": "All tags with prim_cat=='Iran' in final_tag_map_v1.json vote 'Geopolitics' for the topic column in v2. The v1 Iran tag-precedence (any %Iran% tag forces category Iran) is REMOVED for topic.",
+    "iran_cluster_to": "Geopolitics"
+  },
+  "event_family_rules": {
+    "_rule": "event_family is a separate column derived from tag clusters; a market can be topic=Geopolitics AND event_family=Iran.",
+    "Iran": ["tag prim_cat=='Iran' in v1 map", "tag contains 'Iran'", "Khamenei", "Regional Spillover"]
+  },
+  "precedence_retained": {
+    "Mentions": "Mentions tag -> category Mentions (user-confirmed: a coherent market type); mechanic='mentions' also set."
+  },
+  "instruction_valued_curated_entries_resolutions": {
+    "Big Tech": {"v1_resolution": "Finance", "curated_note": "down-weight vs Finance for valuation questions"},
+    "Twitter": {"v1_resolution": "Politics", "curated_note": "lower priority than Politics"},
+    "Fed": {"v1_resolution": "Politics", "curated_note": "Politics in nomination context; notes argued Economy for rate decisions", "flag": "HAND_LOCK_REVIEW"},
+    "Fed Rates": {"v1_resolution": "Politics", "curated_note": "same as Fed", "flag": "HAND_LOCK_REVIEW"},
+    "Venezuela": {"v1_resolution": "Geopolitics", "curated_note": "Geopolitics for military context"},
+    "World": {"v1_resolution": "Geopolitics", "curated_note": "spans foreign elections (Politics) and conflict (Geopolitics)"},
+    "USA Election": {"v1_resolution": "Politics", "curated_note": "auto top_cat Mentions was a volume artifact"},
+    "Trade War": {"v1_resolution": "Economy", "curated_note": "US-China tariff/diplomacy; spans Economy"},
+    "Iran": {"v1_resolution": "Geopolitics (the bare 'Iran' tag)", "curated_note": "US-Iran conflict = Geopolitics; the Iran EVENT FAMILY is a v2 column, not a topic"},
+    "U.S. x Iran": {"v1_resolution": "Geopolitics"},
+    "Israel x Iran": {"v1_resolution": "Geopolitics"},
+    "Los Angeles": {"v1_resolution": "Politics", "curated_note": "corrected from Weather: samples are LA/California politics"},
+    "Tweet Markets": {"v1_resolution": "EXCLUDED (demoted to modifier, round-2 fix)"},
+    "Elon Tweets": {"v1_resolution": "EXCLUDED (demoted to modifier, round-2 fix)"},
+    "Science": {"v1_resolution": "EXCLUDED (routed to Other)"}
+  },
+  "abstain": {"margin_rule": "abstain=true when top-2 vote score ratio < 1.25 or only auto-mapped (uncurated) tags voted", "note": "threshold to be calibrated in the labels-v2 bake against the known-ambiguous validation set"}
+}

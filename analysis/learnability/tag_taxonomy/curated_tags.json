@@ -1,0 +1,2113 @@
+[
+ {
+  "tag": "Hide From New",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "UI flag (hide from New feed); sample questions are unrelated to the tag's meaning."
+ },
+ {
+  "tag": "Recurring",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (market recurs), not a subject."
+ },
+ {
+  "tag": "Crypto",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Crypto Prices",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Crypto price",
+  "note": null
+ },
+ {
+  "tag": "Sports",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Up or Down",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Market-mechanism flag (up-or-down direction), not a subject."
+ },
+ {
+  "tag": "Games",
+  "type": "ambiguous",
+  "primary": "Sports",
+  "subcategory": "Game matchups",
+  "note": "Generic head-to-head match tag spanning Sports + Esports; Sports dominant in samples."
+ },
+ {
+  "tag": "5M",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (5-minute candle), crypto up/down family."
+ },
+ {
+  "tag": "15M",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (15-minute candle)."
+ },
+ {
+  "tag": "Soccer",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Bitcoin",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Bitcoin",
+  "note": null
+ },
+ {
+  "tag": "Basketball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": null
+ },
+ {
+  "tag": "Ethereum",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Ethereum",
+  "note": null
+ },
+ {
+  "tag": "Solana",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Solana",
+  "note": null
+ },
+ {
+  "tag": "XRP",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "XRP",
+  "note": null
+ },
+ {
+  "tag": "Ripple",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "XRP",
+  "note": "Ripple = XRP token; duplicate of the XRP tag."
+ },
+ {
+  "tag": "Esports",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "NBA",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball (NBA)",
+  "note": null
+ },
+ {
+  "tag": "1H",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (1-hour candle)."
+ },
+ {
+  "tag": "Weather",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Politics",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Weekly",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (weekly), not a subject."
+ },
+ {
+  "tag": "Daily Temperature",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "Subject is weather temperature; 'Daily' is just the cadence."
+ },
+ {
+  "tag": "NCAA",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College",
+  "note": null
+ },
+ {
+  "tag": "Highest temperature",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "NCAA Basketball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College basketball",
+  "note": null
+ },
+ {
+  "tag": "Tennis",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Tennis",
+  "note": null
+ },
+ {
+  "tag": "Multi Strikes",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Mechanism flag (multiple strike prices per market)."
+ },
+ {
+  "tag": "Culture",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Rewards Automation 50 4.5 50 Deprec",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Deprecated liquidity-rewards config flag; sampled Elon-tweet markets are incidental."
+ },
+ {
+  "tag": "Finance",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Dogecoin",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Dogecoin",
+  "note": null
+ },
+ {
+  "tag": "counter strike 2",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Counter-Strike",
+  "note": null
+ },
+ {
+  "tag": "BNB",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "BNB",
+  "note": null
+ },
+ {
+  "tag": "Trump",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Trump",
+  "note": "Auto top_cat 'Mentions' wrong; tags Trump-figure markets, predominantly political/elections."
+ },
+ {
+  "tag": "hype",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "HYPE (Hyperliquid)",
+  "note": "Not a UI 'hype' flag despite the name \u2014 samples are HYPE/Hyperliquid token up/down markets."
+ },
+ {
+  "tag": "Mentions",
+  "type": "category",
+  "primary": "Mentions",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "Equities",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Equities",
+  "note": null
+ },
+ {
+  "tag": "Stocks",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Daily",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (daily up/down), not a subject."
+ },
+ {
+  "tag": "Neg Risk",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "negRisk mechanism flag."
+ },
+ {
+  "tag": "league of legends",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "League of Legends",
+  "note": null
+ },
+ {
+  "tag": "NHL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Hockey (NHL)",
+  "note": null
+ },
+ {
+  "tag": "MLB",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Baseball (MLB)",
+  "note": null
+ },
+ {
+  "tag": "NFL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Football (NFL)",
+  "note": null
+ },
+ {
+  "tag": "Dota 2",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Dota 2",
+  "note": null
+ },
+ {
+  "tag": "Hockey",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Hockey",
+  "note": null
+ },
+ {
+  "tag": "Today \ud83d\ude80",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "UI/cadence flag ('Today'), crypto up/down family."
+ },
+ {
+  "tag": "Hit Price",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Market-type flag (price-target 'will reach' markets), not a subject."
+ },
+ {
+  "tag": "4H",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (4-hour candle)."
+ },
+ {
+  "tag": "World",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "International",
+  "note": "International-affairs tag; spans foreign elections (Politics) and conflict (Geopolitics).",
+  "fixed": true
+ },
+ {
+  "tag": "Tweet Markets",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elon tweet counts",
+  "note": "Elon tweet-count market family; not Mentions (say-a-word); Tech also plausible (X/Musk).",
+  "fixed": true
+ },
+ {
+  "tag": "Geopolitics",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "EPL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer (EPL)",
+  "note": null
+ },
+ {
+  "tag": "Movies",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Movies",
+  "note": null
+ },
+ {
+  "tag": "Premier League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer (EPL)",
+  "note": null
+ },
+ {
+  "tag": "CFB",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College football",
+  "note": null
+ },
+ {
+  "tag": "Awards",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Awards",
+  "note": "Spans entertainment (Nobel) and sports (NFL MVP) awards; defaults to Culture."
+ },
+ {
+  "tag": "Tech",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": null,
+  "note": null
+ },
+ {
+  "tag": "baseball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Baseball",
+  "note": null
+ },
+ {
+  "tag": "Valorant",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Valorant",
+  "note": null
+ },
+ {
+  "tag": "All",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Generic catch-all / UI bucket spanning all subjects, not a subject area."
+ },
+ {
+  "tag": "La Liga",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Economy",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "Interest rates / Fed",
+  "note": "Fed rate decisions = macro Economy, not Finance."
+ },
+ {
+  "tag": "New York City",
+  "type": "ambiguous",
+  "primary": "Weather",
+  "subcategory": null,
+  "note": "Location tag: dominant usage is daily NYC temperature (Weather) but also carries the NYC mayoral race (Politics); samples shown are the political ones."
+ },
+ {
+  "tag": "Global Elections",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Elections",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Rewards Automation 100 4.5 50 (1) Deprec",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Liquidity-rewards automation config flag, deprecated; a mechanism, not a subject."
+ },
+ {
+  "tag": "EFL Championship",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Golf",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Golf",
+  "note": null
+ },
+ {
+  "tag": "sea",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "Slug for Serie A (Italian soccer) per samples (Juventus/Inter/Milan)."
+ },
+ {
+  "tag": "Stock Prices",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Big Tech",
+  "type": "category",
+  "primary": "down-weight vs Finance for valuation questions",
+  "subcategory": null,
+  "note": "Tech-giant subject; samples are largest-company-by-market-cap markets that overlap Finance.",
+  "fixed": true
+ },
+ {
+  "tag": "Monthly",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence flag (monthly recurring markets); samples are Bitcoin monthly price targets."
+ },
+ {
+  "tag": "Cricket",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Cricket",
+  "note": null
+ },
+ {
+  "tag": "Trump Presidency",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Trump administration",
+  "note": null
+ },
+ {
+  "tag": "bundesliga",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "London",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "MLS",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Ligue 1",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "PGA TOUR",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Golf",
+  "note": null
+ },
+ {
+  "tag": "Formula 1",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Motorsport",
+  "note": null
+ },
+ {
+  "tag": "f1",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Motorsport",
+  "note": null
+ },
+ {
+  "tag": "Music",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Music",
+  "note": null
+ },
+ {
+  "tag": "UFC",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "MMA",
+  "note": null
+ },
+ {
+  "tag": "Middle East",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Middle East",
+  "note": null
+ },
+ {
+  "tag": "Argentina Primera Divisi\u00f3n",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "UCL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "UEFA Champions League."
+ },
+ {
+  "tag": "Daily-Close",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Cadence/mechanism flag (daily up-or-down close); samples are Bitcoin daily up/down."
+ },
+ {
+  "tag": "USA Election",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": "Auto top_cat 'Mentions' is a volume artifact; clearly US presidential elections.",
+  "fixed": true
+ },
+ {
+  "tag": "PGA",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Golf",
+  "note": null
+ },
+ {
+  "tag": "CWBB",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": "College women's basketball."
+ },
+ {
+  "tag": "La Liga 2",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Elon Musk",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "Tesla / Elon Musk",
+  "note": "Person tag centered on Tesla/Tech; also spans Politics (DOGE) and Mentions (tweet-count)."
+ },
+ {
+  "tag": "UEL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "UEFA Europa League."
+ },
+ {
+  "tag": "Iran",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Iran",
+  "note": "Auto top_cat 'Iran' is not a target category; US\u2013Iran conflict/ceasefire = Geopolitics.",
+  "fixed": true
+ },
+ {
+  "tag": "2026 Winter Games",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Olympics",
+  "note": null
+ },
+ {
+  "tag": "Brazil Serie A",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "football",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "American football",
+  "note": "Tag 'football' = American football (NFL) per samples, not soccer."
+ },
+ {
+  "tag": "Israel",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Israel",
+  "note": null
+ },
+ {
+  "tag": "Liga MX",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "temperature",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Serie B",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Finance Updown",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Commodities",
+  "note": "Finance up/down price-direction product; samples are WTI crude oil."
+ },
+ {
+  "tag": "Eredivisie",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "CBB",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": "College basketball (men's), NCAA."
+ },
+ {
+  "tag": "Business",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": "Broad business tag; samples span Economy (Fed), Tech/Politics (TikTok ban), Finance (market cap)."
+ },
+ {
+  "tag": "Saudi Professional League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Primeira Liga",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Indicies",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stock indices",
+  "note": "Misspelled 'Indices'; S&P 500 up/down markets."
+ },
+ {
+  "tag": "S\u00fcper Lig",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "nyc",
+  "type": "ambiguous",
+  "primary": "Weather",
+  "subcategory": null,
+  "note": "Location tag: dominant usage is daily NYC temperature (Weather) but also the 2025 NYC mayoral election (Politics); samples shown are the political ones."
+ },
+ {
+  "tag": "AI",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "AI",
+  "note": "AI/tech subject; samples are AI-company market-cap and Tesla FSD."
+ },
+ {
+  "tag": "March Madness",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": "NCAA men's basketball tournament."
+ },
+ {
+  "tag": "YouTube",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Creators / video views",
+  "note": "Video-view-count markets for creators/events (MrBeast, Super Bowl halftime)."
+ },
+ {
+  "tag": "Bundesliga 2",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Honor of Kings",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Honor of Kings",
+  "note": null
+ },
+ {
+  "tag": "Seoul",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Ligue 2",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "International Cricket",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Cricket",
+  "note": null
+ },
+ {
+  "tag": "netflix",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Streaming/TV",
+  "note": "Netflix content/show-ranking markets; distinct from NFLX stock tag (Finance)."
+ },
+ {
+  "tag": "Atlanta",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Seattle",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Grand Prix",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Formula 1",
+  "note": null
+ },
+ {
+  "tag": "dallas",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Toronto",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Buenos Aires",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Commodities",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Commodities",
+  "note": "Crude oil / commodity price targets."
+ },
+ {
+  "tag": "Champions League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "GOOGL",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "NVDA",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Depreciated4",
+  "type": "structural",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": "Internal deprecated-version admin flag (not a subject); underlying markets are stock up/down."
+ },
+ {
+  "tag": "TSLA",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Meta",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": "The stock (Mag 7 / $-target markets), not metaverse."
+ },
+ {
+  "tag": "Olympics",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Olympics",
+  "note": null
+ },
+ {
+  "tag": "AMZN",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Rewards 20, 4.5, 50",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Rewards/liquidity-incentive parameter flag (not a subject); mixed underlying content."
+ },
+ {
+  "tag": "Australian A-League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Depreciated2",
+  "type": "structural",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": "Internal deprecated-version admin flag (not a subject); underlying markets are stock price targets."
+ },
+ {
+  "tag": "Fifa Friendly",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "MSFT",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "Japan J2 League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Top Netflix",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Streaming/TV",
+  "note": "Top-Netflix-show ranking markets."
+ },
+ {
+  "tag": "AAPL",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": "Apple stock; distinct from 'Apple' product tag (Tech)."
+ },
+ {
+  "tag": "Today's Sports",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": null,
+  "note": "Daily-feed UI label but every market is Sports; mapped to subject Sports."
+ },
+ {
+  "tag": "Science",
+  "type": "category",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Science (climate/space/aliens); no native Science bucket and content too mixed for Weather/Tech."
+ },
+ {
+  "tag": "Pre-Market",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Token launch",
+  "note": "Crypto token pre-launch (FDV/airdrop), NOT equities pre-market."
+ },
+ {
+  "tag": "World Elections",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Miami",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; predominantly weather temps with some NBA (Heat) contamination in samples."
+ },
+ {
+  "tag": "Apple",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "Consumer hardware",
+  "note": "Product launches (iPhone/Vision Pro); distinct from AAPL stock tag (Finance)."
+ },
+ {
+  "tag": "Pyth Finance",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Commodities",
+  "note": "Pyth-oracle-priced commodities (WTI crude / natural gas)."
+ },
+ {
+  "tag": "Scottish Premiership",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Auckland",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "NZ city weather (samples surface Wellington temps)."
+ },
+ {
+  "tag": "Ankara",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "CS2",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Counter-Strike",
+  "note": "Counter-Strike 2 esports tournaments."
+ },
+ {
+  "tag": "Chicago",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "MrBeast",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Creators/YouTube",
+  "note": null
+ },
+ {
+  "tag": "App Store",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "App rankings",
+  "note": "App-store ranking markets (ChatGPT, Coinbase, etc.)."
+ },
+ {
+  "tag": "Japan J League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "FA Cup",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Celebrities",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Celebrities",
+  "note": "Celebrity behavior + search-trend props on public figures."
+ },
+ {
+  "tag": "PLTR",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": null
+ },
+ {
+  "tag": "TSA",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "Travel",
+  "note": "TSA passenger throughput (travel-volume econ indicator)."
+ },
+ {
+  "tag": "Taiki Maeda",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Dogecoin",
+  "note": "Creator-named tag; all markets are Dogecoin price -> Crypto (not Finance)."
+ },
+ {
+  "tag": "Chess",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Chess",
+  "note": "Chess as a mind sport; World Championship markets."
+ },
+ {
+  "tag": "Ukraine",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Russia-Ukraine war",
+  "note": "Ceasefire/war markets -> Geopolitics."
+ },
+ {
+  "tag": "Paris",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Earnings",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Earnings",
+  "note": "'Beat quarterly earnings' markets."
+ },
+ {
+  "tag": "Macro Indicators",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "Macro",
+  "note": "Inflation / GDP indicators."
+ },
+ {
+  "tag": "NFLX",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": "Netflix stock; distinct from 'netflix'/'Top Netflix' content tags (Culture)."
+ },
+ {
+  "tag": "Europa Conference League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "AHL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Hockey",
+  "note": "American Hockey League."
+ },
+ {
+  "tag": "OPEN",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": "Opendoor (OPEN) stock price."
+ },
+ {
+  "tag": "Monthly Hit",
+  "type": "structural",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": "Monthly price-target cadence/mechanism flag (not a subject); underlying markets are stock/asset reach-target."
+ },
+ {
+  "tag": "Earnings Calls",
+  "type": "category",
+  "primary": "Mentions",
+  "subcategory": "Earnings-call mentions",
+  "note": "'Will company say <word> during earnings call' -> Mentions; distinct from 'Earnings' (Finance)."
+ },
+ {
+  "tag": "Oscars",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Awards",
+  "note": null
+ },
+ {
+  "tag": "OpenAI",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "AI",
+  "note": null
+ },
+ {
+  "tag": "Sao Paulo",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "U.S. Politics",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "US politics",
+  "note": null
+ },
+ {
+  "tag": "K-league",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "Korean soccer league."
+ },
+ {
+  "tag": "Chinese Super League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Depreciated1",
+  "type": "structural",
+  "primary": "Finance",
+  "subcategory": null,
+  "note": "Deprecated/admin tag (misspelled 'Depreciated'); current samples are weekly stock price-range markets (Opendoor)."
+ },
+ {
+  "tag": "Twitter",
+  "type": "category",
+  "primary": "lower priority than Politics",
+  "subcategory": "Twitter/X",
+  "note": "Elon tweet-count and X-platform markets; tweet counts are not word 'Mentions'.",
+  "fixed": true
+ },
+ {
+  "tag": "Gaza",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Middle East",
+  "note": null
+ },
+ {
+  "tag": "Lowest temperature",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "US Election",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Russian Premier League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "internet",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Internet",
+  "note": "Creators (MrBeast) + platform bans (TikTok); spans into Tech."
+ },
+ {
+  "tag": "Denmark Superliga",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "NFL Playoffs",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": null
+ },
+ {
+  "tag": "Breaking News",
+  "type": "structural",
+  "primary": "Politics",
+  "subcategory": null,
+  "note": "Editorial breaking-news feed flag spanning politics/finance/geopolitics; not a single subject."
+ },
+ {
+  "tag": "Call of Duty",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Call of Duty",
+  "note": null
+ },
+ {
+  "tag": "Copa Libertadores",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Economic Policy",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "Fed Rates",
+  "note": "Fed/monetary-policy rate markets; classed Economy (macro) over Finance."
+ },
+ {
+  "tag": "NCAA CBB",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College Basketball",
+  "note": null
+ },
+ {
+  "tag": "Norway Eliteserien",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "box office",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Movies",
+  "note": null
+ },
+ {
+  "tag": "Kamala",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": "Election-margin/outcome markets, not word-'Mentions' despite high Mentions co-occurrence."
+ },
+ {
+  "tag": "Tesla",
+  "type": "ambiguous",
+  "primary": "Tech",
+  "subcategory": "Tesla",
+  "note": "Samples are FSD/Robotaxi product launches (Tech), but tag also carries heavy Tesla stock-price (Finance) markets."
+ },
+ {
+  "tag": "Europa League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Tokyo",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "Rainbow Six Siege",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Rainbow Six Siege",
+  "note": null
+ },
+ {
+  "tag": "Shanghai",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "Climate & Science",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Climate/Natural events",
+  "note": "Climate + natural disasters (earthquakes); mapped to Weather as closest fit (no Science category)."
+ },
+ {
+  "tag": "Munich",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "college football",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College Football",
+  "note": null
+ },
+ {
+  "tag": "NFL Draft",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": null
+ },
+ {
+  "tag": "FDV",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Token Launch",
+  "note": "Fully-diluted-valuation markets on new token launches."
+ },
+ {
+  "tag": "Lucknow",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "Hong Kong",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets (not politics)."
+ },
+ {
+  "tag": "Tel Aviv",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "Big Game",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": "'Big Game' = Super Bowl."
+ },
+ {
+  "tag": "Trump Cabinet",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Appointments",
+  "note": null
+ },
+ {
+  "tag": "Rugby",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Rugby",
+  "note": null
+ },
+ {
+  "tag": "College Basketball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College Basketball",
+  "note": null
+ },
+ {
+  "tag": "UEF Qualifiers",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "UEFA international (World Cup/Euro) qualifiers."
+ },
+ {
+  "tag": "Grok",
+  "type": "category",
+  "primary": "Tech",
+  "subcategory": "AI",
+  "note": "Tag is xAI's Grok but samples are 'best AI model' race markets."
+ },
+ {
+  "tag": "NYC Mayor",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Oil",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Commodities",
+  "note": "Crude-oil price markets; spans energy geopolitics."
+ },
+ {
+  "tag": "Best of 2025",
+  "type": "ambiguous",
+  "primary": "Culture",
+  "subcategory": "Year-end",
+  "note": "Year-end roundup spanning music/movies (Culture) plus biggest-company-by-market-cap (Finance)."
+ },
+ {
+  "tag": "Trade War",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "US-China",
+  "note": "US-China tariff/diplomacy markets; spans Economy.",
+  "fixed": true
+ },
+ {
+  "tag": "Epstein",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Epstein files",
+  "note": null
+ },
+ {
+  "tag": "NCAA Football",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "College Football",
+  "note": null
+ },
+ {
+  "tag": "singapore",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "Copa Sudamericana",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Grammys",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Awards",
+  "note": null
+ },
+ {
+  "tag": "WNBA",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": null
+ },
+ {
+  "tag": "Super Bowl",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": null
+ },
+ {
+  "tag": "Fantasy Football",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": "Fantasy NFL player-prop markets."
+ },
+ {
+  "tag": "Milan",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets (not soccer)."
+ },
+ {
+  "tag": "KHL",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Hockey",
+  "note": "Kontinental Hockey League."
+ },
+ {
+  "tag": "spotify",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Music",
+  "note": null
+ },
+ {
+  "tag": "Gov Shutdown",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Congress",
+  "note": "Govt shutdown + House Speaker votes; fiscal but driven by Congress (Politics)."
+ },
+ {
+  "tag": "Fed Rates",
+  "type": "category",
+  "primary": "Politics in nomination context",
+  "subcategory": "Fed Rates",
+  "note": "Fed interest-rate markets; classed Economy (macro) over Finance.",
+  "fixed": true
+ },
+ {
+  "tag": "Mobile Legends: Bang Bang",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "Mobile Legends",
+  "note": null
+ },
+ {
+  "tag": "Biden",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "US Politics",
+  "note": "Political-event markets despite high 'Mentions' co-occurrence."
+ },
+ {
+  "tag": "Warsaw",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "City tag; all samples are daily-temperature markets."
+ },
+ {
+  "tag": "League One",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "English League One (third-tier soccer)."
+ },
+ {
+  "tag": "Israel x Iran",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Middle East",
+  "note": "Auto top_cat 'Iran' is invalid; clearly Geopolitics (Israel/Iran/US conflict)."
+ },
+ {
+  "tag": "Los Angeles",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "California",
+  "note": "CORRECTED: auto top_cat Weather is wrong (dragged by city name); all samples are LA/California politics (mayor, Newsom, Trump/Marines protests)."
+ },
+ {
+  "tag": "Madrid",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Inflation",
+  "type": "category",
+  "primary": "Economy",
+  "subcategory": "Inflation",
+  "note": null
+ },
+ {
+  "tag": "U.S. x Iran",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Iran",
+  "note": "US-Iran conflict/ceasefire; top_cat 'Iran' is not a target category",
+  "fixed": true
+ },
+ {
+  "tag": "Canada",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": "Canadian PM/Liberal-leadership markets"
+ },
+ {
+  "tag": "Taipei",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Venezuela",
+  "type": "category",
+  "primary": "Geopolitics for military context",
+  "subcategory": "Venezuela",
+  "note": "US-Venezuela military engagement + Maduro regime markets",
+  "fixed": true
+ },
+ {
+  "tag": "Chongqing",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Approval",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Approval ratings",
+  "note": "Trump approval-rating markets"
+ },
+ {
+  "tag": "Beijing",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Chengdu",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Congress",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Congress",
+  "note": null
+ },
+ {
+  "tag": "NBA Playoffs",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": null
+ },
+ {
+  "tag": "Coupe de France",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Shenzhen",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "lol",
+  "type": "category",
+  "primary": "Esports",
+  "subcategory": "League of Legends",
+  "note": "LoL Worlds esports"
+ },
+ {
+  "tag": "Wuhan",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": "Mostly daily-temperature; one COVID-pandemic market is an outlier"
+ },
+ {
+  "tag": "UK",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "UK",
+  "note": "UK politics (Starmer, by-elections); top_cat Mentions is wrong"
+ },
+ {
+  "tag": "Houston",
+  "type": "ambiguous",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": "All 3 samples are Jimmy Butler/Rockets NBA-trade markets, but n_markets matches the daily-temperature weather-city cluster, so likely also Houston weather markets"
+ },
+ {
+  "tag": "Fed",
+  "type": "category",
+  "primary": "Politics in nomination context",
+  "subcategory": "Interest rates",
+  "note": "Fed rate decisions = monetary policy -> Economy, not Finance",
+  "fixed": true
+ },
+ {
+  "tag": "FIFA Club World Cup",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": null
+ },
+ {
+  "tag": "Mexico",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Mexico",
+  "note": "US anti-cartel operations -> Geopolitics; top_cat Weather is wrong"
+ },
+ {
+  "tag": "Pickleball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Pickleball",
+  "note": null
+ },
+ {
+  "tag": "Rewards 50, 4.5, 100 Deprec",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Liquidity-rewards-automation parameter flag (deprecated)"
+ },
+ {
+  "tag": "Rewards 50, 4.5, 20",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Liquidity-rewards-automation parameter flag"
+ },
+ {
+  "tag": "League Two",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "English football League Two"
+ },
+ {
+  "tag": "Reality TV",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "TV",
+  "note": null
+ },
+ {
+  "tag": "Denver",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "NVIDIA",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Stocks",
+  "note": "Stock-price markets (NVDA level/largest-company) -> Finance, not Tech"
+ },
+ {
+  "tag": "Today's Olympics",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Olympics",
+  "note": "'Today's' is a feed qualifier; content is Olympic events"
+ },
+ {
+  "tag": "San Fransisco",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Golden Globes",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Awards",
+  "note": null
+ },
+ {
+  "tag": "Austin",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Ukraine Premier Liha",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "Ukrainian Premier League football"
+ },
+ {
+  "tag": "PPA",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Pickleball",
+  "note": "PPA = Professional Pickleball Association"
+ },
+ {
+  "tag": "SPX",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "S&P 500",
+  "note": "Tag denotes the S&P 500 index; markets are up/down dailies"
+ },
+ {
+  "tag": "Boxing",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Boxing",
+  "note": null
+ },
+ {
+  "tag": "Super Bowl Props",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": "Super Bowl markets incl. ad/prop bets, anchored to the game -> Sports"
+ },
+ {
+  "tag": "South Korea",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": "South Korean presidential-election markets"
+ },
+ {
+  "tag": "Euroleague Basketball",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Basketball",
+  "note": null
+ },
+ {
+  "tag": "Depreciated3",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Deprecated housekeeping bucket (samples are stock-dip markets, but tag is not a subject)"
+ },
+ {
+  "tag": "Nov 4 Elections",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": "2025 NYC mayoral / Nov 4 election markets"
+ },
+ {
+  "tag": "strike",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Military strikes",
+  "note": "Military strikes (Iran/Israel/Lebanon/UAE), not labor or option strike; top_cat 'Iran'"
+ },
+ {
+  "tag": "2026 Pro Football Draft",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": "2026 NFL Draft"
+ },
+ {
+  "tag": "Primaries",
+  "type": "category",
+  "primary": "Politics",
+  "subcategory": "Elections",
+  "note": null
+ },
+ {
+  "tag": "Russia",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Russia-Ukraine",
+  "note": null
+ },
+ {
+  "tag": "Super Bowl LIX",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "NFL",
+  "note": "Includes ad props but anchored to the Super Bowl -> Sports"
+ },
+ {
+  "tag": "world affairs",
+  "type": "ambiguous",
+  "primary": "Geopolitics",
+  "subcategory": null,
+  "note": "Broad international catch-all; samples are foreign elections (Politics) + leadership exits (Xi out) -> spans Politics/Geopolitics"
+ },
+ {
+  "tag": "istanbul",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "Rogan",
+  "type": "category",
+  "primary": "Culture",
+  "subcategory": "Media",
+  "note": "Joe Rogan podcast appearances/endorsements, not say-a-word -> Culture, not Mentions; top_cat Mentions is wrong"
+ },
+ {
+  "tag": "Military Strikes",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Iran",
+  "note": "US forces entering Iran / military action; top_cat 'Iran' not a target category"
+ },
+ {
+  "tag": "China",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "China",
+  "note": "US-China relations, Taiwan invasion, TikTok ban -> Geopolitics"
+ },
+ {
+  "tag": "CAF",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": "Soccer",
+  "note": "CAF = Confederation of African Football"
+ },
+ {
+  "tag": "google",
+  "type": "ambiguous",
+  "primary": "Tech",
+  "subcategory": null,
+  "note": "Spans Google/Gemini AI release (Tech) and most-searched-person popularity markets (Culture)"
+ },
+ {
+  "tag": "Memecoins",
+  "type": "category",
+  "primary": "Crypto",
+  "subcategory": "Memecoins",
+  "note": null
+ },
+ {
+  "tag": "National League",
+  "type": "category",
+  "primary": "Sports",
+  "subcategory": null,
+  "note": "Conflates English football National League and MLB National League (NLCS/NLDS) -> both Sports"
+ },
+ {
+  "tag": "Gold",
+  "type": "category",
+  "primary": "Finance",
+  "subcategory": "Commodities",
+  "note": "Gold price markets"
+ },
+ {
+  "tag": "Rewards Automation 400, 4.5, 50 (1) Deprec",
+  "type": "structural",
+  "primary": "Other",
+  "subcategory": null,
+  "note": "Liquidity-rewards-automation parameter flag (deprecated)"
+ },
+ {
+  "tag": "Moscow",
+  "type": "category",
+  "primary": "Weather",
+  "subcategory": "Temperature",
+  "note": null
+ },
+ {
+  "tag": "SOTU",
+  "type": "category",
+  "primary": "Mentions",
+  "subcategory": "State of the Union",
+  "note": "Mostly 'will Trump say <word>' at the State of the Union -> Mentions; also some attendance markets (Politics)"
+ },
+ {
+  "tag": "Lebanon",
+  "type": "category",
+  "primary": "Geopolitics",
+  "subcategory": "Israel-Hezbollah",
+  "note": "Israel-Hezbollah ceasefire markets"
+ }
+]

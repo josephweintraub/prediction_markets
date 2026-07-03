@@ -1,0 +1,567 @@
+[
+ {
+  "primary": "Crypto",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Coin Price Targets",
+    "definition": "Markets on whether a major, liquid cryptocurrency (BTC, ETH, SOL, XRP/Ripple, BNB, DOGE) reaches, exceeds, or holds a price level or % move by a deadline; settled automatically from exchange/oracle price feeds.",
+    "tags": [
+     "Crypto Prices",
+     "Bitcoin",
+     "Ethereum",
+     "Solana",
+     "XRP",
+     "Ripple",
+     "BNB",
+     "Dogecoin"
+    ],
+    "flb_rationale": "Continuous, publicly observable underlying that is highly recurrent and tightly anchorable to spot price and implied vol, so it is well-calibrated with minimal FLB."
+   },
+   {
+    "name": "Memecoin Price Markets",
+    "definition": "Price/performance markets on low-cap, sentiment-driven memecoins (the long tail beyond liquid majors); same price-feed resolution but on assets with no fundamental anchor.",
+    "tags": [
+     "Memecoins"
+    ],
+    "flb_rationale": "No fundamental anchor plus extreme volatility makes outcomes far less learnable and longshot-dominated, so it is expected to show the strongest favorite-longshot overpricing in crypto."
+   },
+   {
+    "name": "Listings, Launches & Pre-Market (FDV)",
+    "definition": "Event and valuation markets on discrete crypto launch outcomes: exchange listings, token generation events, and pre-market or fully-diluted-valuation (FDV) levels at launch, rather than ongoing spot price.",
+    "tags": [
+     "Pre-Market",
+     "FDV",
+     "hype"
+    ],
+    "flb_rationale": "Resolves on one-off listing/launch events and launch valuations (often announcement- or discretion-driven), not a recurrent observable price, so it is far less anchorable and learnable than spot-price markets."
+   }
+  ]
+ },
+ {
+  "primary": "Sports",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Team-Sport Game Markets",
+    "definition": "Head-to-head moneyline/spread/total markets on individual team-sport games and cup/playoff ties (soccer, basketball, football, hockey, baseball, cricket, rugby) across pro and college leagues.",
+    "flb_rationale": "Two-team games on dense, recurring schedules with deep liquidity and point-spread anchors \u2014 the canonical, well-calibrated FLB baseline (Sports slope ~1.0).",
+    "tags": [
+     "Soccer",
+     "Basketball",
+     "NBA",
+     "NCAA",
+     "NCAA Basketball",
+     "NHL",
+     "MLB",
+     "NFL",
+     "Hockey",
+     "EPL",
+     "Premier League",
+     "CFB",
+     "baseball",
+     "La Liga",
+     "EFL Championship",
+     "Cricket",
+     "bundesliga",
+     "MLS",
+     "Ligue 1",
+     "Argentina Primera Divisi\u00f3n",
+     "UCL",
+     "CWBB",
+     "La Liga 2",
+     "UEL",
+     "Brazil Serie A",
+     "football",
+     "Liga MX",
+     "Serie B",
+     "Eredivisie",
+     "CBB",
+     "Saudi Professional League",
+     "Primeira Liga",
+     "S\u00fcper Lig",
+     "March Madness",
+     "Bundesliga 2",
+     "Ligue 2",
+     "International Cricket",
+     "Champions League",
+     "Australian A-League",
+     "Fifa Friendly",
+     "Japan J2 League",
+     "Scottish Premiership",
+     "Japan J League",
+     "FA Cup",
+     "Europa Conference League",
+     "AHL",
+     "K-league",
+     "Chinese Super League",
+     "Russian Premier League",
+     "Denmark Superliga",
+     "NFL Playoffs",
+     "Copa Libertadores",
+     "NCAA CBB",
+     "Norway Eliteserien",
+     "Europa League",
+     "college football",
+     "Big Game",
+     "Rugby",
+     "College Basketball",
+     "UEF Qualifiers",
+     "NCAA Football",
+     "Copa Sudamericana",
+     "WNBA",
+     "Super Bowl",
+     "KHL",
+     "League One",
+     "NBA Playoffs",
+     "Coupe de France",
+     "FIFA Club World Cup",
+     "League Two",
+     "Ukraine Premier Liha",
+     "Euroleague Basketball",
+     "Super Bowl LIX",
+     "CAF",
+     "National League"
+    ]
+   },
+   {
+    "name": "Individual Head-to-Head (combat & racquet)",
+    "definition": "One-athlete-vs-one-athlete match markets \u2014 tennis, boxing, MMA/UFC, chess, and pickleball.",
+    "flb_rationale": "Outcomes ride on a single athlete's form/health with lumpier, less-frequent matchups and casual 'puncher's-chance' money on underdogs, driving stronger longshot overpricing than mean-reverting team rosters.",
+    "tags": [
+     "Tennis",
+     "UFC",
+     "Boxing",
+     "Chess",
+     "Pickleball",
+     "PPA"
+    ]
+   },
+   {
+    "name": "Field / Outright Winner (motorsport & golf)",
+    "definition": "'Win the event/field' markets among many simultaneous competitors \u2014 golf (PGA) and motor racing (F1/Grand Prix).",
+    "flb_rationale": "Dozens of entrants create many extreme longshots against one big favorite \u2014 the high-cardinality structure where longshot overbetting (the strongest FLB) is mechanically largest.",
+    "tags": [
+     "Golf",
+     "PGA",
+     "PGA TOUR",
+     "Formula 1",
+     "f1",
+     "Grand Prix"
+    ]
+   },
+   {
+    "name": "Olympics & Rare Multi-Sport Events",
+    "definition": "Infrequent global multi-sport competitions \u2014 Summer/Winter Olympics and Winter Games markets.",
+    "flb_rationale": "Every-few-years, novel fields with sparse priors and heavy national/casual money mean low learnability and more erratic, typically stronger FLB than dense league play.",
+    "tags": [
+     "2026 Winter Games",
+     "Olympics",
+     "Today's Olympics"
+    ]
+   },
+   {
+    "name": "Props, Drafts & Fantasy (non-game outcomes)",
+    "definition": "Markets not resolved by a game winner \u2014 player/stat props, draft order/selections, and fantasy outcomes.",
+    "flb_rationale": "Resolution is on player stats or draft order rather than a scoreline, with weaker price anchors and thinner priors, giving different calibration than game moneylines.",
+    "tags": [
+     "Super Bowl Props",
+     "NFL Draft",
+     "2026 Pro Football Draft",
+     "Fantasy Football"
+    ]
+   }
+  ]
+ },
+ {
+  "primary": "Esports",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "MOBA (Team Strategy)",
+    "definition": "Match and tournament outcomes for 5v5 multiplayer-online-battle-arena titles played in structured, mostly franchised league circuits (Worlds/MSI, The International, etc.), resolved by best-of-3/best-of-5 series result.",
+    "tags": [
+     "league of legends",
+     "lol",
+     "Dota 2",
+     "Honor of Kings",
+     "Mobile Legends: Bang Bang"
+    ],
+    "flb_rationale": "Long Bo3/Bo5 series and stable franchised rosters give low per-match variance and high learnability, so favorites are reliably priced and longshot overpricing is muted."
+   },
+   {
+    "name": "Tactical / FPS Shooters",
+    "definition": "Match outcomes for round- and map-based first-person/tactical shooters (defuse, objective, and respawn modes) in Major/circuit play, resolved by best-of map series.",
+    "tags": [
+     "counter strike 2",
+     "CS2",
+     "Valorant",
+     "Call of Duty",
+     "Rainbow Six Siege"
+    ],
+    "flb_rationale": "High round/map-level variance and upset-prone Bo1/Bo3 maps make outcomes noisier and harder to anchor, producing stronger longshot overpricing than MOBAs."
+   }
+  ]
+ },
+ {
+  "primary": "Weather",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Daily Temperature",
+    "definition": "Markets resolving on a single calendar day's measured temperature - the daily high or low at a specific city's weather station - via an objective next-day meteorological reading (typically bucketed/threshold outcomes around a forecastable value). The many city tags and the high/low/temperature type tags are all instances of this one mechanism, not separate FLB buckets.",
+    "flb_rationale": "Daily recurrence + tight forecast/climatology anchoring + automated objective resolution make these the most learnable markets on the platform, so FLB should be minimal and uniform across cities and high-vs-low.",
+    "tags": [
+     "Weather",
+     "Daily Temperature",
+     "Highest temperature",
+     "temperature",
+     "Lowest temperature",
+     "London",
+     "Seoul",
+     "Atlanta",
+     "Seattle",
+     "dallas",
+     "Toronto",
+     "Buenos Aires",
+     "Miami",
+     "Auckland",
+     "Ankara",
+     "Chicago",
+     "Paris",
+     "Sao Paulo",
+     "Tokyo",
+     "Shanghai",
+     "Munich",
+     "Lucknow",
+     "Hong Kong",
+     "Tel Aviv",
+     "singapore",
+     "Milan",
+     "Warsaw",
+     "Madrid",
+     "Taipei",
+     "Chongqing",
+     "Beijing",
+     "Chengdu",
+     "Shenzhen",
+     "Wuhan",
+     "Denver",
+     "San Fransisco",
+     "Austin",
+     "istanbul",
+     "Moscow"
+    ]
+   },
+   {
+    "name": "Climate & Science",
+    "definition": "Long-horizon climate and earth-science propositions - annual or seasonal temperature records, climate milestones, and science events - rather than a single day's station reading.",
+    "flb_rationale": "Long horizon, low recurrence, and weaker anchoring make these far less learnable than daily-temperature markets, so expect stronger / qualitatively different FLB.",
+    "tags": [
+     "Climate & Science"
+    ]
+   }
+  ]
+ },
+ {
+  "primary": "Politics",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Elections",
+    "definition": "Markets resolving on who wins a scheduled election, primary, or party nomination (and seat/margin counts) by official vote tally on a fixed date \u2014 US and international races, federal to mayoral.",
+    "tags": [
+     "Global Elections",
+     "Elections",
+     "USA Election",
+     "World Elections",
+     "US Election",
+     "Nov 4 Elections",
+     "Primaries",
+     "NYC Mayor",
+     "Canada",
+     "South Korea",
+     "UK",
+     "Kamala"
+    ],
+    "flb_rationale": "Vote-tally resolution on a fixed date with dense polling/market priors and recurrence across cycles and geographies \u2014 the most anchorable, best-calibrated political markets, so the weakest FLB."
+   },
+   {
+    "name": "Legislation & Government Action",
+    "definition": "Markets resolving on official government/institutional action \u2014 bill passage, votes, government shutdowns, budget/debt actions, and control-of-chamber procedural outcomes.",
+    "tags": [
+     "Gov Shutdown",
+     "Congress"
+    ],
+    "flb_rationale": "Resolve by procedural government action with negotiated/open timing and deadline brinkmanship \u2014 weaker priors than elections and longshot probability spikes near shutdown/passage deadlines."
+   },
+   {
+    "name": "Appointments & Confirmations",
+    "definition": "Markets on who is nominated, appointed, or confirmed to a government position (cabinet, agency heads, picks) \u2014 a discrete personnel decision over a field of candidates.",
+    "tags": [
+     "Trump Cabinet"
+    ],
+    "flb_rationale": "Winner-take-all over a large insider-/rumor-driven candidate field (often negRisk multi-outcome) \u2014 thin public priors and many low-probability longshots drive strong FLB."
+   },
+   {
+    "name": "Scandals, Legal & Political Events",
+    "definition": "Markets on one-off news/legal events around political figures \u2014 indictments, resignations, pardons, court outcomes, and document revelations (e.g., Epstein files).",
+    "tags": [
+     "Epstein"
+    ],
+    "flb_rationale": "Idiosyncratic one-shot events with no recurrence and thin priors \u2014 hard to anchor, the classic strong-FLB longshot bucket."
+   },
+   {
+    "name": "Approval & Polling Metrics",
+    "definition": "Markets resolving on a continuous published political metric crossing a numeric threshold by a date \u2014 approval ratings and polling averages.",
+    "tags": [
+     "Approval"
+    ],
+    "flb_rationale": "Resolve by a mean-reverting published metric crossing a numeric threshold (the political analog of a crypto price target) \u2014 continuous and highly anchorable, a mechanism distinct from one-shot event resolution."
+   }
+  ]
+ },
+ {
+  "primary": "Culture",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Awards & Voted Outcomes",
+    "definition": "Markets resolving on the winner of an awards show or televised competition decided by an academy/jury/audience vote on a scheduled date, chosen from a fixed slate of nominees or contestants (e.g., Best Picture, Album of the Year, reality-show season winner).",
+    "tags": [
+     "Awards",
+     "Oscars",
+     "Grammys",
+     "Golden Globes",
+     "Reality TV"
+    ],
+    "flb_rationale": "Discrete winner-take-all among a known field decided by a voting body; pundit consensus makes frontrunners salient and dark-horse nominees the longshots - classic annually-recurrent, learnable awards-market FLB."
+   },
+   {
+    "name": "Box Office & Streaming Charts",
+    "definition": "Markets resolving on a quantitative film/TV/music performance metric crossing a threshold or topping a chart, sourced from a public data provider (opening-weekend or total gross, Netflix Top 10 rank, Spotify chart position/streams).",
+    "tags": [
+     "box office",
+     "netflix",
+     "Top Netflix",
+     "spotify"
+    ],
+    "flb_rationale": "Continuous metric thresholds anchored to professionally-tracked, short-horizon data (tracking, pre-sales, early chart movement) - highly forecastable and efficiently priced, so weaker/different FLB than the vote- or event-based siblings."
+   },
+   {
+    "name": "Creator & Internet Metrics",
+    "definition": "Markets resolving on a social-media creator's milestone or platform metric - subscriber/view/follower counts, video performance, or internet-culture milestones (e.g., MrBeast subscriber targets, YouTube view records).",
+    "tags": [
+     "YouTube",
+     "MrBeast",
+     "internet"
+    ],
+    "flb_rationale": "Same threshold mechanism as box office but long-horizon with viral, fat-tailed dynamics and round-number 'milestone' framing - longshot targets are systematically overbet, giving a distinctly lower-learnability, stronger-FLB profile."
+   },
+   {
+    "name": "Celebrity Events",
+    "definition": "Markets resolving on idiosyncratic real-world events about public figures - relationships, statements, appearances, scandals, or legal/health news (e.g., breakups, Joe Rogan podcast guests or announcements).",
+    "tags": [
+     "Celebrities",
+     "Rogan"
+    ],
+    "flb_rationale": "One-off, headline-driven events with low recurrence and weak anchoring (like political scandals) - hard-to-price tail outcomes draw heavy longshot speculation, distinct from metric- and vote-resolved siblings."
+   }
+  ]
+ },
+ {
+  "primary": "Finance",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Equity Price Markets",
+    "definition": "Markets resolving on whether an individual company's stock price reaches, exceeds, or stays within a level/threshold (or range) by a date \u2014 a continuous price compared to a fixed strike, resolved off the closing/settlement price.",
+    "tags": [
+     "Equities",
+     "Stocks",
+     "Stock Prices",
+     "GOOGL",
+     "NVDA",
+     "NVIDIA",
+     "TSLA",
+     "Meta",
+     "AMZN",
+     "MSFT",
+     "AAPL",
+     "PLTR",
+     "NFLX",
+     "OPEN"
+    ],
+    "flb_rationale": "Single-name stocks carry idiosyncratic jump/news risk and concentrated retail/meme attention, fattening the longshot (deep-OTM strike) tail \u2014 expect the steepest FLB in Finance."
+   },
+   {
+    "name": "Index & Commodity Price Markets",
+    "definition": "Markets resolving on the level/threshold of a broad equity index or a commodity (e.g., S&P 500, gold, oil) by a date \u2014 the same price-vs-strike mechanism as equities but on deep, institutionally-arbitraged macro underlyings.",
+    "tags": [
+     "Indicies",
+     "Commodities",
+     "SPX",
+     "Gold",
+     "Oil"
+    ],
+    "flb_rationale": "Macro benchmarks are among the most efficient, deeply-hedged underlyings, so longshot strikes price tighter \u2014 expect materially flatter FLB than single-name equities (efficiency/learnability split, like sports-by-league)."
+   },
+   {
+    "name": "Up/Down Directional Markets",
+    "definition": "Short-horizon binary 'will X be up or down / above-below the open' directional markets, typically daily/intraday, resolved by a price oracle (Pyth) rather than a chosen strike.",
+    "tags": [
+     "Finance Updown",
+     "Pyth Finance"
+    ],
+    "flb_rationale": "Symmetric ~50/50 props with no real longshot tail and maximal recurrence/anchorability (oracle-resolved, hyper-frequent) \u2014 near-efficient, serving as the near-flat FLB benchmark within Finance."
+   },
+   {
+    "name": "Earnings & Corporate Events",
+    "definition": "Markets resolving on a discrete corporate event \u2014 quarterly earnings beat/miss, EPS/revenue/guidance, plus M&A, bankruptcy, leadership changes, and IPOs \u2014 rather than a continuous price path.",
+    "tags": [
+     "Earnings",
+     "Business"
+    ],
+    "flb_rationale": "Event-driven and low-recurrence (quarterly/one-off), anchored to analyst consensus rather than a watchable price, giving a discrete-surprise resolution with different learnability than continuous-price markets."
+   }
+  ]
+ },
+ {
+  "primary": "Mentions",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Earnings Call Mentions",
+    "definition": "Markets on whether, or how many times, a specific word/phrase is said by executives during a company's quarterly earnings call (e.g., 'Will the CEO say \"AI\" on the call?'). Resolved by call transcript/audio.",
+    "tags": [
+     "Earnings Calls"
+    ],
+    "flb_rationale": "High-recurrence venue (quarterly x many firms) with deep per-CEO transcript history and a financial-specialist base -> learnable base rates, so longshot will-say-X props price tighter than one-off political events."
+   },
+   {
+    "name": "Political Speech Mentions (SOTU)",
+    "definition": "Markets on whether a specific word/phrase is said during a State of the Union or comparable major political address (e.g., 'Will the President say \"inflation\"?'). Resolved by speech transcript/audio.",
+    "tags": [
+     "SOTU"
+    ],
+    "flb_rationale": "Once-a-year, single-speaker event with mass political public money and thin per-event recurrence -> noisier, politics-style longshot mispricing versus the quarterly specialist-driven earnings venue."
+   }
+  ]
+ },
+ {
+  "primary": "Geopolitics",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Military Strikes & Kinetic Conflict",
+    "definition": "Discrete kinetic military events resolved by whether a specific attack/strike/incursion occurs by a deadline (e.g., 'Will Israel strike Iran by date X?', 'Will the U.S. attack Iran?', strikes on/by Hezbollah). Binary did-it-happen-by-deadline kinetic propositions.",
+    "tags": [
+     "strike",
+     "Military Strikes",
+     "Israel x Iran",
+     "U.S. x Iran",
+     "Israel",
+     "Iran",
+     "Lebanon"
+    ],
+    "flb_rationale": "Low-base-rate, headline/escalation-driven kinetic events on hard deadlines \u2014 least learnable, so the 'strike happens' longshots are systematically overpriced (classic FLB)."
+   },
+   {
+    "name": "War, Ceasefire & Diplomatic Resolution",
+    "definition": "Outcomes of active wars resolved by negotiated de-escalation \u2014 ceasefires, peace deals, war-ends-by-date, hostage/prisoner exchanges (Russia-Ukraine, Gaza). Resolves on multi-party diplomacy, not a single kinetic act.",
+    "tags": [
+     "Ukraine",
+     "Gaza",
+     "Russia"
+    ],
+    "flb_rationale": "Negotiations with repeatedly-slipping deadlines persistently overprice 'ceasefire/ends by date X' longshots \u2014 a de-escalation mechanism distinct from sudden kinetic strikes."
+   },
+   {
+    "name": "Trade War, Tariffs & Sanctions",
+    "definition": "Economic statecraft resolved by policy announcements \u2014 tariffs, trade deals, sanctions, export controls (e.g., 'Will the U.S. impose tariffs on China/Mexico by date?'). Resolves on telegraphed, often-scheduled policy actions.",
+    "tags": [
+     "Trade War",
+     "China",
+     "Mexico"
+    ],
+    "flb_rationale": "Telegraphed policy with a scheduled negotiation cadence is the most anchorable/learnable here, so prices are better-calibrated than kinetic-conflict longshots."
+   },
+   {
+    "name": "Regime & Leadership Stability",
+    "definition": "Survival or fall of a foreign leader/regime over long horizons (e.g., 'Will Maduro leave office by date?', regime-change props). Status-quo-dominated leadership-tenure outcomes.",
+    "tags": [
+     "Venezuela"
+    ],
+    "flb_rationale": "Strong long-duration status-quo base rate makes 'regime falls' a perpetual longshot that keeps overpricing \u2014 status-quo tenure dynamics with no deadline-kinetic or negotiation cadence."
+   }
+  ]
+ },
+ {
+  "primary": "Tech",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Product & Model Releases",
+    "definition": "Markets resolving on whether a company ships, announces, or releases a specific product, model, or feature by a date deadline \u2014 Apple keynote/iPhone reveals, OpenAI and Grok model launches, Big Tech product/feature rollouts. Resolution = a discrete corporate announcement evaluated against a date threshold.",
+    "tags": [
+     "Apple",
+     "OpenAI",
+     "Grok",
+     "Big Tech"
+    ],
+    "flb_rationale": "One-off, deadline-gated announcements with no recurrence; hype overprices aggressive early-ship 'longshot' dates, giving strong FLB and low learnability."
+   },
+   {
+    "name": "AI Benchmarks & Platform Metrics",
+    "definition": "Markets resolving on an observable measured quantity or ranking crossing a threshold \u2014 AI benchmark scores and leaderboard standings (e.g., the recurring monthly 'best AI model'), App Store #1, download/MAU counts. Resolution = a published metric or rank.",
+    "tags": [
+     "AI",
+     "App Store"
+    ],
+    "flb_rationale": "Quantified, frequently-updated leaderboards/metrics are anchorable and recurring, so they are more learnable and show a flatter FLB slope than one-off launches."
+   },
+   {
+    "name": "Elon Musk & Social Platform Behavior",
+    "definition": "Markets on Elon Musk's personal public activity and X/Twitter platform actions \u2014 tweet/post counts, what he will say or do, follower counts, and X feature/policy changes.",
+    "tags": [
+     "Elon Musk",
+     "Twitter"
+    ],
+    "flb_rationale": "Idiosyncratic individual behavior resolved by counting or parsing utterances \u2014 high-noise, unanchorable celebrity-longshot dynamics distinct from corporate release or metric markets."
+   }
+  ]
+ },
+ {
+  "primary": "Economy",
+  "recommendation": "create",
+  "subcategories": [
+   {
+    "name": "Macro Data Releases",
+    "definition": "Markets resolving on a scheduled, objectively-published statistical number that crosses a threshold on a known release calendar \u2014 inflation prints (CPI, PCE), growth/labor/activity data (GDP, jobs & unemployment, retail sales, PMI), and TSA passenger-throughput figures.",
+    "flb_rationale": "Resolves by an exogenous agency-published number with sharp published consensus forecasts and high regular recurrence \u2014 the most anchorable/learnable bucket, so longshots are just distribution tails of a well-forecast print.",
+    "tags": [
+     "Macro Indicators",
+     "Inflation",
+     "TSA"
+    ]
+   },
+   {
+    "name": "Monetary Policy (Fed)",
+    "definition": "Markets on Federal Reserve decisions and FOMC outcomes \u2014 rate cut/hold/hike at a given meeting, year-end or terminal target rate, number of cuts, and Fed leadership/Chair questions.",
+    "flb_rationale": "Resolves by a discretionary FOMC committee vote anchored extremely tightly by fed-funds futures (CME FedWatch), pricing favorites near-certainty \u2014 a different mechanism and a sharper anchor than a data print.",
+    "tags": [
+     "Fed Rates",
+     "Fed"
+    ]
+   },
+   {
+    "name": "Economic Policy",
+    "definition": "Markets on fiscal, legislative and executive economic actions \u2014 tariffs, government shutdowns, debt-ceiling outcomes, and budget/spending or stimulus legislation.",
+    "flb_rationale": "Resolves by political/legislative action with no consensus number or futures anchor, event-driven and irregularly recurring \u2014 weak anchorability behaves like Politics-Legislation FLB, not a forecastable print.",
+    "tags": [
+     "Economic Policy"
+    ]
+   }
+  ]
+ }
+]

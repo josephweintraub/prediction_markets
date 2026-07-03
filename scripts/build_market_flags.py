@@ -28,10 +28,15 @@ import duckdb
 
 RESOLUTIONS = "/home/ubuntu/pipeline/output/market_resolutions.parquet"
 TOKEN_MAP = "/mnt/data/pipeline_data/token_map.parquet"
-NATIVE_META = "/mnt/data/learnability/native/native_market_meta.parquet"
+# Prefer the v2 native meta (open+closed, pulled 2026-07-03) — v1 is closed-only
+# as of 2026-06-21 and misses markets resolved after that pull.
+_NATIVE_V2 = "/mnt/data/learnability/native/native_market_meta_v2.parquet"
+NATIVE_META = _NATIVE_V2 if os.path.exists(_NATIVE_V2) else "/mnt/data/learnability/native/native_market_meta.parquet"
 GAMMA_MKTS = "/mnt/data/pipeline_data/gamma_markets.parquet"
 TRADES_GLOB = "/mnt/data/pipeline_output/trades_clean.parquet/**/*.parquet"
 OUT = "/mnt/data/pipeline_output/market_flags.parquet"
+
+print(f"native meta: {NATIVE_META}")
 
 con = duckdb.connect()
 con.execute(f"SET threads TO {os.cpu_count()}")
