@@ -35,10 +35,18 @@ are built and run without encoding an expected sign.
   `market_native_categories.parquet` + `final_tag_map_v1.json` (native Gamma tags → category
   map v1, curated 2026-07-01: 264 category tags → 12 primary categories, holdout-validated
   against the LLM labels; the JSON map is committed in `analysis/learnability/native/`).
+- **Canonical token spine (2026-07-03):** `/mnt/data/pipeline_output/market_flags.parquet`
+  (built by `scripts/build_market_flags.py`) — one row per token: `token_id`, `market_id`
+  (0x hex), `winning_outcome`, market-level `is_updown` flag, `question`. Covers **100% of
+  the distinct tokens in trades_clean** (hard-checked at build). Use this for resolution
+  joins and the up/down exclusion. `pipeline/output/market_resolutions_enriched.parquet`
+  (Mar 2026) is **retired as a spine** — it covers only ~49% of extended-set trade rows.
 - **Join-key gotcha:** in the trades parquet, `conditionId` holds the **77-digit per-outcome
   token id**, not the 0x-hex per-market condition id. The augmented classification parquet
   carries both (`token_id`, `condition_id`); join trades on `token_id`. The **local** sample
   parquet is keyed differently from the EC2 set — never run joins locally.
+- **eventSlug gotcha (extended set):** trades' `eventSlug` is the **empty string** for newer
+  markets (June-2026 refresh gap), so no filter may rely on trades' `eventSlug` alone.
 - **Pipeline trust:** the trade set was externally cross-validated (2026-06-22) against an
   independently collected dataset — near-total token coverage and resolution agreement.
   Re-validate after any pipeline change, not before each analysis.
@@ -48,8 +56,11 @@ are built and run without encoding an expected sign.
 - **BUY-side trades only**; per-trade return `ret = (1 − price)` if the outcome resolved YES
   for the bought side, else `−price`.
 - **Price filter** `0.01 < price < 0.99`.
-- **Exclude up/down markets** (`eventSlug LIKE '%updown%' OR '%up-or-down%'`) — mechanical
-  short-horizon crypto series that would otherwise dominate counts.
+- **Exclude up/down markets** — mechanical short-horizon crypto series that would otherwise
+  dominate counts. **Excluded at MARKET level** via `market_flags.parquet` (`is_updown`,
+  derived from Gamma event_slug/series_slug/tags/question patterns), joined on token id.
+  The historical trade-level filter (`eventSlug LIKE '%updown%' OR '%up-or-down%'`) no
+  longer works on the extended set (empty eventSlug) and must not be used alone.
 - **Exclude bot wallets** via the behavioral composite (inter-trade interval,
   trades-per-active-day, hour-of-day concentration/HHI, fixed-trade-size share) —
   `scripts/build_wallet_flags_clean.py`.

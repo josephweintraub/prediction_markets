@@ -5,6 +5,24 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-03 — Extended-set filter gaps FIXED in shared plumbing; liquidity axis
+
+- **`scripts/build_market_flags.py`** → canonical token spine
+  `/mnt/data/pipeline_output/market_flags.parquet` (token_id, market_id, winning_outcome,
+  market-level `is_updown` from Gamma metadata — never trades' eventSlug). Hard coverage
+  check: 100% of trades_clean tokens (2,373,197), 828,816 up/down tokens flagged.
+- **`analysis/learnability/run_phase1.py` patched** (and `run_v7.py` via delegation):
+  `_closed_markets` now built from market_flags (fresh spine + market-level up/down
+  exclusion) instead of the stale `market_resolutions_enriched.parquet`. Smoke-tested.
+  Archived audit scripts under `analysis/learnability/audits/` intentionally left on the
+  old plumbing (historical records).
+- **`docs/methods_reference.md` amended**: canonical spine entry; up/down exclusion
+  redefined at market level; eventSlug empty-string gotcha recorded.
+- **Liquidity axis added to the embedding-difficulty workstream**
+  (`make_liquidity_slices.py`): volume tiers, era-relative (within-birth-month) quintiles,
+  inclusion floors ($1k/$10k/$100k), rolling-median (25% of trailing-90d median) rule,
+  novelty×liquidity interaction. Report v2 with per-section reading guides.
+
 ## 2026-07-03 — Embedding-difficulty workstream + extended-set filter fixes
 
 - **New workstream `analysis/embedding_difficulty/`** — embedding-based intrinsic-difficulty

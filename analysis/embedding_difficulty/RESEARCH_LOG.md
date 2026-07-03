@@ -190,6 +190,41 @@ set, the standard trade filters, the calibration measurement spec, and the EC2 w
    rescale, encoder robustness, qd text variant, lexical (TF-IDF) baseline,
    contract-level robustness, two-way FE difficulty measure, within-series designs.
 
+## 2026-07-03 — Session 2: plumbing fixes shared, liquidity axis, report v2
+
+- [x] **Shared plumbing fix committed:** `scripts/build_market_flags.py` →
+      `/mnt/data/pipeline_output/market_flags.parquet` (token_id, market_id,
+      winning_outcome, market-level `is_updown` from Gamma event_slug/series_slug/tags/
+      question — no reliance on trades' eventSlug). Hard coverage check: 2,373,197 tokens,
+      0 unmatched vs trades_clean; 828,816 up/down tokens flagged.
+      `run_phase1.py` (and therefore `run_v7.py`, which delegates to it) patched to use it;
+      smoke-tested (view construction + join). `docs/methods_reference.md` amended
+      (canonical spine; up/down exclusion now market-level; eventSlug gotcha).
+- [x] Liquidity axis design: proxy = market-level standard-filtered BUY dollars (volume,
+      not book depth — native `liquidity` unreliable on closed markets; named honestly).
+      Schemes: absolute tiers, within-birth-month quintiles (era-relative), pooled floors
+      ($1k/$10k/$100k), novelty-within-year deciles rebuilt on ≥$10k subset, rolling-median
+      rule (volume ≥ 25% of trailing-90-day median among viable markets; markets with no
+      trailing window kept).
+- [x] Volume distribution facts (junk-market intuition confirmed): 61% of trade-viable
+      markets <$1k volume but ~4% of trades; $10k floor keeps 77K/521K markets and 80% of
+      trades; rolling-median rule excludes ~34% of markets, stable across years.
+- [x] **Liquidity FLB results (mature, count-weighted):**
+      absolute tiers: <$1k +0.0984 (t=+32.1***), $1–10k +0.0304 (t=+7.6***),
+      $10–100k +0.0083 (ns), $100k–1M −0.0035 (ns), ≥$1M −0.0436 (ns; dollar-weighted
+      mid tiers ≈ −0.02…−0.035, t≈−2.9). Era-relative (within birth month): q1–q4 all
+      +0.06…+0.09 (t 8–22***), top quintile −0.0216 (t=−1.8) — only the top-volume
+      quintile of each era is calibrated.
+- [x] **Floor sensitivity:** pooled slope −0.0004 (none) → −0.0063 ($1k) → −0.0151 ($10k)
+      → −0.0236 ($100k), all ns — aggregate calibration robust to floors. Rolling-median
+      25% rule: excludes 34% of markets but only 0.7% of trades; pooled −0.0012 (ns).
+      Implication: floors are safe for inclusion policy; they change market counts, not
+      trade-weighted conclusions.
+- [x] **Novelty × liquidity:** novelty-within-year deciles rebuilt on ≥$10k markets:
+      d01 +0.0629 (t=+3.1**), all other deciles ≈ 0 — the novelty tail SURVIVES a
+      liquidity floor; it is not thin-market noise.
+- [ ] Report v2 render → pull, commit, stop instance.
+
 ### Artifacts (this session)
 
 - `/mnt/data/embedding_difficulty/`: universe_markets/tokens, flb_base_{mature,closing},

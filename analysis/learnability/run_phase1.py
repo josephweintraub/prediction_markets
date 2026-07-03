@@ -12,6 +12,12 @@ ENV VARS:
   V5_LO       : lifecycle low
   V5_HI       : lifecycle high
   V5_INCLUDE_UPDOWN : if "1", keep up/down in (for sensitivity only)
+
+2026-07-03: resolutions spine switched to market_flags.parquet
+(scripts/build_market_flags.py) — the old enriched file covered only ~49% of
+extended-set trade rows, and trades' eventSlug is empty on newer markets so
+the eventSlug-based up/down exclusion no longer works alone; up/down is now
+excluded market-level via the flag inside _closed_markets.
 """
 import sys, os, json, time
 sys.path.insert(0, "/home/ubuntu/prediction_markets/analysis")
@@ -83,16 +89,21 @@ def main():
     n_buy = con.execute("SELECT COUNT(*) FROM trades_buy").fetchone()[0]
     log(f"  trades_buy: {n_buy:,}")
 
-    ENRICHED = Path("/home/ubuntu/pipeline/output/market_resolutions_enriched.parquet")
-    res_enriched = pd.read_parquet(ENRICHED)
-    con.register("_res_enriched_df", res_enriched)
-    con.execute("""
+    # 2026-07-03: market_flags.parquet replaces market_resolutions_enriched
+    # (stale — covered only ~49% of extended-set trade rows) and carries a
+    # MARKET-level up/down flag from Gamma metadata (trades' eventSlug is
+    # empty on newer markets, so the eventSlug LIKE filter above no longer
+    # excludes the up/down series on its own). Built by
+    # scripts/build_market_flags.py; the INNER JOIN against _closed_markets
+    # in every calibration query is what enforces the exclusion.
+    FLAGS = Path("/mnt/data/pipeline_output/market_flags.parquet")
+    updown_clause = "" if INCLUDE_UPDOWN else "AND NOT is_updown"
+    con.execute(f"""
         CREATE OR REPLACE TEMP TABLE _closed_markets AS
-        SELECT conditionId, winning_outcome
-        FROM _res_enriched_df
-        WHERE winning_outcome IS NOT NULL
+        SELECT token_id AS conditionId, winning_outcome
+        FROM read_parquet('{FLAGS}')
+        WHERE winning_outcome IS NOT NULL {updown_clause}
     """)
-    con.unregister("_res_enriched_df")
 
     # Build v5 dims: load v4, replace dim_text_novelty with fixed bins, add dim_market_type
     if V5_DIMS_PATH.exists():
