@@ -22,6 +22,12 @@ Research *findings* are not tracked here — methods live in `docs/methods_refer
   (`make_liquidity_slices.py`): volume tiers, era-relative (within-birth-month) quintiles,
   inclusion floors ($1k/$10k/$100k), rolling-median (25% of trailing-90d median) rule,
   novelty×liquidity interaction. Report v2 with per-section reading guides.
+- **Multi-field embeddings (session 3)**: rules (market description) and context
+  (event-level description) embedded separately with unique-text dedup
+  (`embed_fields.py`); pre-registered combined weightings (`make_field_variants.py`);
+  per-variant novelty + within-vintage FLB (`make_field_novelty_slices.py`);
+  `compute_novelty.py` inner loop ported to torch (bit-identical, 4.6× faster,
+  correctness-gated in `run_session3.sh`). Report v3 section 4b.
 
 ## 2026-07-03 — Embedding-difficulty workstream + extended-set filter fixes
 

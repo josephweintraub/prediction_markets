@@ -225,6 +225,52 @@ set, the standard trade filters, the calibration measurement spec, and the EC2 w
       liquidity floor; it is not thin-market noise.
 - [ ] Report v2 render → pull, commit, stop instance.
 
+## 2026-07-03 — Session 3: multi-field embeddings (question / rules / context)
+
+- Design (pre-registered before results): three native text fields per market —
+  question, RULES (= market `description`, resolution criteria), CONTEXT (= event-level
+  `event_description` from the native pull; the closest native field to "market context";
+  NOT Polymarket's newer AI context cards, which are in no API pull we hold).
+  Each field embedded separately (bge-small); combined variants = per-market weight-
+  renormalized sums of normalized field embeddings with FIXED weights: comb_eq (⅓,⅓,⅓)
+  and comb_qc (0.45 q, 0.10 rules, 0.45 context — prior: rules least informative).
+  Weights deliberately NOT tuned on FLB outcomes.
+- Recon: rules 100% coverage, 539,308 unique texts; context 97.8% coverage, only
+  **116,821 unique texts** (event-grain) → unique-dedup before encoding; 38% of markets
+  have context ≡ rules (single-market events). Example split is as intended (rules =
+  mechanical resolution clause; context = event information).
+- Engineering: `compute_novelty.py` inner loop ported numpy→torch (GEMM/mask/topk all
+  multithreaded; session-1 run spent ~2h in single-threaded masking). Port gated by a
+  correctness check: torch rerun on emb_q must reproduce session-1 sim_k25_x (corr ≥
+  0.999) before the four new variants run. `embed_fields.py` dedups unique texts and
+  writes validity masks (empty fields → zero vector, excluded as focal & candidate).
+- Execution notes: context embed 11.6 min (117K uniques — event-grain dedup 7×);
+  rules embed ~75 min (539K uniques, 600-char truncation); torch novelty port
+  **bit-identical to numpy (corr 1.000000, max diff 0)** at 29.8 vs 138 min (4.6×).
+- **Bug caught & fixed:** chain's FLB stage requested schemes `nv_*_vint` but the slice
+  maker wrote `scheme_nv_*` — run_schemes matched 0 schemes and the first v3 render
+  silently skipped section 4b's panels. Names aligned; FLB + render rerun (ed_fixup.log).
+  Lesson: run_schemes should FAIL on an empty scheme filter, not print "0 schemes" and
+  exit 0 — fixed expectation noted for a future engine pass.
+- **Cross-variant novelty agreement (Pearson, 509K viable markets):**
+  q↔context **0.36**, q↔rules 0.58, rules↔context 0.49, q↔comb_eq 0.77, q↔comb_qc 0.81,
+  comb_eq↔comb_qc 0.97. The three fields measure substantially different precedent
+  structure — context is NOT interchangeable with the question (supports treating it as
+  its own signal); the two pre-registered combined weightings are nearly equivalent.
+- [x] **Per-variant novelty-tail FLB (mature, within-vintage d01 = most novel):**
+      q (session 1): +0.0656 (t=+3.9***) | rules +0.0446 (t=+1.6), f10k +0.0549 (t=+1.7,
+      dollar t=+2.0) | context +0.0355 (t=+1.1), f10k +0.0318 (t=+0.9) |
+      comb_eq +0.0371 (t=+1.4) | comb_qc +0.0392 (t=+1.5); f10k variants similar.
+      Read: every field's most-novel tail leans the same (classic-FLB) direction, but
+      the QUESTION text carries the sharpest difficulty signal; combined weightings do
+      not improve on question-only. Context novelty measures something real and distinct
+      (q↔context corr 0.36) — but its distinct component does not sharpen the FLB tail.
+      (User prior half-confirmed: question dominant — yes; context rivaling question as a
+      difficulty signal — not in these data; rules weakest prior — actually the strongest
+      of the three new variants.)
+- [x] Report v3 rendered with section 4b (field coverage, agreement matrix, port check,
+      per-variant d01 table + panels).
+
 ### Artifacts (this session)
 
 - `/mnt/data/embedding_difficulty/`: universe_markets/tokens, flb_base_{mature,closing},

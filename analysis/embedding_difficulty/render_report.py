@@ -325,6 +325,66 @@ how("Spot-check of what the measure calls novel vs. precedented: the 15 most "
     "repeats.")
 add(ex.to_html(index=False, border=0))
 
+# ---------------- 4b. multi-field variants ----------------
+if os.path.exists(f"{BASE}/field_compare.parquet"):
+    add("<h2>4b. Multi-field text variants: question vs. rules vs. context</h2>")
+    how("Three native text fields describe a market: the QUESTION, the RULES "
+        "(the market's resolution-criteria description), and the CONTEXT "
+        "(the event-level description — the closest native field to 'market "
+        "context'; shared by sibling markets of one event). Each field is "
+        "embedded separately; combined variants are weighted sums of the "
+        "normalized field embeddings with PRE-REGISTERED weights (equal "
+        "thirds, and a question/context-heavy 0.45/0.10/0.45), renormalized "
+        "per market over available fields. For each variant the whole "
+        "novelty pipeline is re-run (strict predecessors, same-series/event "
+        "exclusion, within-vintage deciles).")
+    if os.path.exists(f"{BASE}/field_recon.json"):
+        fr = json.load(open(f"{BASE}/field_recon.json"))
+        add("<p>Field coverage/uniqueness: "
+            + "; ".join(f"{k}: {v:,}" if isinstance(v, int) else f"{k}: {v}"
+                        for k, v in fr.items()) + ".</p>")
+    fc = pd.read_parquet(f"{BASE}/field_compare.parquet")
+    add("<h3>Do the fields agree on what is novel?</h3>")
+    how("Pairwise correlations of the novelty score (sim_k25_x) across "
+        "variants, over viable markets where all variants are defined. High "
+        "correlation = the fields are interchangeable; low = each field "
+        "captures distinct precedent structure.")
+    add(tbl(fc, "{:+.3f}"))
+    if os.path.exists(f"{BASE}/novelty_port_check.json"):
+        pc = json.load(open(f"{BASE}/novelty_port_check.json"))
+        add(f"<p><i>Engine check:</i> torch-ported novelty engine reproduces "
+            f"the session-1 numpy scores (corr = {pc['corr']:.6f}, max abs "
+            f"diff = {pc['max_abs_diff']:.2e}).</p>")
+    add("<h3>Novelty-tail FLB by variant (mature)</h3>")
+    how("The headline test repeated per variant: within-birth-year novelty "
+        "deciles, d01 = most novel of its era. The summary table shows the "
+        "d01 slope for each variant on all viable markets and on the ≥$10k "
+        "subset — which text field carries the difficulty signal, and does "
+        "it survive the liquidity floor?")
+    d01_rows = []
+    base_variants = [("q (question, session 1)", "nov_k25x_vint",
+                      "novx_vint_f10k")]
+    for v in ("rules", "context", "comb_eq", "comb_qc"):
+        base_variants.append((v, f"nv_{v}", f"nv_{v}_f10k"))
+    for label, sch, sch_f in base_variants:
+        for sub, name in ((sch, "all viable"), (sch_f, ">=$10k")):
+            t = summary(sub, "mature")
+            if t is None:
+                continue
+            r = t.sort_values("slice").iloc[0]
+            d01_rows.append({"variant": label, "sample": name,
+                             "d01_slope": r["slope"], "d01_t": r["slope_t"],
+                             "d01_slope_dol": r["slope_dol"],
+                             "d01_t_dol": r["slope_t_dol"],
+                             "n_trades_d01": r["n_trades"]})
+    if d01_rows:
+        add(tbl(pd.DataFrame(d01_rows)))
+    for v in ("rules", "context", "comb_eq", "comb_qc"):
+        s = summary(f"nv_{v}", "mature")
+        if s is not None:
+            add(slope_panel(s, f"novelty deciles within vintage year "
+                               f"({v} embedding) — mature"))
+
 # ---------------- 5. liquidity ----------------
 add("<h2>5. Liquidity: the FLB–liquidity gradient and inclusion floors</h2>")
 lmeta = json.load(open(f"{BASE}/liquidity_meta.json"))
