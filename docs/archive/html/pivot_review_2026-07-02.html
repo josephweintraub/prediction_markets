@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pivot Readiness Review — 2026-07-02</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         max-width: 900px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.55; }
+  h1 { font-size: 1.6em; border-bottom: 2px solid #333; padding-bottom: 8px; }
+  h2 { font-size: 1.25em; margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  h3 { font-size: 1.05em; margin-top: 1.6em; }
+  code { background: #f2f2f2; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .finding { border-left: 4px solid #999; padding: 10px 16px; margin: 16px 0; background: #fafafa; border-radius: 0 6px 6px 0; }
+  .sev-critical { border-left-color: #c0392b; }
+  .sev-high { border-left-color: #e67e22; }
+  .sev-medium { border-left-color: #d4ac0d; }
+  .sev-low { border-left-color: #7f8c8d; }
+  .sev-tag { font-size: 0.75em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 10px; color: #fff; margin-right: 8px; vertical-align: middle;}
+  .t-critical { background: #c0392b; } .t-high { background: #e67e22; } .t-medium { background: #d4ac0d; } .t-low { background: #7f8c8d; }
+  .finding h3 { margin: 0 0 6px 0; }
+  .evidence { font-size: 0.88em; color: #555; margin-top: 8px; }
+  .fix { font-size: 0.92em; margin-top: 8px; padding: 6px 10px; background: #eef6ee; border-radius: 4px; }
+  .good { background: #f0f7f0; border-left: 4px solid #27ae60; padding: 10px 16px; margin: 12px 0; border-radius: 0 6px 6px 0;}
+  table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 0.92em; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #f5f5f5; }
+  .summary-box { background: #fdf6ec; border: 1px solid #e0c9a0; border-radius: 6px; padding: 14px 18px; margin: 20px 0; }
+</style>
+</head>
+<body>
+
+<h1>Pivot Readiness Review — workflow, organization, changelog, AWS, Claude awareness</h1>
+<p><em>2026-07-02 · medium-effort review · scope: repo state for the learnability-dimension pivot (canonical EC2 repo inspected live, both doc sets scanned, instance stopped after)</em></p>
+
+<div class="summary-box">
+<strong>TL;DR.</strong> The Jun 21 consolidation (repo, Phase B wiring, GitHub push) is solid and verified — but <strong>everything since Jun 21 is outside version control and outside the docs</strong>. The V2 pipeline code that built the current canonical 2.019B-row dataset lives uncommitted in <code>/home/ubuntu/pipeline/</code>; every post-consolidation finding (external validation, trades extension, resolution censoring, v7 results, tag taxonomy) exists only as loose local HTML files; the CHANGELOG has no entry after Jun 21; and CLAUDE.md still describes the pre-extension, pre-censoring, pre-v7-execution world. The knowledge currently lives in Claude's session memory and your laptop — not in the repo a collaborator (or future you) would read. One doc (<code>EC2_SETUP.md</code>) contains an actively dangerous instruction.
+</div>
+
+<h2>Findings (ranked)</h2>
+
+<div class="finding sev-critical">
+<h3><span class="sev-tag t-critical">Critical</span>1. The code that built the canonical dataset is not in version control</h3>
+<p>The V2 pipeline fix (2026-06-24) that produced the current canonical 2,018,709,888-row clean trades set lives only in <code>/home/ubuntu/pipeline/</code> on the EC2 root disk: <code>extraction/extract_orderfilled_v2.py</code>, modified <code>refresh.py</code> (Jun 24 06:33), modified <code>transform/build_trades.py</code>, and a new <code>output → /mnt/data/pipeline_root_output</code> symlink. The repo's committed <code>pipeline/</code> is a Jun 21 snapshot that silently diverged — exactly the "two copies drifting" failure mode CLAUDE.md warns about, now affecting the single most important piece of infrastructure.</p>
+<p class="evidence">Evidence: repo <code>git status</code> clean, all 4 commits dated 2026-06-21; <code>/home/ubuntu/pipeline/extraction/extract_orderfilled_v2.py</code> exists, absent from repo; repo <code>refresh.py</code> 19,647 B (Jun 21) vs live 19,648 B (Jun 24).</p>
+<p class="fix">Fix: copy the diverged files into repo <code>pipeline/</code>, commit as "V2 exchange-migration fix + Jun 2026 refresh", and make <code>/home/ubuntu/pipeline/</code> a symlink to (or checkout of) the repo copy so it can't drift again.</p>
+</div>
+
+<div class="finding sev-critical">
+<h3><span class="sev-tag t-critical">Critical</span>2. All post-pivot findings exist only as loose, unversioned local HTML</h3>
+<p>The write-ups of everything that happened after consolidation — <code>external_validation.html</code>, <code>trades_extension_jun2026.html</code>, <code>flb_newer_data.html</code>, <code>flb_newest_native.html</code>, <code>flb_horizon_censoring.html</code>, <code>v7_dimension_plan.html</code>, <code>v7_learning_results.html</code>, <code>v7_trader_within_wallet.html</code>, <code>category_labeling_review.html</code>, <code>session_audit.html</code> — sit loose in the local repo root, which is untracked (not a clone). None are in repo <code>docs/</code>, none in the Documents map. This is precisely the "findings might be important just to remember how we did it" material, and it currently has one copy, on a laptop.</p>
+<p class="fix">Fix: distill each into a short markdown doc (or commit the HTML) under <code>docs/</code> on EC2, add Documents-map lines. Priority order: horizon-censoring, v7 results, trades extension, external validation.</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>3. CHANGELOG.md has no entry after 2026-06-21</h3>
+<p>Missing, by the repo's own convention ("record notable analysis, data/dataset, and infrastructure changes"): the native Gamma re-pull (Jun 21), v7 first FLB run (Jun 21), external validation vs the HF dataset (Jun 22), the V2 pipeline fix + extension of the canonical set to 2.019B rows through Jun 23 (Jun 24 — a change to the canonical dataset itself), the resolution-censoring discovery (~Jul 1), and the native tag taxonomy bake (Jul 1). The "Unreleased" block also still lists Phase B as pending (see #5).</p>
+<p class="fix">Fix: one catch-up commit adding six dated entries; the censoring entry should be under a "Data" heading since it reinterprets the dataset.</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>4. CLAUDE.md describes a superseded data reality</h3>
+<p>The agent-onboarding doc states the canonical clean set is <strong>1,377,065,934 rows</strong> (now 2,018,709,888 through 2026-06-23), presents the native Gamma re-pull as "the plan" (executed 2026-06-21 → <code>native_market_meta.parquet</code>, 1.44M markets), and — most important — says nothing about <strong>resolution censoring</strong> (trades_clean drops unresolved markets at build time; June 2026 missing ~7.5% of events / 12.2% of $) or that <code>native_market_meta</code> is closed-markets-only. Any fresh Claude session or collaborator reading CLAUDE.md would run end-of-sample analyses without the one caveat known to invalidate them.</p>
+<p class="fix">Fix: update the trades table row counts/date, replace the §"Active direction" plan text with done-status + artifact paths, and add a short "Known data caveats" bullet (censoring + closed-only pull) to the trades section.</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>5. CLAUDE.md and CHANGELOG still declare "Phase B pending" — it shipped Jun 21</h3>
+<p>Commit <code>02b0871</code> ("Phase B: wire repo to run from its new home; retire scattered originals") did the wiring: <code>flb_per_slice_v3 → flb_per_slice.py</code>, <code>run_phase1.py</code> repointed, and <code>/home/ubuntu/{learnability, analysis_final, pipeline/analysis}</code> verified gone. Yet the committed CLAUDE.md still says "Transitional (Phase B pending)… imports still reference the old flb_per_slice_v3/dimensions_v5 names… to be wired", and CHANGELOG lists those same items under "Pending". The only genuinely-remaining item is converging the <em>local</em> copy into a clone (see #6). Self-inconsistent docs make it impossible to tell what's done.</p>
+<p class="fix">Fix: collapse the transitional notes to a single line — "Phase B done 2026-06-21 (02b0871); remaining: local clone convergence."</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>6. The local working copy has silently forked from canonical</h3>
+<p>Local <code>~/prediction_markets</code> is still not a clone (git root is the home directory), holds pre-Phase-B code (<code>flb_per_slice_v3.py</code>, <code>run_phase1_v5.py</code> — files that no longer exist in the repo), lacks the entire v7 layer (<code>native_repull.py</code>, <code>build_native_dims.py</code>, <code>run_v7.py</code>, <code>plots.py</code>, <code>audits/</code>, learnability README), and keeps docs loose in root instead of <code>docs/</code>. The documented workflow — "edit code locally, run on EC2" — currently means editing dead files. Also note: because the local dir sits untracked inside the home-rooted git repo, local deletes remain unrecoverable.</p>
+<p class="fix">Fix: finish the last Phase B step — set up local GitHub auth (or use the deploy-key pattern), clone fresh, move the loose HTML findings in, and retire the old local dir after diffing for anything uncommitted.</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>7. dimension_guide.md asserts the retracted crypto/sports "reversed FLB" as fact</h3>
+<p>Four passages (≈ lines 186, 206, 301, 449) explain results via "high-volume markets show reversed FLB" / the "public money reversal" — one even citing "(project memory)". That claim was corrected: the reversal was a D10−D1 artifact; signed calibration slopes are Crypto 1.02, Sports 1.00 (well-calibrated), with genuine FLB only in Politics/Finance/Geo (1.08–1.10). No correction note exists in the doc.</p>
+<p class="fix">Fix: add a dated correction box at the top of the guide and inline strikethrough/notes at the four passages — don't rewrite history, annotate it.</p>
+</div>
+
+<div class="finding sev-high">
+<h3><span class="sev-tag t-high">High</span>8. The v6 reproducibility pointer names scripts that no longer exist</h3>
+<p><code>learnability_writeup.md</code> line ~28: "Reproducibility. <code>analysis/learnability/{dimensions*.py, flb_per_slice_v3.py, run_phase1_v5.py, bot_filter.py}</code>". Phase B renamed these to <code>flb_per_slice.py</code> / <code>run_phase1.py</code>. Since the pivot deprioritizes this work, this single line is what the team will rely on to reproduce the canonical v6 numbers — and it points at nothing. (The Phase B verification run proved the new names reproduce v6 exactly, so the fix is just the pointer.)</p>
+<p class="fix">Fix: update the file list and add the output location (<code>/mnt/data/learnability/output/</code>), which currently appears only in CLAUDE.md.</p>
+</div>
+
+<div class="finding sev-medium">
+<h3><span class="sev-tag t-medium">Medium</span>9. No "superseded by v7" banners; native_data_sources.md still says "Proposed"</h3>
+<p>Neither <code>learnability_writeup.md</code> (canonical v6), <code>dimension_guide.md</code>, nor the audit doc carries a pointer that the 22 LLM dims are being replaced by native dims — the guide's per-dim "changes worth considering" read as the live roadmap. Meanwhile <code>native_data_sources.md</code> §7 still titles the re-pull "Proposed data task" (executed 2026-06-21), keeps answered items in "Open questions" (99.98% coverage confirmed), says "§6… filling shortly" though §6 is complete, and uses the stale 620K-market denominator (actual pull: 1.44M). Critically, the doc's own advice to pull <em>both</em> closed and open markets was not followed (closed-only), and that's recorded nowhere.</p>
+<p class="fix">Fix: 3-line status header on each doc ("v6 frozen — active work is v7 native dims, see …"), mark §7 as executed with artifact path + closed-only caveat.</p>
+</div>
+
+<div class="finding sev-medium">
+<h3><span class="sev-tag t-medium">Medium</span>10. data_exploration.md's "single real data error" conclusion is now false</h3>
+<p>The data-quality reference concludes the only real defect was ~4% ingestion replays, "now removed" in trades_clean. The resolution-censoring discovery established a second structural issue — the Stage-4 INNER JOIN drops unresolved markets, differentially censoring long-horizon markets near end-of-sample — and it's absent both here and from the writeup's "Known caveats" appendix. Also stale: 1.377B row count, and "Files produced" pointing at ephemeral <code>/tmp/…</code> paths.</p>
+<p class="fix">Fix: add a dated addendum section to data_exploration.md and one caveat row to writeup Appendix E.</p>
+</div>
+
+<div class="finding sev-medium">
+<h3><span class="sev-tag t-medium">Medium</span>11. EC2_SETUP.md is stale and contains a destructive instruction</h3>
+<p>Untouched since March, it directs users to the retired <code>~/pipeline/analysis/</code> layout, points config at the RAW trades glob instead of the clean canonical set, and ends with "<strong>Terminate</strong> the instance if fully done — also delete the 500GB EBS volume." Following that today destroys <code>/mnt/data</code>: the 2B-row clean set, pipeline intermediates, and all learnability outputs. It also contradicts CLAUDE.md's keep-stopped-between-sessions policy. The AWS mechanics in CLAUDE.md itself (profile, instance ID, wait command, mount, rclone, stop reminder) are accurate and worked verbatim in this session.</p>
+<p class="fix">Fix: rewrite as a thin doc (instance details + Jupyter tunnel + monitoring) that defers to CLAUDE.md for start/mount/stop, and delete the terminate/delete-volume advice.</p>
+</div>
+
+<div class="finding sev-medium">
+<h3><span class="sev-tag t-medium">Medium</span>12. v7 — the project's mainline — lives on a side branch, and the taxonomy bake left no code behind</h3>
+<p>All v7 work is on <code>native-dims</code> (pushed, 2 commits ahead) while <code>main</code> is frozen at Phase B; per your own convention ("work on main; branch for risky/experimental"), the now-mainline direction should be merged. Separately, the Jul 1 tag-taxonomy artifacts (<code>final_tag_map_v1.json</code>, <code>market_native_categories.parquet</code> on <code>/mnt/data/learnability/native/</code>) have no committed build code and no doc — the curation process (264 tags → 12 primaries, 98.7% held-out validation) isn't reconstructible from the repo. Note <code>.gitignore</code> does not exclude <code>.json</code>, so the 83 KB map itself is committable.</p>
+<p class="fix">Fix: merge <code>native-dims</code> → <code>main</code>; commit <code>final_tag_map_v1.json</code> + a short doc of the curation method into the repo.</p>
+</div>
+
+<div class="finding sev-low">
+<h3><span class="sev-tag t-low">Low</span>13. CLAUDE.md's Dropbox and pipeline sections no longer match reality</h3>
+<p>Dropbox actually contains <code>trades_old/</code>, <code>trades_onchain/</code>, <code>newest_trades_onchain/</code>, <code>kv/</code>, <code>mae/</code>, <code>learnability/</code>, <code>manifold/</code> — CLAUDE.md describes the old <code>trades/ingest_date=2026-01-23/</code> layout and none of the new dirs. The pipeline section names <code>pipeline/run_pipeline.py</code> as the entry point, but in the repo that file lives in <code>pipeline/_legacy/</code> and the live entry is <code>refresh.py</code>; it also doesn't say that the <em>live</em> pipeline is <code>/home/ubuntu/pipeline/</code> rather than the repo snapshot (moot once #1 is fixed).</p>
+</div>
+
+<div class="finding sev-low">
+<h3><span class="sev-tag t-low">Low</span>14. The committed learnability README describes the obsolete Phase-1 protocol</h3>
+<p><code>analysis/learnability/README.md</code> — the first thing a reader opens in the flagship study directory — documents the raw 1.4B parquet, the 50–80% window, 2-way clustered SEs, and "10 dimensions": three generations stale (v6 used the clean set, 25–80%/80–100% windows, 3-way CGM SEs, 22 dims; v7 replaces the dims entirely).</p>
+</div>
+
+<div class="finding sev-low">
+<h3><span class="sev-tag t-low">Low</span>15. Loose one-off scripts left in the EC2 home directory</h3>
+<p>Phase B retired the three big originals but left ~a dozen uncommitted scripts in <code>/home/ubuntu/</code>: duplicates of committed <code>scripts/</code> files (<code>build_clean.py</code>, <code>diff_clean.py</code>, <code>resort_clean.py</code>, <code>build_wallet_flags_clean.py</code>) plus analysis one-offs that may have no repo counterpart (<code>run_resolution_3way.py</code>, <code>recompute_dims.py</code>, <code>rerun_affected.py</code>, <code>inspect_dims.py</code>, <code>inspect_leagues.py</code>, <code>catdiff.py</code>, <code>dq_dedup_diag.py</code>, a <code>kalshi/</code> dir). Diff against the repo, keep anything unique under <code>scripts/</code>, delete the rest.</p>
+</div>
+
+<h2>What's already up to par</h2>
+<div class="good"><strong>Memory / Claude awareness (session side).</strong> MEMORY.md is current through Jul 1 and accurate — every discrepancy this review found was correctly recorded there (uncommitted V2 code, censoring, corrected crypto/sports slopes, closed-only pull). The gap is one-directional: memory knows things the repo doesn't. Fixing #3–#5 and #9–#10 closes it.</div>
+<div class="good"><strong>Repo hygiene.</strong> <code>.gitignore</code> correctly walls off data (<code>*.parquet/csv/jsonl</code>, <code>output/</code>), secrets (<code>*.pem</code>, <code>.anthropic_api_key</code>, <code>.env</code>), and logs. No data or secrets in the repo. Commit messages are exemplary (imperative subject + why-body). Both branches pushed — committed code has off-box backup.</div>
+<div class="good"><strong>Phase B wiring is real.</strong> Verified live: originals gone, renamed modules present, and the prior end-to-end verification reproduced v6 exactly. Repo README is accurate and current.</div>
+<div class="good"><strong>AWS mechanics in CLAUDE.md.</strong> Profile, instance ID, wait-based start, mount fallback, rclone route, and the stop reminder all worked verbatim this session (instance was stopped at review end).</div>
+<div class="good"><strong>Methods preservation for broad FLB.</strong> The v6 writeup's Setup section and the dimension guide fully record scope, bot filter, windows, CGM SE construction, and thresholds — with #7/#8 fixed, "how we did it" is durably on record. The broad-FLB (pre-learnability) methods live in <code>exploration.ipynb</code> + <code>favorite_longshot.py</code>/<code>trader_flb.py</code> docstrings, which are committed.</div>
+
+<h2>Suggested fix order (one EC2 session, ~1–2 hrs)</h2>
+<table>
+<tr><th>Step</th><th>Action</th><th>Covers</th></tr>
+<tr><td>1</td><td>Commit the live <code>/home/ubuntu/pipeline</code> V2 changes into repo <code>pipeline/</code>; symlink home dir to repo</td><td>#1, part of #13</td></tr>
+<tr><td>2</td><td>Merge <code>native-dims</code> → <code>main</code>; commit <code>final_tag_map_v1.json</code> + taxonomy method note</td><td>#12</td></tr>
+<tr><td>3</td><td>Catch-up CHANGELOG (6 entries) + CLAUDE.md refresh (row counts, censoring caveat, Phase B done, re-pull done, Dropbox/pipeline sections)</td><td>#3, #4, #5, #13</td></tr>
+<tr><td>4</td><td>Distill the local HTML findings into <code>docs/</code> + Documents-map lines</td><td>#2</td></tr>
+<tr><td>5</td><td>Doc corrections: guide correction box, writeup repro line + caveat row, native_data_sources status header, data_exploration addendum, learnability README, EC2_SETUP rewrite</td><td>#7–#11, #14</td></tr>
+<tr><td>6</td><td>Converge local → clone (needs local GitHub auth); sweep EC2 home-dir strays</td><td>#6, #15</td></tr>
+</table>
+
+<p><em>Reviewed live on EC2 (instance started and stopped within the session). No files were modified.</em></p>
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-07-02 — partially superseded.** The dedup analysis stands (true replay rate ~4%; partial fills are real trades; no meaningful wash trading). But the "single real data error" conclusion is outdated: **resolution censoring** (the Stage-4 INNER JOIN drops markets unresolved at build time) was identified 2026-07-01 as a second structural issue — see `docs/methods_reference.md`. Row counts predate the 2026-06-24 extension to 2.019B rows.
+
 # Data Exploration — Sports and Tech Anomalies in v5
 
 _Investigation prompted by visible irregularities in the v5 writeup: (1) Sports decile cal_errors that are individually significant at D4/D5/D8/D9 but produce a null D10−D1 spread, and (2) Tech showing classic FLB only in the 80-100% closing window. All analyses run on EC2; only small summary parquets pulled local._

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Category Labeling Review — was it done well, and what's next</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         max-width: 980px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.55; }
+  h1 { font-size: 1.7em; border-bottom: 3px solid #2c5f8a; padding-bottom: 8px; }
+  h2 { font-size: 1.25em; color: #2c5f8a; margin-top: 2em; border-bottom: 1px solid #d8e2ec; padding-bottom: 4px;}
+  h3 { font-size: 1.05em; margin-top: 1.4em; }
+  code { background: #f2f4f7; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; }
+  pre { background: #f7f8fa; border: 1px solid #e2e6ea; border-radius: 6px; padding: 12px 14px; overflow-x: auto; font-size: 0.84em; line-height: 1.45;}
+  table { border-collapse: collapse; margin: 14px 0; font-size: 0.9em; width: 100%; }
+  th { background: #2c5f8a; color: white; padding: 7px 10px; text-align: left; }
+  td { padding: 6px 10px; border-bottom: 1px solid #e4e8ec; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7f9fb; }
+  .verdict { background: #eef5ec; border-left: 5px solid #4a7c3f; padding: 14px 18px; border-radius: 4px; margin: 18px 0; }
+  .warn { background: #fdf3e7; border-left: 5px solid #d08b2c; padding: 12px 16px; border-radius: 4px; margin: 14px 0; }
+  .bad { background: #fbeeee; border-left: 5px solid #b8433a; padding: 12px 16px; border-radius: 4px; margin: 14px 0; }
+  .good { color: #3a6d31; font-weight: 600; }
+  .flaw { color: #a83a32; font-weight: 600; }
+  .tier { background: #eef3f8; border: 1px solid #cfdce8; border-radius: 6px; padding: 14px 18px; margin: 14px 0; }
+  .small { font-size: 0.85em; color: #555; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<h1>Category Labeling Review</h1>
+<p class="small">2026-07-01 · Assessment of the native-tag taxonomy (map v1) + roadmap to maximally accurate &amp; granular per-market labels</p>
+
+<div class="verdict">
+<strong>Verdict: the primary-category assignment was done well — the architecture is right and the validation was honest — but we are using maybe a third of what the curation actually produced.</strong>
+The baked artifact (<code>market_native_categories.parquet</code>) stores exactly two columns: <code>condition_id, primary</code>.
+Meanwhile the curation workflow designed a full two-level taxonomy (~35 subcategories across 11 primaries, each with a written FLB rationale),
+per-tag notes, and structural/mechanic flags — none of which made it into the per-market table. The biggest wins available are
+<em>bake-outs of things we already built</em>, not new modeling.
+</div>
+
+<h2>1 · What was done well</h2>
+<table>
+<tr><th style="width:30%">Decision</th><th>Why it was right</th></tr>
+<tr><td class="good">Native tags over LLM labels</td><td>Tags are Polymarket-maintained, free, and cover every new market automatically (the LLM classification cost ~$200 and freezes at pull time). The deprecated <code>category</code> field was correctly rejected (0.3% populated).</td></tr>
+<tr><td class="good">IDF-weighted soft vote</td><td>Empirically beat the hard one-primary-per-tag vote (98.7/94.2 vs 97.1/89.2 held-out) — and the comparison was actually run, not assumed.</td></tr>
+<tr><td class="good">Structural-tag exclusion</td><td>Separating mechanism flags (<code>Up or Down</code>, <code>5M</code>, <code>Neg Risk</code>, <code>Rewards Automation…</code>) from subject tags is the single most important curation move; it prevented cadence flags from hijacking categories.</td></tr>
+<tr><td class="good">Honest, adversarial validation</td><td>Held-out 70/30 split against LLM labels (not circular), then <em>two rounds</em> of market-level hand-checks (500-market samples, adversarial subagents): 1.3% error → precedence fix → 0.3%, with the residual identified as genuine ambiguity rather than bugs.</td></tr>
+<tr><td class="good">Baked &amp; persisted (v1)</td><td>The final map + per-market assignments now live on <code>/mnt/data/learnability/native/</code> (1.42M markets) instead of volatile <code>/tmp</code>.</td></tr>
+</table>
+
+<h2>2 · Where it falls short</h2>
+
+<h3 class="flaw">2.1 Granularity was thrown away at bake time (the big one)</h3>
+<p>The curation produced, per tag: <code>primary</code>, <code>subcategory</code>, <code>type</code> (category / structural / ambiguous), and a rationale note.
+A separate design pass (<code>subcats.json</code>) organized these into ~35 FLB-motivated subcategories, e.g.:</p>
+<table>
+<tr><th>Primary</th><th>Designed subcategories (each with an FLB rationale)</th></tr>
+<tr><td>Sports</td><td>Team-sport game markets (by league) · Individual head-to-head (tennis/UFC/boxing/chess) · Field-winner (golf/F1 — the mechanically-strongest-FLB structure) · Olympics/rare events · Props/drafts/fantasy</td></tr>
+<tr><td>Crypto</td><td>Coin price targets (BTC/ETH/SOL…) · Memecoins (no fundamental anchor) · Listings/launches/FDV</td></tr>
+<tr><td>Finance</td><td>Single-name equity strikes · Index &amp; commodity (institutionally arbitraged) · Up/down oracle dailies · Earnings/corporate events</td></tr>
+<tr><td>Politics</td><td>Elections · Legislation/gov action · Appointments (negRisk insider fields) · Scandals/legal one-offs · Approval-metric thresholds</td></tr>
+<tr><td>Geopolitics</td><td>Kinetic strikes · Ceasefire/diplomacy · Trade war/sanctions · Regime stability</td></tr>
+</table>
+<p><strong>None of this exists per-market.</strong> The baked table keeps only the primary. These subcategories are exactly the grain the learnability
+study needs (they separate resolution mechanism and anchorability <em>within</em> topic), and assigning them requires zero new data —
+the same IDF vote restricted to the winning primary's tags.</p>
+
+<h3 class="flaw">2.2 Axis-mixing in the primary column — with a real analytic consequence</h3>
+<div class="bad">
+The primary set mixes three different kinds of thing: <strong>topics</strong> (Politics, Sports…), a <strong>market mechanic</strong> (Mentions),
+and an <strong>event family</strong> (Iran). The precedence overrides force any <code>%Iran%</code>-tagged market into 'Iran' —
+which means the <strong>'Geopolitics' rows of the horizon-matched category table exclude the single biggest geopolitical event family of 2026</strong>
+(the Israel–Iran war markets). Any 2025→2026 within-Geopolitics comparison is silently composition-shifted. Same structural issue with Mentions:
+a Trump-SOTU-mentions market is Politics <em>and</em> mentions-mechanic; today it is only 'Mentions'.
+The fix is to make these separate columns (<code>topic</code>, <code>mechanic</code>, <code>event_family</code>), not siblings in one column.
+</div>
+
+<h3 class="flaw">2.3 No confidence, no abstain, no provenance</h3>
+<p>The soft-vote margin is computed and discarded. Markets the validators flagged as genuinely ambiguous (health markets with a stray Weather tag,
+esports events Polymarket tags 'Sports', IPO = Tech-vs-Finance) get a silent forced call, indistinguishable from a market with an
+unambiguous 20-tag vote. There is also no record of <em>how</em> each market was labeled (vote vs precedence override vs hand fix).</p>
+
+<h3 class="flaw">2.4 The curation source file is dirty</h3>
+<p>Several <code>fixed: true</code> entries in <code>curated.json</code> carry <em>instructions</em> instead of category names in the
+<code>primary</code> field — e.g. Big Tech → <code>"down-weight vs Finance for valuation questions"</code>, Fed/Fed Rates →
+<code>"Politics in nomination context"</code>, Twitter → <code>"lower priority than Politics"</code>. A few structural tags also carry
+non-Other primaries (<code>Depreciated4 → Finance</code>, <code>Breaking News → Politics</code>). These were resolved somewhere on the way into
+<code>final_tag_map.json</code>, and the end-to-end validation (0.3% market-level error) says the <em>net result</em> is fine — but the
+source-of-truth chain is muddy and not reproducible from the repo. The persisted <code>final_tag_map_v1.json</code> is currently the only authority.</p>
+
+<h3 class="flaw">2.5 Coverage holes</h3>
+<table>
+<tr><th>Hole</th><th>Size</th><th>Consequence</th></tr>
+<tr><td>Markets with no non-excluded tags drop out of the table entirely</td><td class="num">~21K of 1.44M</td><td>NULL category; mostly up/down-only-tagged markets (excluded from FLB anyway), but a labeling-completeness gap.</td></tr>
+<tr><td><code>native_market_meta</code> is closed-markets-only (<code>closed="true"</code> in the re-pull)</td><td class="num">all open markets</td><td>No labels for the censored long-horizon class — <em>exactly the FLB-carrying markets</em>. Blocks any forward-looking use.</td></tr>
+<tr><td>Reference labels (LLM) are themselves imperfect; volume-weighted agreement only 94.2%</td><td class="num">top markets</td><td>Disagreement concentrates in the highest-volume markets, and those were never hand-locked.</td></tr>
+</table>
+
+<h2>3 · What "labels v2" should look like</h2>
+<p>One per-market table, <code>market_labels.parquet</code>, replacing the 2-column v1. Everything below is derivable from data we already have
+(tags + native meta + question text), except the two rows marked ⊕.</p>
+<table>
+<tr><th style="width:22%">Column</th><th>Source</th><th>Notes</th></tr>
+<tr><td><code>topic</code></td><td>IDF soft vote (v1 logic, Iran/Mentions removed from the label set)</td><td>12 clean topics; Iran markets return to Geopolitics.</td></tr>
+<tr><td><code>subcategory</code></td><td>Same vote restricted to the winning topic's tags, using the designed subcats</td><td>~35 buckets; the FLB-relevant grain. Already designed, just not baked.</td></tr>
+<tr><td><code>mechanic</code></td><td>Structural tags + <code>negRisk</code> + <code>sportsMarketType</code> + question regex</td><td>mentions / up-down / price-target (Hit&nbsp;Price, Multi&nbsp;Strikes) / negRisk multi-outcome / matchup / vanilla.</td></tr>
+<tr><td><code>event_family</code></td><td>Event/series slug + tag clusters (Iran, US-Election-2024, FIFA-2026…)</td><td>Where 'Iran' properly lives.</td></tr>
+<tr><td><code>entities</code></td><td>Retained (non-structural) tag list</td><td>Person/team/asset/country tags kept as a list column — the finest grain, free.</td></tr>
+<tr><td><code>vote_margin</code>, <code>topic_2nd</code></td><td>The vote itself</td><td>Margin below threshold ⇒ <code>abstain=true</code> (honest 'Mixed' bucket instead of a forced call).</td></tr>
+<tr><td><code>label_source</code></td><td>Provenance</td><td>vote / precedence / hand-lock / llm-tiebreak.</td></tr>
+<tr><td><code>series</code>, <code>recurrence</code>, <code>resolution_source</code>, <code>uma_status</code>, <code>neg_risk</code>, <code>liquidity</code>, <code>volume</code>, <code>comment_count</code>, rule-length</td><td>Join from <code>native_market_meta</code></td><td>The structural detail axis — already pulled, just not joined into one table.</td></tr>
+<tr><td>⊕ LLM tiebreak label</td><td>Batch API on the ambiguous tail only</td><td>Low-margin + no-tag + precedence-conflict markets ≈ 1–3% of the universe; est. $5–15 at our known per-market cost.</td></tr>
+<tr><td>⊕ Open-market rows</td><td>Re-run <code>native_repull.py</code> without <code>closed="true"</code></td><td>Labels for the censored long-horizon class; also fixes the circular 99.98% coverage stat.</td></tr>
+</table>
+
+<h2>4 · Roadmap, ranked by value per unit effort</h2>
+
+<div class="tier">
+<strong>Tier 1 — bake what we already built (one EC2 session, ~1–2 hrs, no new data)</strong>
+<ol>
+<li><strong>Build <code>market_labels.parquet</code></strong> with the full schema above (minus the ⊕ rows): subcategories, mechanic axis, entities, margins, abstain, provenance, native-meta join. This alone converts the labeling from "primary only" to the most granular per-market description available anywhere for this data.</li>
+<li><strong>Hand-lock the top 300–500 markets by dollar volume</strong> (one Workflow hand-check → <code>locked_overrides.json</code>). Disagreement concentrates in exactly these markets (94.2% volume-weighted vs 98.7% count-weighted), so a few hundred locks close most of the dollar-weighted error.</li>
+<li><strong>Move the taxonomy into the repo</strong> — <code>analysis/learnability/tag_taxonomy/</code> with the versioned map JSON, the subcat design, the builder script, and cleaned curation fields (fix the instruction-in-primary entries explicitly). Right now the only authority is a JSON on /mnt/data built by a scratchpad script.</li>
+</ol>
+</div>
+
+<div class="tier">
+<strong>Tier 2 — close the coverage holes (small cost)</strong>
+<ol start="4">
+<li><strong>Open-markets re-pull</strong> (drop <code>closed="true"</code>) → label the censored long-horizon markets; prerequisite for any forward-looking or open-market analysis.</li>
+<li><strong>Event-level tag inheritance</strong>: markets with no usable tags inherit their parent event's tags before falling to NULL.</li>
+<li><strong>Targeted LLM tiebreak</strong> on the ambiguous tail (low margin / no tags / conflicts) via Batch API, stored as a separate column — a third opinion, not an overwrite.</li>
+</ol>
+</div>
+
+<div class="tier">
+<strong>Tier 3 — measurement rigor (when writing up)</strong>
+<ol start="7">
+<li><strong>Per-category precision with CIs</strong>: stratified hand-check sample per category (count- and dollar-weighted), reported as a confusion table — treating the LLM labels as a noisy comparator, not truth.</li>
+<li><strong>Deterministic question-text cross-check</strong> (regexes: "say ___" → mentions, "reach $" → price-target, "vs." → matchup): disagreements with the tag vote become the review queue for map v3.</li>
+</ol>
+</div>
+
+<h2>5 · Bottom line</h2>
+<p><strong>Was it done well?</strong> Yes — for what it set out to do (a clean primary category per market, validated honestly), it's solid and production-ready.
+The three genuine defects are: the Iran/Mentions axis-mixing (which measurably distorts the 2026 Geopolitics comparison), the missing abstain/confidence,
+and the muddy curation provenance.</p>
+<p><strong>Is there more we can do?</strong> A lot, and cheaply: the subcategory taxonomy, mechanic axis, and native structural fields are all
+<em>already built or already pulled</em> — they just were never assembled into one per-market table. Tier 1 gets you from "one label per market"
+to "topic + subcategory + mechanic + event family + entities + structural fields + confidence" in a single EC2 session, and the top-market
+hand-lock is the highest-leverage accuracy fix because that's precisely where the dollars and the residual disagreement live.</p>
+
+</body>
+</html>

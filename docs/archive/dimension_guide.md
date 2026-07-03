@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-07-02 — contains retracted claims.** Working guide to the 22 LLM-era dimensions, superseded by the v7 native dims. **Correction:** the passages explaining results via "reversed FLB in high-volume crypto/sports" / the "public money reversal" (in §5, §6, and later assessments) rely on a claim retired 2026-07: it was a D10−D1 artifact, and the signed calibration slopes there are ≈ 1. Dataset figures (1.377B rows through 2026-04-28) predate the June extension. See "Retired claims" in `docs/methods_reference.md`.
+
 # FLB Learnability Dimensions — Working Guide
 
 _Companion to `learnability_writeup.md`. One entry per dimension: how it's derived, what it's conceptually doing, current results, and an assessment to drive our review. We go through these one at a time — say "good" to keep one as-is, or propose a change and I'll test it._

@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-07-02.** Audit of the v4/v5 findings. Its dual-window recommendation was adopted in v6; its implementation pointers reference pre-Phase-B script names since renamed (`flb_per_slice_v3` → `flb_per_slice.py`). Superseded by the v7 native pivot.
+
 # Audit of `learnability_writeup.md` — empirical findings
 
 _Conducted on 2026-06-07 via EC2 i-0f5b31a268af53938 + local compute. ~3 hr of EC2 time. Every recommendation in this report is grounded in numbers from re-run analyses, not inference. The main writeup is **not edited** by this audit; revisions are a follow-up plan informed by these findings._

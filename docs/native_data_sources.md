@@ -1,3 +1,5 @@
+> **Status 2026-07-02:** the §7 re-pull was **executed 2026-06-21** → `/mnt/data/learnability/native/native_market_meta.parquet` (1.44M markets, 99.98% coverage — but **closed markets only**, contrary to §6's pull-both-halves advice; open markets are not covered). The tags→category map shipped 2026-07-01 (`analysis/learnability/native/final_tag_map_v1.json`). The field inventory and field→dimension map below remain the working reference; universe counts ("620K") and request estimates predate the June data extension.
+
 # Polymarket Native Data — Inventory & Field Guide
 
 _Companion to `dimension_guide.md`. Purpose: **replace the LLM-derived contract labels** (`event_template`, `event_info_type` regex, subject-list lengths) that drive the current 22 learnability dimensions with **platform-native fields** that Polymarket already publishes. This doc records what native data exists, where it comes from (with clickable links), how clean it is, and which muddy LLM dim each native field retires._

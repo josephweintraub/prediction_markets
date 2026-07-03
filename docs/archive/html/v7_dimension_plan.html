@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLB v7 — Refined Dimensions</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--ink:#e6e8ec;--mut:#9aa3af;--line:#2a2f3a;--accent:#5b9dff;--good:#42c98e;--warn:#e0b341;--bad:#e36b6b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 28px 120px}
+  h1{font-size:30px;margin:0 0 4px;letter-spacing:-.4px}
+  .sub{color:var(--mut);margin:0 0 36px}
+  h2{font-size:21px;margin:46px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:17px;margin:26px 0 6px}
+  p{margin:8px 0}
+  code,.f{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:#222734;padding:1px 6px;border-radius:5px;color:#cfe0ff}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:16px 0}
+  .lab{display:inline-block;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 10px;margin-bottom:8px}
+  .why{border-left:3px solid var(--good);padding:6px 0 6px 14px;margin:12px 0;color:#cfeede}
+  .cav{border-left:3px solid var(--warn);padding:6px 0 6px 14px;margin:12px 0;color:#efe2bf}
+  .der{border-left:3px solid var(--accent);padding:6px 0 6px 14px;margin:12px 0;color:#d8e4ff}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:12px;letter-spacing:.4px;text-transform:uppercase}
+  .drop{color:var(--bad);font-weight:600}.demote{color:var(--warn);font-weight:600}.keep{color:var(--good);font-weight:600}.repl{color:var(--accent);font-weight:600}
+  .big{font-size:15px}
+  ul{margin:8px 0 8px 2px;padding-left:20px}li{margin:4px 0}
+  .note{color:var(--mut);font-size:14px}
+  .pill{font-family:ui-monospace,monospace;font-size:13px;color:var(--good)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Favorite–Longshot Bias — the refined v7 dimensions</h1>
+<p class="sub">After the v7 run, the 29-agent review, and the crypto/sports calibration check. Native fields, directional metric, mostly longitudinal.</p>
+
+<h2>0 · The measure (kept directional)</h2>
+<div class="card big">
+<p><b>FLB stays exactly what the literature means:</b> <span class="pill">overpriced longshots</span> (realized win-rate <i>below</i> price at low prices) and <span class="pill">underpriced favorites</span> (realized <i>above</i> price at high prices).</p>
+<p>The statistic is the <b>signed calibration slope</b> <code>b</code> from a regression of realized outcome on price, <code>won&nbsp;~&nbsp;a&nbsp;+&nbsp;b·price</code>, estimated on a <b>common price window</b> across whatever buckets are being compared:</p>
+<ul>
+  <li><code>b &gt; 1</code> → classic FLB (the calibration curve is steeper than 45°)</li>
+  <li><code>b &lt; 1</code> → reverse FLB</li>
+  <li><code>b ≈ 1</code> → well-calibrated</li>
+</ul>
+<p>The familiar <code>D10−D1</code> decile spread stays only as an intuitive summary; <b>the slope is the comparison statistic.</b> We do <b>not</b> use an unsigned Brier/distance metric — it discards the <i>direction</i>, which is the entire phenomenon.</p>
+<p class="note">Why the change: the two-extreme-decile spread compares different price regions across buckets (a multi-outcome favorite sits below 0.5, a binary favorite above) and reads level offsets as tilts. The slope on common support is directional <i>and</i> comparable. Empirically it already paid off: Crypto <code>b=1.02</code>, Sports <code>b=1.00</code> (well-priced); Politics/Finance/Geopolitics <code>b≈1.08–1.10</code> (genuine FLB). The old "reverse-FLB crypto/sports" claim was a D10−D1 artifact and is dropped.</p>
+</div>
+
+<h2>1 · The four new dimensions</h2>
+<p class="note">Three are <b>longitudinal</b> (the only design that isolates <i>learning</i> rather than composition); one is the <b>canonical</b> horse-race form of FLB. All on native Polymarket fields, all scored with the signed slope.</p>
+
+<div class="card">
+  <span class="lab">repetition · longitudinal</span>
+  <h3>① Series learning curve</h3>
+  <div class="der"><b>Derivation.</b> Use Polymarket's native <code>series</code> grouping (Gamma <code>series_slug</code> + <code>recurrence</code>). Within each recurring series, order its market instances by <code>closed_time</code> → instance index <code>k = 1, 2, …</code>. Compute the signed slope <code>b<sub>k</sub></code> on each instance's trades, then regress <code>b<sub>k</sub></code> on <code>k</code> (or on log prior-settled-count) with <b>series fixed effects</b>.</div>
+  <div class="why"><b>Why.</b> Rules, resolution source, category and creator are <i>constant within a series</i>, so the only thing varying across <code>k</code> is elapsed repetitions + accumulated feedback. A slope of <code>b<sub>k</sub></code> drifting toward 1 as <code>k</code> grows is <i>learning</i> — not a category mix. This is the genuine "do markets learn over reps" test; our cross-sectional <code>dim_recurrence</code> gave a clean gradient but couldn't separate learning from composition.</div>
+  <div class="cav"><b>Caveat.</b> In high-cadence series the instance index is near-collinear with calendar date — add calendar-period controls or stratify by cadence so "series aging" isn't confounded with "platform maturing."</div>
+</div>
+
+<div class="card">
+  <span class="lab">individual learning · longitudinal · the missing half</span>
+  <h3>② Trader experience curve</h3>
+  <div class="der"><b>Derivation.</b> For each trade, count the wallet's prior <i>resolved</i> trades <b>strictly before</b> that trade (trailing / point-in-time, <b>never</b> lifetime). Estimate the within-wallet relationship between the trade's calibration contribution and trailing experience, with <b>wallet FE + calendar-quarter FE</b>; report a within-vs-between decomposition and a <b>reverse-time placebo</b> (shuffle the wallet's own trade order — if the slope survives, it was composition, not learning).</div>
+  <div class="why"><b>Why.</b> The only <i>within-person</i> learning test, and the half v6 never had (no trader axis at all). Trailing counts kill the look-ahead bias baked into lifetime-volume/PnL sorts (winners mechanically accumulate volume). Wallet FE + placebo separate genuine individual learning from platform maturation. Pairs with ① — market-level vs trader-level learning.</div>
+  <div class="cav"><b>Sub-test.</b> Domain-specific experience (prior trades in the <i>same</i> category/series) is sharper still, but needs a coverage check — few wallets are deep in one domain and naïve in another with enough tail mass.</div>
+</div>
+
+<div class="card">
+  <span class="lab">anchorability · objective realized signal</span>
+  <h3>③ Resolution ambiguity</h3>
+  <div class="der"><b>Derivation.</b> <i>Primary</i> = objective realized ambiguity from native fields: was the UMA resolution <b>disputed</b> (<code>uma_statuses</code> contains "disputed") or did it resolve <b>50/50</b> (tie/void). <i>Ex-ante</i> = an LLM-scored <b>ambiguity rating</b> of the <code>description</code> rules text (a ratings instrument, distinct from the discarded muddy <i>classification</i>; deterministic text features as validation). Always evaluated <b>within category</b>.</div>
+  <div class="why"><b>Why.</b> This single dimension replaces the failed <code>dim_anchor</code> <i>and</i> the five brittle rules-text proxies. In the v7 run, the <code>resolution_source</code> ladder just re-expressed crypto-lottery structure (the price-feed bucket had the <i>strongest</i> FLB, not the weakest), and the review showed every text proxy is broken (conditional clauses <i>disambiguate</i>; "names a source" doesn't predict the realized 0.5-rate; everything routes through UMA anyway). The construct that actually survives is <i>"is the outcome genuinely hard to adjudicate"</i> — best measured by the objective dispute/0.5 outcome.</div>
+  <div class="cav"><b>Caveat.</b> A dispute is downstream of belief dispersion (a collider), so frame it as descriptive, conditioned on category + thickness; the ex-ante LLM-ambiguity score is the cleaner instrument for a causal reading.</div>
+</div>
+
+<div class="card">
+  <span class="lab">complexity · the canonical FLB form</span>
+  <h3>④ Within-event longshot bias</h3>
+  <div class="der"><b>Derivation.</b> Take native multi-outcome events (<code>neg_risk = true</code> — mutually-exclusive, one winner). <i>Within each event</i>, rank the outcomes by price and test whether the cheap (longshot) outcomes lose relative to their implied probability. Measure on the <b>book mid-price</b> (not last trade), with a <b>minimum-liquidity threshold</b> per outcome, and use liquidity as an identifying lever.</div>
+  <div class="why"><b>Why.</b> This is FLB in its <i>original</i> Thaler–Ziemba horse-race form. Holding the event fixed differences out category, resolution source, liquidity regime and trader pool in one stroke — the best identification available, and the version the literature is actually about. It replaces the cross-sectional cardinality dim, which was a price-support/simplex artifact (multi-outcome favorites priced below 0.5, binaries above).</div>
+  <div class="cav"><b>Caveat.</b> A discrete bid-ask corrupts the price-of-record worst at the deep-longshot end — hence book-mid + min-liquidity. If the longshot tilt fades in liquid sub-samples it was microstructure; if it persists it's behavioral.</div>
+</div>
+
+<h2>2 · Controls &amp; companions (not learnability claims)</h2>
+<div class="card">
+<p><b>Controls — condition on these, don't headline them:</b></p>
+<ul>
+  <li><b>Market thickness</b> — consolidate <code>volume</code> + <code>liquidity</code> + <code>comment_count</code> + <code>competitive</code> into <i>one</i> thickness/sophistication axis (use <b>trade-time</b> depth, not lifetime volume). The review showed these are all the same latent factor.</li>
+  <li><b>Category</b> and <b>horizon / time-to-resolution</b> — covariates. The old "high-volume → public money reversal" is a named descriptive only; and since crypto/sports are now shown <b>well-priced</b> (<code>b≈1</code>), the reversal framing is retired.</li>
+</ul>
+<p><b>Descriptive companions — report residualized, never as headline:</b> the cross-sectional recurrence gradient; <code>text_novelty</code> (the algorithmic semantic-repetition angle on ①, audit-validated); the <code>resolution_source</code> anchor ladder.</p>
+</div>
+
+<h2>3 · What changes from v6</h2>
+<p class="note">v6 had 22 dimensions on a D10−D1 spread. The metric upgrade (signed slope on common support) applies throughout. Per-dimension disposition:</p>
+<table>
+<tr><th>v6 dimension</th><th>disposition</th><th>why</th></tr>
+<tr><td><code>dim_resolution_type</code></td><td class="drop">DROP</td><td>LLM label + junk "unknown" bucket → replaced by native resolution-ambiguity (③)</td></tr>
+<tr><td><code>dim_info_type_supergroup</code></td><td class="drop">DROP</td><td>LLM regex + junk "other" bucket; redundant with category</td></tr>
+<tr><td><code>dim_primary_category</code></td><td class="demote">→ CONTROL</td><td>LLM <code>categories[0]</code>; now a covariate, not a learnability finding</td></tr>
+<tr><td><code>dim_subject_specificity</code>, <code>dim_market_specificity</code></td><td class="drop">DROP</td><td>LLM subject-list lengths; brittle and noisy</td></tr>
+<tr><td><code>dim_event_family_size</code>, <code>dim_group_strict_size</code>, <code>dim_event_slug_size</code></td><td class="repl">→ REPLACE</td><td>LLM/structural family-size heuristics → native <code>series</code> + the within-series curve (①)</td></tr>
+<tr><td><code>dim_recurrence_class</code></td><td class="repl">→ REPLACE</td><td>100/60/0.5 magic-constant heuristic → native <code>recurrence</code> + ①</td></tr>
+<tr><td><code>dim_outcomes_per_event</code></td><td class="repl">→ REPLACE</td><td>cardinality as a cross-section was a simplex artifact → within-event FLB (④)</td></tr>
+<tr><td>prior-settlements (template / strict grain)</td><td class="repl">→ REPLACE</td><td>LLM-template grouping → native-series within-series learning (①)</td></tr>
+<tr><td><code>dim_family_vol_tier</code>, <code>dim_family_size_x_vol</code>, <code>dim_vol_per_contract*</code></td><td class="demote">→ CONTROL</td><td>LLM-template volume variants; consolidate into the one thickness control</td></tr>
+<tr><td><code>dim_dollar_volume_tier</code></td><td class="demote">→ CONTROL</td><td>trades-derived but a confounder, not learnability; use trade-time depth</td></tr>
+<tr><td><code>dim_contract_horizon</code></td><td class="demote">→ CONTROL</td><td>realized span is selection-on-outcome; becomes the time-to-close control inside ①</td></tr>
+<tr><td><code>dim_text_novelty</code>, <code>dim_text_neighbors_strict</code></td><td class="keep">KEEP (companion)</td><td>algorithmic over native question text, audit-validated; residualized, not headline</td></tr>
+<tr><td><code>dim_market_type</code> (up/down)</td><td class="keep">KEEP (filter only)</td><td>used purely as an <i>exclusion</i>; never a reported slice (SE-degenerate)</td></tr>
+<tr><td><i>(metric)</i> D10−D1 spread</td><td class="demote">→ SUMMARY ONLY</td><td>headline becomes the signed calibration slope on common support</td></tr>
+<tr><td><i>(brainstorm)</i> sports_bet_structure</td><td class="drop">DROP</td><td>decile-spread incoherent for live spread/total contracts; thin n</td></tr>
+</table>
+
+<h2>4 · The throughline</h2>
+<div class="card big">
+<p><b>22 muddy, cross-sectional, LLM-labelled slices → 4 clean dimensions</b> — three of them longitudinal (the only way to actually isolate learning), one the canonical horse-race FLB — all on native Polymarket fields and a directional, artifact-resistant metric.</p>
+<p>The thesis now rests on falsifiable, mechanism-specific questions: <b>does FLB shrink within a recurring series, and within an individual trader, as repetitions accumulate?</b> — plus the classic within-event test. And the empirical backdrop is now correct: the objective/liquid/repeated markets (crypto, sports) are simply <b>well-priced</b>, while the bias lives in the <b>judgment-heavy</b> categories — a sharper, more intuitive learnability story than the old public-money-reversal framing.</p>
+</div>
+
+</div>
+</body>
+</html>

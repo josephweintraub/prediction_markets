@@ -1,0 +1,105 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Session audit — data extension, newer-data FLB, native tag taxonomy</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--ink:#e6e8ec;--mut:#9aa3af;--line:#2a2f3a;--good:#42c98e;--warn:#e0b341;--bad:#e36b6b}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:44px 26px 120px} h1{font-size:26px;margin:0 0 2px} .sub{color:var(--mut);margin:0 0 22px}
+h2{font-size:20px;margin:38px 0 8px;border-bottom:1px solid var(--line);padding-bottom:7px}
+h3{font-size:16px;margin:22px 0 4px;color:#cfd6e4}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px} th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-size:11px;text-transform:uppercase} .mut{color:var(--mut);font-size:.9em}
+.good{color:#7fe0b0}.bad{color:#f0a0a0}.warn{color:#e8c98a}
+.box{border-left:3px solid var(--good);padding:8px 0 8px 14px;color:#cfeede;margin:12px 0}
+.alert{border-left:3px solid var(--bad);padding:8px 0 8px 14px;color:#f3d2d2;margin:12px 0}
+.note{border-left:3px solid var(--warn);padding:8px 0 8px 14px;color:#efe2bf;margin:12px 0}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.86em;background:#222734;padding:1px 6px;border-radius:5px;color:#cfe0ff}
+ol li,ul li{margin:6px 0}
+.tag{display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-right:6px}
+</style></head><body><div class="wrap">
+<h1>Session audit</h1>
+<p class="sub">Critical review of everything done in this session: SII external validation · contract-migration fix + data extension to June 22 · "is newer data better calibrated" analysis · native tag→category taxonomy. What holds, what doesn't, and whether the categorical labelling is being done correctly.</p>
+
+<div class="box"><b>Overall verdict.</b> The <b>infrastructure work is sound and well-verified</b> (external validation, migration fix, dataset extension). The <b>tag→category mapping is methodologically correct for its purpose</b>, with fixable design flaws and one state-consistency problem. The <b>weakest link is the headline scientific claim</b> — "classic FLB has largely vanished in the newest data" — which is confounded by <b>resolution censoring</b> and should not be presented as-is.</div>
+
+<h2>1 · What holds up</h2>
+<div class="card">
+<table>
+<tr><th>Work</th><th>Why it's solid</th></tr>
+<tr><td>SII external validation</td><td>Genuinely independent dataset, compared at the token level: 99.8% token coverage, 99.999% resolution agreement, 0.99 per-token price correlation, FLB reproduces. Strong evidence the <i>pre-migration</i> pipeline is correct. This is the right way to validate — against a source that shares none of our code.</td></tr>
+<tr><td>Contract-migration diagnosis & V2 extractor</td><td>Correct root cause (new exchange contracts + new <code>OrderFilled</code> signature at block ~86.1M, ~Apr 28). The extractor was validated on invariants (343M events, 100% USDC-leg, 100% price∈[0,1]) and emits the <b>old raw_events schema</b>, so every downstream stage ran unchanged — the right engineering call.</td></tr>
+<tr><td>Slope over D10−D1 as the directional signal</td><td>Correct lesson carried forward from the crypto/sports correction — D10−D1 has boundary-decile artifacts; <code>regr_slope(won, price)</code> is the honest direction read.</td></tr>
+<tr><td>Native tags over LLM labels</td><td>Right strategic move (and matches the mentor guidance): reproducible, free for new markets, no LLM cost/drift. The <code>tags</code> field is a real taxonomy (99% populated) while <code>category</code> is dead (0.3%).</td></tr>
+<tr><td>Validation-loop methodology</td><td>Fresh 6,000-market pools each round means the 79→19 error drop is genuinely out-of-sample, not tuning to the test set. The refusal of the literal "10 clean rounds" bar is also correct: with a ~0.1–0.3% irreducible-ambiguity floor, a clean 500-draw has probability ~20–60%, so ten consecutive is effectively impossible — that's a property of the ambiguity floor, not of the map.</td></tr>
+</table>
+</div>
+
+<h2>2 · The biggest problem: resolution censoring in the "newest data is calibrated" claim</h2>
+<div class="alert"><b>The May–Jun bucket is not a random sample of May–Jun markets — it's the subset that already resolved by the June 23 data cutoff.</b> FLB rows require a resolution (<code>won</code>). A market that traded in May–June can only enter if it opened <i>and resolved</i> within ≤ 8 weeks. That mechanically selects hourly/daily/weekly recurring markets and excludes every long-horizon judgment market (elections, year-end props) — while their 2025 counterparts, all resolved by now, <i>are</i> in the 2025 bucket.</div>
+<div class="card">
+<p>Our own numbers show the composition shift: Politics falls from <b>n=2.22M trades (2025) to n=232K (May–Jun)</b>; Weather (hourly temperature series) becomes the <i>largest</i> May–Jun category at 3.35M; Esports+Iran+Weather+Sports — all fast-resolving — dominate the bucket. FLB has always concentrated in judgment/long-horizon markets, so comparing "all horizons, 2025" against "short-horizon only, 2026" can produce the 1.039 → 0.949 slope trend <i>with zero actual change in behavior</i>.</p>
+<p>This also weakens the single most quotable result — <b>"even Politics collapsed, 1.049 → 0.894"</b>. The May–Jun Politics cell is only short-horizon political markets (fast resolutions like confirmations, deadline votes), a very different animal from the 2025 cell that includes long-dated election markets.</p>
+<h3>The fix (cheap, one EC2 run)</h3>
+<p><b>Horizon-matched comparison:</b> restrict every time bucket to markets with lifetime ≤ N days (e.g. 30), or compare the same recurring series across periods. If short-horizon 2025 markets also show slope ≈ 1.0, the "improvement" is composition, not learning — and the honest headline becomes "short-horizon markets are and were well-calibrated; the newest cohort's judgment markets can't be evaluated yet."</p>
+<h3>Secondary confounds in the same analysis</h3>
+<ul>
+<li><b>Stale bot list.</b> <code>wallet_flags</code> was built on old data; May–Jun bot wallets created after the build aren't flagged. The newest bucket is precisely where high-frequency flow concentrates. Could contribute to the mild reverse tilt (0.949).</li>
+<li><b>Up/down exclusion semantics differ across buckets.</b> Old months exclude via eventSlug patterns; new months (sparse eventSlug) via <code>outcome ∉ {Up,Down}</code>. Threshold-style recurring crypto ("BTC above $X at 3pm?" — outcomes Yes/No) is up/down-family but survives the new filter. Quantify the leak: count May–Jun trades on markets carrying 5M/15M/1H or high-recurrence tags.</li>
+<li><b>No external check on the V2 months.</b> The SII validation covered the pre-migration pipeline. The V2-extracted May–Jun data has only been validated internally (invariants + overall calibration). One spot-check of May–Jun daily volume/trade counts against the Data-API or SII would close the loop.</li>
+</ul>
+</div>
+
+<h2>3 · Is the categorical labelling being done correctly?</h2>
+<div class="card">
+<p><b>Short answer: yes at the mechanical level, with real design flaws to fix before it becomes "the" category variable for the paper.</b></p>
+
+<h3>3a · What the 98.7% actually measures (circularity)</h3>
+<p>The map was bootstrapped from <code>P(LLM_category | tag)</code>, so the held-out 98.7% is <b>agreement with the LLM labels, not accuracy against ground truth</b>. Held-out across markets, but the same labeler generated train and test — it measures "tags can predict what the LLM would have said." That's the right <i>consistency</i> metric for a drop-in replacement, but it inherits LLM systematic errors. The market-level hand-checks are what break the circularity — independent judgment on question text found 0.3–1.3% error — and indeed several "disagreements" turned out to be LLM mistakes, not map mistakes. Caveat to keep in mind: the checkers are also LLM agents, so correlated blind spots are possible; for topic assignment (mostly human-obvious) this is acceptable.</p>
+
+<h3>3b · The volume-weighted number is the one that matters — and it's worse</h3>
+<p>Held-out agreement is <b>98.7% by count but 94.2% by volume</b>: disagreements concentrate in <i>large</i> markets, and every FLB analysis is trade- or dollar-weighted. A 1% count error rate that lands on the top-volume markets can move a category's slope; the same rate on dust markets cannot. <b>Cheapest high-value fix in this whole audit: hand-lock the top ~100 markets by volume to explicit categories</b> (an hour of work, protects a huge share of analysis weight).</p>
+
+<h3>3c · The taxonomy mixes axes</h3>
+<table>
+<tr><th>Bucket</th><th>What it really is</th><th>Recommendation</th></tr>
+<tr><td>Iran</td><td>A single event-family (one news cycle), not a topic category. Its May–Jun slope of 0.759 is a one-cluster artifact — the exact "one-event-family slice" failure mode the v4/v5 audit flagged.</td><td>Fold into Geopolitics with an <code>event_family</code> flag; never present alongside Politics/Sports as a peer category.</td></tr>
+<tr><td>Mentions</td><td>A market <i>mechanic</i> (say-a-word), not a topic. Defensible as FLB-distinct, but it sits on a different axis.</td><td>Keep, but document as a market-type carve-out, not a topic.</td></tr>
+<tr><td>Esports</td><td>Carved out of Polymarket's own tagging (they tag esports "Sports"). Fine, but the boundary is our rule, not theirs — document the precedence explicitly.</td><td>Keep, document.</td></tr>
+<tr><td>Health/Science</td><td>Missing primary — health markets get forced into Other or hijacked by stray tags (the measles/Weather residual). Known.</td><td>Either add a small Health/Science bucket or accept the Other assignment consciously.</td></tr>
+</table>
+
+<h3>3d · No abstain bucket</h3>
+<p>The soft-vote takes an argmax no matter how thin the margin. The genuinely-ambiguous residual (crime = Culture-vs-Other, IPO = Tech-vs-Finance) currently gets a forced label and adds noise. Cleaner: <b>assign "Mixed" below a vote-margin threshold</b> and report its size. This also dissolves the "10 clean rounds" tension — ambiguous markets stop being classified as errors because they stop being classified.</p>
+
+<h3>3e · State inconsistency — needs fixing before anything ships</h3>
+<div class="note">
+<ul>
+<li><b>The FLB-by-category numbers were computed with a stale map.</b> Timestamps prove it: <code>native_flb_results.parquet</code> 15:33 &lt; <code>final_tag_map.json</code> 16:46 &lt; precedence fixes 20:47+. So <code>flb_newest_native.html</code> predates the Mentions-precedence fix (~50/6000 Mentions markets misrouted into Politics/Culture at the time). Impact is small for big cells but the Mentions cell itself (n=35K) is undercounted — <b>re-run with the finalized map before showing anyone.</b></li>
+<li><b>Two round-2 fixes are documented but not baked</b> into <code>final_tag_map.json</code> (demote <code>Tweet Markets</code>/<code>Elon Tweets</code>; remove Geopolitics precedence). They were verified against round-2's <i>own</i> errors — in-sample — so bake them and run one fresh confirmation round.</li>
+<li><b>The canonical map lives in <code>/tmp</code></b> on both machines. /tmp is volatile; the hand-curation was expensive. Persist map + precedence rules + apply-logic into the repo as a module (e.g. <code>analysis/learnability/native_categories.py</code> + a versioned JSON) and commit.</li>
+</ul>
+</div>
+
+<h3>3f · Missing statistics</h3>
+<p>The category × period cells report spread/slope with <b>no clustered SEs or t-stats</b> — the overall time-trend run had them, the native by-category run didn't. "Finance is the lone FLB holdout (1.13)" isn't a finding until it has a 3-way clustered SE, and 12 categories × 3 windows is a multiple-comparisons surface (the same discipline the v5 audit demanded of the learnability dims). Small cells (Economy n=21K, slope 0.738; Mentions n=35K) shouldn't be shown without them.</p>
+</div>
+
+<h2>4 · Ops / hygiene loose ends</h2>
+<div class="card"><ul>
+<li><b><code>extract_orderfilled_v2.py</code> and the build_trades memory bump are uncommitted.</b> They are now load-bearing for the canonical 2.02B-row dataset. Commit them.</li>
+<li><b>Alchemy API key hardcoded in <code>pipeline/config.py</code>.</b> Move to an env var and rotate the key before any commit touches that file.</li>
+<li><b>eventSlug is sparse on the new months</b> — this silently breaks every slug/event-family-based dim in the learnability engine for post-April data, not just the up/down filter. Needs either a Gamma backfill join (token→event slug) or an explicit "dims end April" caveat on anything v6-style run over the extended data.</li>
+<li><b>Writeup contradiction:</b> <code>flb_newer_data.html</code> says "Politics and Finance kept their FLB" (2025+ cut, LLM labels) while <code>flb_newest_native.html</code> says "even Politics collapsed to 0.894" (May–Jun, native tags). Both are internally correct but a reader sees a contradiction; the reconciliation (time-split + the censoring problem above) should be stated wherever both are shown.</li>
+</ul></div>
+
+<h2>5 · Ranked recommendations</h2>
+<div class="card"><ol>
+<li><b>Horizon-matched FLB comparison</b> (kills or confirms the headline "newest data is calibrated" claim — do this before the claim travels).</li>
+<li><b>Bake the two map fixes → fresh confirmation round → freeze</b>, then persist map + precedence rules into the repo and re-run the by-category FLB with the frozen map.</li>
+<li><b>Hand-lock the top ~100 markets by volume</b> (attacks the 94.2%-by-volume weakness directly).</li>
+<li><b>Add 3-way clustered SEs to category × period cells</b>; add an abstain/"Mixed" bucket below a vote-margin threshold.</li>
+<li><b>Commit the V2 extractor; de-hardcode + rotate the Alchemy key.</b></li>
+<li><b>Quantify the up/down-family leak</b> in the May–Jun bucket and spot-check V2 months against an external source.</li>
+</ol></div>
+
+<p class="mut">Prepared 2026-07-01 · covers the session from SII validation through tag-map validation round 2. Facts flagged as "verify" were not re-checked on EC2 (instance kept stopped for this audit).</p>
+</div></body></html>
