@@ -5,6 +5,10 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-03 — Reporting-reproducibility convention
+
+- Findings reports (HTML) must transcribe their headline numbers from a committed script's summary artifact (parquet/JSON) and cite the script + artifact near the top; exploration queries get promoted into a script before a report is finalized. Recorded in CLAUDE.md conventions and `docs/methods_reference.md` ("Reporting reproducibility").
+
 ## 2026-07-02 — Docs reorganization & archive (the pivot cleanup)
 
 - **Archived** the pre-pivot writeups to `docs/archive/` with status/correction headers: `learnability_writeup.md` (+`.pdf`), `learnability_writeup_audit.md`, `dimension_guide.md`, `data_exploration.md`, plus the loose local HTML session findings (`archive/html/`: external validation, June-2026 trades extension, horizon/censoring analysis, v7 runs, category labeling review).

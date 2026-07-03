@@ -111,6 +111,7 @@ Local sync: `/Users/josephweintraub/Library/CloudStorage/Dropbox/Polymarket Data
 - **Docs.** New docs → `docs/` + a line in the Documents map. Superseded docs → `docs/archive/` with a status header, and prune stale claims from live docs at the same time. Convert relative dates to absolute.
 - **Data & secrets never in git** — enforced by `.gitignore` (`*.parquet`, `*.pem`, `.anthropic_api_key`, …).
 - **Where things go.** Analysis code → `analysis/` (learnability → `analysis/learnability/`); one-off scripts → `scripts/` in the repo, not `/home/ubuntu`; finished deliverables → Dropbox; working files stay in the repo.
+- **Findings reports.** Delivered as self-contained HTML opened in the browser. Reproducibility rule: a finalized report's headline numbers come from a committed script's summary artifact (parquet/JSON), and the report names that script + artifact near the top — no hand-transcribed ad-hoc query results. See `docs/methods_reference.md` ("Reporting reproducibility").
 
 ## Patterns to avoid
 
