@@ -5,6 +5,28 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-03 — Embedding-difficulty workstream + extended-set filter fixes
+
+- **New workstream `analysis/embedding_difficulty/`** — embedding-based intrinsic-difficulty
+  study (question-text embeddings via bge-small-en-v1.5; PCA structure; novelty/precedent-
+  density at birth with strict backward discipline; multi-granularity k-means; action/subject
+  precedent from Stage-2 labels). Running log in `analysis/embedding_difficulty/RESEARCH_LOG.md`;
+  self-contained engine (`flb_engine.py`) implements the **signed calibration slope** (first
+  code implementation of the primary metric in `docs/methods_reference.md`) + CGM 3-way SEs.
+  Artifacts under `/mnt/data/embedding_difficulty/`.
+- **Extended-set filter gaps found & worked around** (follow-on to the known "eventSlug
+  sparse" note from 2026-06-24 — the consequences were bigger than noted):
+  (a) `market_resolutions_enriched.parquet` (Mar 2026) covers only ~49% of trade rows in the
+  extended set — joins through it silently halve the sample; the June-24 artifacts
+  (`pipeline/output/market_resolutions.parquet` + `/mnt/data/pipeline_data/token_map.parquet`)
+  cover 100% of traded tokens. (b) `eventSlug` is the **empty string** on newer markets, so the
+  standard `NOT LIKE '%updown%'` exclusion catches ~nothing — ~416K up/down markets (1.34B raw
+  rows; 135M standard-filtered BUY trades) were flowing into any standard-filter run on the
+  extended set. Workaround: market-level up/down flag from Gamma event_slug/series_slug/question
+  (`build_universe.py`). Existing drivers (`run_phase1.py` etc.) still carry both gaps.
+- Known caveat: `wallet_flags.parquet` last built 2026-06-11 — bot coverage of wallets first
+  active after the June extension is unaudited.
+
 ## 2026-07-03 — Reporting-reproducibility convention
 
 - Findings reports (HTML) must transcribe their headline numbers from a committed script's summary artifact (parquet/JSON) and cite the script + artifact near the top; exploration queries get promoted into a script before a report is finalized. Recorded in CLAUDE.md conventions and `docs/methods_reference.md` ("Reporting reproducibility").
