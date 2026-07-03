@@ -356,7 +356,7 @@ def backfill_event_slug() -> None:
         return
 
     con = duckdb.connect()
-    con.execute("SET memory_limit='48GB'")
+    con.execute("SET memory_limit='150GB'")
     con.execute("SET threads=16")
     con.execute("SET temp_directory='/mnt/data/tmp'")
     con.execute("SET preserve_insertion_order=false")

@@ -16,3 +16,7 @@ output/
 .env
 *.pem
 .anthropic_api_key
+
+# pipeline-root convenience symlinks (recreated per instance)
+/pipeline/output
+/pipeline/data

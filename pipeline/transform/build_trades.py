@@ -65,11 +65,11 @@ CTF_TOKEN_DECIMALS = 6
 # ---------------------------------------------------------------------------
 def get_con():
     con = duckdb.connect()
-    con.execute("SET memory_limit='48GB'")
+    con.execute("SET memory_limit='200GB'")
     con.execute("SET temp_directory='/mnt/data/tmp'")
     con.execute("SET max_temp_directory_size='200GB'")
     con.execute("SET preserve_insertion_order=false")
-    con.execute("SET threads=8")
+    con.execute("SET threads=12")
     return con
 
 

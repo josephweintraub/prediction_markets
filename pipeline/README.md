@@ -1,3 +1,5 @@
+> **Update 2026-06-24:** Polymarket redeployed its exchange contracts ~2026-04-28; `extraction/extract_orderfilled_v2.py` captures the new `OrderFilled` events (same raw_events schema) and `refresh.py` is the live entry point. The canonical product is now the CLEAN set `/mnt/data/pipeline_output/trades_clean.parquet` (2,018,709,888 rows through 2026-06-23; see `docs/methods_reference.md` for the censoring caveat). Row counts and the `analysis/` subtree described below predate the repo consolidation — that subtree now lives at the repo root `analysis/`.
+
 # Polymarket Pipeline (EC2)
 
 End-to-end extraction and analysis of Polymarket OrderFilled events from
