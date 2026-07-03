@@ -247,73 +247,59 @@ def relocate_trades_output() -> None:
 # so we hit gamma /events with monthly end-date windows to recover the mapping)
 # ---------------------------------------------------------------------------
 
-def _fetch_events_window(session, params, max_offset=100_000):
-    out = []
-    offset = 0
-    while offset < max_offset:
-        p = {**params, "limit": 500, "offset": offset}
-        for attempt in range(6):
-            try:
-                r = session.get(f"{GAMMA_BASE}/events", params=p, timeout=30)
-                if r.status_code in (400, 422):
-                    return out
-                r.raise_for_status()
-                page = r.json()
-                break
-            except Exception:
-                time.sleep(1.5 ** attempt)
-        else:
-            return out
-        if not page:
-            break
-        out.extend(page)
-        offset += len(page)
-        if len(page) < 500:
-            break
-    return out
-
-
 def fetch_events_to_map() -> int:
-    """Build conditionId → event_slug map from gamma /events via monthly windows.
+    """Build conditionId → event_slug map from gamma /events/keyset (cursor pagination).
 
-    Gamma /events caps at offset 100K per filter. Monthly end_date_min/max
-    windows partition the data so each window stays under the cap.
+    The offset-windowed /events endpoint was deprecated (~2026-07 it returns
+    near-empty results: the 2026-07-03 run got 29K conditionIds vs ~1.5M in June,
+    collapsing eventSlug coverage to 6%). The keyset endpoint returns all events;
+    we paginate closed=true and closed=false explicitly because the sibling
+    /markets/keyset defaults to open-only when unfiltered.
     """
-    log.info("Fetching events via monthly end_date windows...")
-    windows = []
-    for y in range(2022, 2027):
-        for m in range(1, 13):
-            if (y, m) < (2022, 11) or (y, m) > (2026, 12):
-                continue
-            s = date(y, m, 1).isoformat()
-            e = date(y + (m // 12), (m % 12) + 1, 1).isoformat()
-            windows.append((s, e))
-    queries = [{"end_date_min": s, "end_date_max": e, "closed": "true"} for s, e in windows]
-    queries.append({"closed": "false"})  # open events catch-all
-
+    log.info("Fetching events via /events/keyset (closed=true, then closed=false)...")
     session = requests.Session()
-    all_events = {}
-    t0 = time.time()
-    with ThreadPoolExecutor(max_workers=16) as ex:
-        for evs in ex.map(lambda q: _fetch_events_window(session, q), queries):
-            for ev in evs:
-                eid = ev.get("id") or ev.get("slug")
-                if eid and eid not in all_events:
-                    all_events[eid] = ev
-    log.info("Fetched %d unique events in %.1f s", len(all_events), time.time() - t0)
-
+    session.headers.update({"User-Agent": "Mozilla/5.0 (polymarket-research)"})
     rows = []
-    for ev in all_events.values():
-        slug = ev.get("slug")
-        if not slug:
-            continue
-        for m in ev.get("markets", []):
-            cid = m.get("conditionId") or m.get("condition_id")
-            if cid:
-                rows.append({"conditionId": cid, "eventSlug": slug})
+    n_ev = 0
+    t0 = time.time()
+    for closed in ("true", "false"):
+        cur = None
+        while True:
+            params = {"limit": 100, "closed": closed}
+            if cur:
+                params["after_cursor"] = cur
+            for attempt in range(6):
+                try:
+                    r = session.get(f"{GAMMA_BASE}/events/keyset", params=params, timeout=30)
+                    r.raise_for_status()
+                    d = r.json()
+                    break
+                except Exception:
+                    time.sleep(1.5 ** attempt)
+            else:
+                d = None
+            if not isinstance(d, dict):
+                break
+            evs = d.get("events") or []
+            n_ev += len(evs)
+            for ev in evs:
+                slug = ev.get("slug")
+                if not slug:
+                    continue
+                for m in ev.get("markets", []) or []:
+                    cid = m.get("conditionId") or m.get("condition_id")
+                    if cid:
+                        rows.append({"conditionId": cid, "eventSlug": slug})
+            cur = d.get("next_cursor")
+            if not cur or not evs:
+                break
+            time.sleep(0.05)
     df = pd.DataFrame(rows).drop_duplicates(subset="conditionId", keep="first")
     df.to_parquet(EVENT_SLUG_MAP, index=False)
-    log.info("event_slug_map: %d unique conditionIds → %s", len(df), EVENT_SLUG_MAP)
+    log.info("event_slug_map: %d unique conditionIds from %d events in %.1f min → %s",
+             len(df), n_ev, (time.time() - t0) / 60, EVENT_SLUG_MAP)
+    if len(df) < 500_000:
+        log.warning("event_slug_map suspiciously small (%d) — check the endpoint before backfilling", len(df))
     return len(df)
 
 
