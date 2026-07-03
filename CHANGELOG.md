@@ -13,6 +13,7 @@ Research *findings* are not tracked here — methods live in `docs/methods_refer
 - **Rewrote `docs/EC2_SETUP.md`** — removed the stale March-era instructions (retired paths, raw-glob config, and the dangerous "terminate + delete the EBS volume" advice).
 - **Merged `native-dims` into `main`**; committed the previously-uncommitted **V2 pipeline code** (`extraction/extract_orderfilled_v2.py`, updated `refresh.py`, `transform/build_trades.py`) — the code that built the current canonical dataset; `/home/ubuntu/pipeline` is now a symlink into the repo (old copy kept at `/home/ubuntu/pipeline_pre_repo_backup`).
 - **Committed the native tag map** `analysis/learnability/native/final_tag_map_v1.json`.
+- **Local-copy policy made official:** the local Mac copy stays a git-auth-less viewer (no clone, no local push); the "converge local into a clone" item is retired. CLAUDE.md updated.
 
 ## 2026-07-01 — Native tag taxonomy v1 (data)
 

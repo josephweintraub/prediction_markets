@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pivot Cleanup — executed 2026-07-02</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+         max-width: 880px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.55; }
+  h1 { font-size: 1.5em; border-bottom: 2px solid #333; padding-bottom: 8px; }
+  h2 { font-size: 1.2em; margin-top: 1.8em; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+  code { background: #f2f2f2; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 0.92em; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f5f5f5; }
+  .done { color: #1e7e34; font-weight: 600; }
+  .box { background: #fdf6ec; border: 1px solid #e0c9a0; border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+  .note { background: #eef3fa; border: 1px solid #b9cde8; border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+  ul { margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<h1>Pivot cleanup — executed 2026-07-02</h1>
+<p><em>Full pass: catch-up commits + reorganization + archive + context slimming. All pushed to GitHub (<code>main</code> at <code>c7ad600</code>). EC2 stopped.</em></p>
+
+<div class="box">
+<strong>The shape of it.</strong> The repo now has exactly <strong>three live docs</strong> (<code>methods_reference.md</code> — methods and practices only, no result claims; <code>native_data_sources.md</code> with an executed-status header; a thin <code>EC2_SETUP.md</code>) plus <code>docs/archive/</code> holding everything else with correction headers. CLAUDE.md dropped from ~18&nbsp;KB to ~10.5&nbsp;KB and no longer carries findings, done-plans, or stale numbers. Claude's session memory index was rewritten the same way — the retracted Feb-2026 results, notebook inventories, and threshold tables are gone; what remains is preferences, data caveats, and pointers.
+</div>
+
+<h2>Commits pushed (main, <code>02b0871 → c7ad600</code>)</h2>
+<table>
+<tr><th>Commit</th><th>What</th></tr>
+<tr><td><code>merge</code></td><td><code>native-dims</code> fast-forwarded into <code>main</code> — v7 (re-pull + first dim build) is now mainline.</td></tr>
+<tr><td><code>1cca100</code></td><td><strong>V2 pipeline code committed</strong>: <code>extraction/extract_orderfilled_v2.py</code>, updated <code>refresh.py</code> + <code>transform/build_trades.py</code> — the code that built the canonical 2,018,709,888-row set, previously living only in <code>/home/ubuntu/pipeline</code>. That dir is now a symlink into the repo (old copy kept at <code>pipeline_pre_repo_backup</code>), so it can't drift again. <code>py_compile</code> clean.</td></tr>
+<tr><td><code>ab3d469</code></td><td><strong>Docs archive</strong>: v6 writeup (+pdf +audit), dimension guide, data_exploration → <code>docs/archive/</code> with correction headers (the guide's header retracts the crypto/sports "reversal" passages; data_exploration's flags the censoring discovery). All 11 loose local HTML findings now versioned under <code>docs/archive/html/</code>. New <code>docs/methods_reference.md</code>; EC2_SETUP rewritten (the terminate-and-delete-the-volume advice is gone).</td></tr>
+<tr><td><code>42bec54</code></td><td>Tag map v1 (<code>final_tag_map_v1.json</code>) committed; current READMEs for <code>analysis/learnability/</code> (replacing three-generations-stale Phase-1 text) and <code>analysis/stage0_v2/</code> (classification detail moved out of CLAUDE.md).</td></tr>
+<tr><td><code>c7ad600</code></td><td>Slimmed CLAUDE.md + CHANGELOG caught up: six dated entries covering Jun 21 → Jul 2 (re-pull, external validation, V2 fix + extension, censoring, taxonomy, this reorg).</td></tr>
+</table>
+
+<h2>What the always-loaded context looks like now</h2>
+<ul>
+<li><strong>CLAUDE.md (10.5&nbsp;KB, was 17.9)</strong> — workflow, EC2 commands, data layout with the censoring caveat, conventions. Zero result claims; two new "patterns to avoid" point at the retired-claims list instead of restating findings.</li>
+<li><strong><code>docs/methods_reference.md</code> (6&nbsp;KB)</strong> — the neutral project statement, data canon + caveats, the standard filters (BUY-side, price bounds, up/down + bot exclusion, 5K slice floor, lifecycle windows), calibration spec (signed slope primary, D10−D1 secondary, CGM 3-way clustered SEs, dual weighting), and a short <em>retired claims — do not reassert</em> list.</li>
+<li><strong>Memory</strong> — MEMORY.md rewritten as a pointer index (~⅓ the size); added a <em>no-findings-anchoring</em> feedback memory recording your instruction; amended the v7 memory so the Jun-22 "D10−D1 canonical" note no longer contradicts the Jul-1 slope-primary correction.</li>
+</ul>
+
+<h2>Local copy</h2>
+<p>Now mirrors the repo layout: <code>docs/</code> with the three live docs, <code>docs/archive/</code> (+<code>html/</code>) with everything else. Nothing was deleted — replaced files have safety copies (<code>docs/archive/CLAUDE_pre_reorg_2026-07-02.md</code>, <code>EC2_SETUP_pre_reorg.md</code>, originals under <code>docs/archive/.originals/</code>). The root is clean: <code>analysis/</code>, <code>pipeline/</code>, <code>docs/</code>, CLAUDE.md, CHANGELOG.md, plus <code>paper_replication/</code> and <code>v6_figures/</code> untouched.</p>
+
+<h2>Two small things for you</h2>
+<div class="note">
+<strong>1. Local clone — standing contradiction.</strong> Memory records a Jun-21 decision that the local Mac deliberately has no git auth (viewer only, no "converge local" step), but CLAUDE.md — old and new — lists "converge local into a clone" as the remaining step, and you approved that framing in the review. Both work; say the word and I'll either set up local auth + clone next session, or strike the line and make viewer-only official.<br><br>
+<strong>2. Commit authorship (cosmetic).</strong> The EC2 box had no git identity configured, so today's four commits are authored <code>Ubuntu &lt;ubuntu@ip-…&gt;</code> instead of <code>joe_weintraub</code>. A history rewrite + force-push was blocked by permissions (reasonably), so I left it — functionally irrelevant on a private repo. Identity is now configured, so future commits are correct.
+</div>
+
+<p><em>EC2 started and stopped within the session (verified <code>stopped</code>). This report is archived at <code>docs/archive/html/pivot_cleanup_report_2026-07-02.html</code> (local only — commit next session if wanted).</em></p>
+
+</body>
+</html>

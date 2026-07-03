@@ -10,7 +10,7 @@ Workflow every session: **start EC2 → mount EBS → run on EC2 → pull only s
 
 Why local joins are wrong, not just slow: the local trades sample and the EC2 set key markets differently (`conditionId` semantics differ) — local joins silently mis-key. See the join-key note in `docs/methods_reference.md`.
 
-> The **local** `~/prediction_markets` is still **not a git clone** — it sits untracked inside a home-rooted repo, so **local deletes are irreversible; confirm before removing local files.** The GitHub/EC2 copy is canonical; sync deliberately.
+> The **local** `~/prediction_markets` is **deliberately not a git clone** (viewer only, no local git auth — user decision, confirmed 2026-07-02). It sits untracked inside a home-rooted repo, so **local deletes are irreversible; confirm before removing local files.** The GitHub/EC2 copy is canonical; sync deliberately.
 
 ## What this repo is
 
@@ -29,7 +29,7 @@ Workstreams:
 
 Canonical repo: **`josephweintraub/prediction_markets`** on GitHub (private; account `josephweintraub`, not the `GoggleBoy07` in the git noreply email). Lives on EC2 at `/home/ubuntu/prediction_markets`; pushes over the SSH deploy key (`~/.ssh/github_prediction_markets` on EC2). All commits happen on EC2 (no local git auth — deliberate). **Code + docs only — data lives on `/mnt/data`, gitignored.**
 
-Consolidation status: Phase B (wiring + retiring scattered EC2 originals) completed 2026-06-21; docs reorganization + archive 2026-07-02. Remaining: converge the local copy into a proper clone (needs local GitHub auth).
+Consolidation status: Phase B (wiring + retiring scattered EC2 originals) completed 2026-06-21; docs reorganization + archive 2026-07-02. The local copy stays a git-auth-less viewer **by design** — there is no converge-local step (decided 2026-06-21, reconfirmed 2026-07-02).
 
 ## Documents map
 
