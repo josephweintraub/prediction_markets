@@ -84,7 +84,9 @@ con.execute("""CREATE TEMP TABLE mcat AS
   FROM (SELECT * FROM ranked WHERE rn=1) a
   LEFT JOIN (SELECT * FROM ranked WHERE rn=2) b USING(mkt)""")
 
-# ---- 4) subcategory map + vote within winning topic ----
+# ---- 4) subcategory map + vote within the FINAL topic ----
+# (tail stress test 2026-07-03: voting against the raw vote-topic gave Mentions-
+# precedence markets Sports subcats — the subvote must use the final topic)
 sub = json.load(open(f"{TAX}/subcategories.json"))
 srows = []
 for blk in sub:
@@ -94,10 +96,14 @@ for blk in sub:
 con.register("subdf", pd.DataFrame(srows))
 con.execute("CREATE TEMP TABLE submap AS SELECT * FROM subdf")
 log(f"subcat map: {len(srows)} (tag,primary)->subcat rows")
+con.execute(f"""CREATE TEMP TABLE mfinal AS
+  SELECT m.condition_id mkt,
+         CASE WHEN list_contains(m.tags,'Mentions') THEN 'Mentions' ELSE mc.topic_vote END topic
+  FROM read_parquet('{NM2}') m JOIN mcat mc ON m.condition_id=mc.mkt""")
 con.execute("""CREATE TEMP TABLE subvote AS
   SELECT mt.mkt, sm.subcat, SUM(ln(1000000.0/GREATEST(e.df,1))) score
-  FROM mt JOIN mcat mc ON mt.mkt=mc.mkt
-  JOIN submap sm ON mt.tag=sm.tag AND sm.prim=mc.topic_vote
+  FROM mt JOIN mfinal mf ON mt.mkt=mf.mkt
+  JOIN submap sm ON mt.tag=sm.tag AND sm.prim=mf.topic
   JOIN eff e ON mt.tag=e.tag
   GROUP BY mt.mkt, sm.subcat""")
 con.execute("""CREATE TEMP TABLE msub AS SELECT mkt, subcat FROM
@@ -118,7 +124,17 @@ con.execute(f"""CREATE TEMP TABLE labels AS SELECT
   (mc.mkt IS NOT NULL AND NOT list_contains(m.tags,'Mentions') AND
    ((mc.s2 IS NOT NULL AND mc.s1/GREATEST(mc.s2,0.0001) < {ABSTAIN_RATIO})
     OR COALESCE(mc.curated_voters,0)=0)) AS abstain,
-  ms.subcat AS subcategory,
+  -- sports non-game routing (tail stress test: free agency/drafts/awards/franchise
+  -- moves misfiled into Team-Sport Game Markets; the designed Props/Drafts bucket fits)
+  CASE WHEN (CASE WHEN list_contains(m.tags,'Mentions') THEN 'Mentions' ELSE mc.topic_vote END)='Sports'
+            AND COALESCE(m.sports_market_type,'')=''
+            AND (m.question ILIKE '%draft%' OR m.question ILIKE '% play for %'
+                 OR m.question ILIKE '%sign with%' OR m.question ILIKE '%signs with%'
+                 OR m.question ILIKE '%traded to%' OR m.question ILIKE '%relocat%'
+                 OR m.question ILIKE '% mvp%' OR m.question ILIKE '%free agen%'
+                 OR m.question ILIKE '%head coach%')
+       THEN 'Props, Drafts & Fantasy (non-game outcomes)'
+       ELSE ms.subcat END AS subcategory,
   -- event family (separate axis)
   CASE WHEN len(list_filter(m.tags, x -> x LIKE '%Iran%' OR x IN ({iran_sql})))>0
        THEN 'Iran' END AS event_family,

@@ -31,8 +31,7 @@
     "definition": "Event and valuation markets on discrete crypto launch outcomes: exchange listings, token generation events, and pre-market or fully-diluted-valuation (FDV) levels at launch, rather than ongoing spot price.",
     "tags": [
      "Pre-Market",
-     "FDV",
-     "hype"
+     "FDV"
     ],
     "flb_rationale": "Resolves on one-off listing/launch events and launch valuations (often announcement- or discretion-driven), not a recurrent observable price, so it is far less anchorable and learnable than spot-price markets."
    }

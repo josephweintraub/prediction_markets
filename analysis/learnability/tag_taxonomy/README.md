@@ -48,3 +48,23 @@ Tags outside the curated 300 ride an auto majority-vote prior (unaudited tail).
 - `Business` tag → Finance but spans Economy/Tech/Politics in samples.
 - Esports events that Polymarket tags `Sports`; IPO markets (Tech vs Finance);
   crime (Culture vs Other) — the irreducible ~0.1–0.3%.
+
+## v2 validation (2026-07-03)
+
+- **Head (hand-lock)**: 703 top-volume markets (top-400 trade dollars + top-200
+  open + top-200 closed by Gamma volume) — blind classification (29 agents, no
+  anchoring) vs the tag vote: **94.2% topic agreement (95.2% dollar-weighted)**;
+  41 disagreements + 31 ambiguous adjudicated by 3-judge panels citing border
+  rules R1–R9 (70/72 unanimous) → `locked_overrides.json`, applied at bake time.
+- **Tail (adversarial audit)**: 500-market sample (250 dollar-weighted + 250
+  uniform, non-locked): **456 correct / 27 debatable / 15 subcat wrong / 2 topic
+  wrong (0.4%)**. Systematic finds, all fixed in the same day: `hype` tag
+  misrouted 44,100 Hyperliquid price markets into Listings/FDV (moved to Coin
+  Price Targets); Mentions-precedence markets inherited the raw vote topic
+  subcategory (subvote now uses the final topic); sports non-game markets
+  (free agency/drafts/awards) now route to "Props, Drafts & Fantasy" via
+  question patterns when sportsMarketType is absent.
+- Known conventions (deliberate, not bugs): up/down direction markets carry the
+  asset-class price subcategory + `mechanic=updown`; Elon tweet counts follow
+  the Tech "Elon Musk & Social Platform Behavior" bucket; tennis tournament
+  progression sits in the tennis H2H bucket.
