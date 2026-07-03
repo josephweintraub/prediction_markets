@@ -8,6 +8,6 @@ Canonical copy lives on the EC2 instance; see `CLAUDE.md` for the EC2-first work
 - `analysis/` — core FLB modules; `learnability/` (the study), `stage0_v2/` (LLM classification), `paper/` (paper-final scripts)
 - `pipeline/` — trade-dataset extraction from Polygon logs
 - `scripts/` — clean-trades build / dedup / resort
-- `docs/` — dimension_guide, learnability_writeup (+ audit), native_data_sources, data_exploration, EC2_SETUP
+- `docs/` — methods_reference (start here), native_data_sources, EC2_SETUP; superseded writeups in `docs/archive/`
 
 See `CLAUDE.md` -> "Documents map" for what each doc is.
