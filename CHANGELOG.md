@@ -5,6 +5,39 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-04 — Resolutions refresh (de-censoring), labels v2 + hand-lock, native meta v2
+
+- **Resolutions refresh executed** (`pipeline/refresh.py --skip-extract`, first use of the
+  periodic de-censoring path): Stage-4 coverage 96.5% → **97.4%**; canonical clean set now
+  **2,036,128,538 rows** (+17.4M vs the 2026-06-24 build, concentrated at the frontier:
+  2026-05 +4.3M, 2026-06 +7.5M — the previously resolution-censored long-horizon cohorts
+  filling in as markets resolve). Old clean archived (`trades_clean_snap20260624`);
+  `market_flags` (2,388,005 tokens) and `wallet_flags` (333,676 non-human wallets, 20.3%)
+  rebuilt on the new set. Stale pre-V2 archives deleted for disk.
+- **Gamma deprecated offset `/events`** (as with offset `/markets` in May): the eventSlug
+  backfill silently collapsed to 6% coverage mid-refresh; `fetch_events_to_map` now uses
+  `/events/keyset` and warns if the map is suspiciously small. Repaired same-day from the
+  keyset events pull — eventSlug coverage now **100.00%**.
+- **Native market metadata v2**: `native_market_meta_v2.parquet` — 1,629,907 markets
+  (1.58M closed + 45K **open** — the censored class now has metadata) × 54 cols, raw JSONL
+  payloads kept under `native/raw/`. Keyset gotcha: `/markets/keyset` unfiltered returns
+  open-only; pass closed=true and closed=false explicitly. Field coverage audited before
+  use (tags 99.9%, rules 100%, tick size 99.7%; sportsMarketType 46%, volume_num 79% —
+  patchy fields are per-use).
+- **Labels v2** (`analysis/learnability/tag_taxonomy/`): `market_labels_v2.parquet` —
+  topic + subcategory (~35 designed buckets, 96.5% coverage) + mechanic + event_family
+  (Iran is Geopolitics topic + event family, no longer a topic) + entity tags +
+  vote_margin/abstain + provenance + native fields, for all 1.63M markets.
+  **703 top-volume markets hand-locked** (blind classify → 94.2% agreement with the vote →
+  3-judge panel adjudication, 70/72 unanimous, border rules R1–R9 in the module README).
+  **Tail stress test** (500-market adversarial audit): 0.4% topic error; three systematic
+  subcategory fixes shipped (hype-tag misroute of 44,100 Hyperliquid markets; Mentions
+  subcat inheritance; sports non-game routing to Props/Drafts).
+- **Comments v1 sample**: latest ≤100 comments per commented event (58,945 events,
+  author proxyWallet included — joins to the trade tape) →
+  `/mnt/data/learnability/native/comments_v1.parquet` (+ raw JSONL). Capped sample;
+  full universe is 83.3M comments (~2-day job) if ever needed.
+
 ## 2026-07-03 — Extended-set filter gaps FIXED in shared plumbing; liquidity axis
 
 - **`scripts/build_market_flags.py`** → canonical token spine
