@@ -36,6 +36,12 @@ are built and run without encoding an expected sign.
   `market_native_categories.parquet` + `final_tag_map_v1.json` (native Gamma tags → category
   map v1, curated 2026-07-01: 264 category tags → 12 primary categories, holdout-validated
   against the LLM labels; the JSON map is committed in `analysis/learnability/native/`).
+- **Consolidated market dimensions (2026-07-04):**
+  `/mnt/data/learnability/output/market_dimensions_v1.parquet` (built by
+  `analysis/learnability/market_dimensions_v1.py`) — one row per market joining
+  labels v2, embedding novelty/cluster assignments, trade-derived lifetime and
+  filtered dollar volume, the resolution-domain anchor ladder, series ordinals,
+  and vintage. Preferred starting point for any cross-dimension analysis.
 - **Canonical token spine (2026-07-03):** `/mnt/data/pipeline_output/market_flags.parquet`
   (built by `scripts/build_market_flags.py`) — one row per token: `token_id`, `market_id`
   (0x hex), `winning_outcome`, market-level `is_updown` flag, `question`. Covers **100% of

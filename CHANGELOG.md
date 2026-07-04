@@ -5,6 +5,28 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-04 — Consolidated dimensions layer + learnability horse race v1; comments v1 landed
+
+- **`analysis/learnability/market_dimensions_v1.py`** (new): one row per market
+  (1.63M) joining labels v2, embedding novelty + k-means cluster assignments,
+  trade-derived lifetime/liquidity, an explicit resolution-domain anchor ladder
+  (data_feed / official_scorer / social / other_url / none), prior-instances-in-
+  series, and vintage → `market_dimensions_v1.parquet`.
+- **`analysis/learnability/horse_race_v1.py`** (new): the joint interacted
+  calibration model over 8 pre-specified dimensions — per-group [1, price]
+  absorption (no-FE / topic-FE / cluster-k200-FE), count- and dollar-weighted,
+  CGM 3-way clustered SEs on every coefficient; plus dimension VIF/correlation,
+  within-cluster identification shares, univariate quintile gradients, the
+  within-series test (series FE, slope drift on ln prior instances + ordinal
+  thirds), and price-band dollar-transfer tables. Artifacts:
+  `horse_race_v1_*.parquet`, `within_series_v1.parquet`,
+  `horse_race_v1_econ_bands*.parquet` + `_summary.json`; report
+  `learnability_horse_race_v1.html` (local). Findings in the report, not here.
+- **Comments v1 complete**: 365,402 comments (58,945 events scanned, 0 failed,
+  99.998% author-wallet linkage) → `learnability/native/comments_v1.parquet`.
+  Note: comments concentrate in 12,854 events; ~46K events with commentCount>0
+  returned none via the Event entity — entity-type mismatch suspected, unresolved.
+
 ## 2026-07-04 — Horizon-matched FLB rerun on the de-censored set; RPC key rotation
 
 - **`analysis/learnability/horizon_flb_v2.py`** (new, committed): horizon × period
