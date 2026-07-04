@@ -19,7 +19,8 @@ are built and run without encoding an expected sign.
 ## Data canon
 
 - **Canonical trade set:** `/mnt/data/pipeline_output/trades_clean.parquet` (EC2) —
-  **2,018,709,888 rows through 2026-06-23**. Cleaning removed only full-row (all-11-column)
+  **2,036,128,538 rows through 2026-06-23** (resolutions snapshot 2026-07-03;
+  first de-censoring refresh executed 2026-07-04, Stage-4 coverage 97.4%). Cleaning removed only full-row (all-11-column)
   exact duplicates (~4%, ingestion replays); multi-counterparty partial fills are real and
   retained. Raw set kept for diffing at `/mnt/data/pipeline_root_output/trades.parquet`.
 - **Resolution-censoring caveat (read before any recency analysis):** `trades_clean` contains
@@ -111,5 +112,12 @@ Recorded only so they are not rediscovered and re-anchored on:
   calibration slopes there are ≈ 1 (well-calibrated). Retired 2026-07.
 - **"FLB disappeared in the newest data" / per-category collapse headlines.** Resolution-
   censoring composition artifacts (see caveat above). Retired 2026-07.
+- **"Within-horizon, long-horizon FLB genuinely declined into early 2026."** The >120d
+  version of this read was itself still censoring-contaminated: on the de-censored set
+  (resolutions 2026-07-03) the >120d slope sits at its 2025 magnitude in both 2026
+  periods (dollar-weighted Bonferroni-robust in May–Jun). The 30–120d attenuation
+  remains open and not significant either way; 2026 long-horizon cells stay partially
+  resolution-selected until further refreshes. Retired 2026-07
+  (`analysis/learnability/horizon_flb_v2.py` artifacts).
 - **"~17% duplicate / ~20% wash trading in the trade set."** Partial-fill counting artifact;
   the real replay rate was ~4%, removed in `trades_clean`. Retired 2026-06.

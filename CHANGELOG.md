@@ -5,6 +5,22 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-04 — Horizon-matched FLB rerun on the de-censored set; RPC key rotation
+
+- **`analysis/learnability/horizon_flb_v2.py`** (new, committed): horizon × period
+  calibration cells, labels-v2 topic × period, and the three pre-specified subcategory
+  contrasts, all on the refreshed clean set — signed slope primary (with CGM 3-way
+  clustered SE vs slope=1), D10−D1 secondary, count- and dollar-weighted, standard
+  filters. Replaces the lost ad-hoc `fixed_flb.py` (EC2 /tmp, 2026-07-01); 2025 cells
+  reproduce it to the third decimal. Artifacts:
+  `/mnt/data/learnability/output/horizon_flb_v2_*.parquet` + `_summary.json`;
+  report `horizon_flb_v2_report.html` (local). Claim-status change recorded in
+  `docs/methods_reference.md` (retired claims).
+- **Polygon RPC key rotated and removed from code**: all five hardcoded call sites in
+  `pipeline/` now read `POLYGON_RPC_URL` from the environment with fallback to
+  `~/.polygon_rpc_url` (untracked, mode 600). The old key is deactivated, so the
+  copies in git history no longer authenticate.
+
 ## 2026-07-04 — Resolutions refresh (de-censoring), labels v2 + hand-lock, native meta v2
 
 - **Resolutions refresh executed** (`pipeline/refresh.py --skip-extract`, first use of the
