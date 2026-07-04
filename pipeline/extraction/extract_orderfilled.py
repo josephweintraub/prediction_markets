@@ -31,9 +31,9 @@ from eth_abi import decode
 # Config (inline to keep this self-contained on EC2)
 # ---------------------------------------------------------------------------
 
-RPC_URL = os.environ.get(
-    "POLYGON_RPC_URL",
-    "https://polygon-mainnet.g.alchemy.com/v2/NSDVafyFOpXs26a2uN3Z_",
+_RPC_KEY_FILE = os.path.expanduser("~/.polygon_rpc_url")
+RPC_URL = os.environ.get("POLYGON_RPC_URL") or (
+    open(_RPC_KEY_FILE).read().strip() if os.path.exists(_RPC_KEY_FILE) else ""
 )
 
 EXCHANGE_V1 = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"

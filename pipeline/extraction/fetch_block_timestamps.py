@@ -32,9 +32,9 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-ALCHEMY_URL = os.environ.get(
-    "POLYGON_RPC_URL",
-    "https://polygon-mainnet.g.alchemy.com/v2/NSDVafyFOpXs26a2uN3Z_",
+_RPC_KEY_FILE = os.path.expanduser("~/.polygon_rpc_url")
+ALCHEMY_URL = os.environ.get("POLYGON_RPC_URL") or (
+    open(_RPC_KEY_FILE).read().strip() if os.path.exists(_RPC_KEY_FILE) else ""
 )
 # Free public Polygon RPCs we round-robin on rate-limit. Order matters — most
 # reliable first. Each worker is bound to one URL but falls back on 429.

@@ -2,7 +2,7 @@
 Pipeline configuration for Polymarket on-chain dataset replication.
 
 Before running, set your RPC endpoint:
-    export POLYGON_RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/YOUR_KEY"
+    export POLYGON_RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/<YOUR_ALCHEMY_KEY>"
 
 Or edit RPC_URL below directly.
 
@@ -36,9 +36,9 @@ DUCKDB_PATH = str(DATA_DIR / "pipeline.duckdb")
 # ---------------------------------------------------------------------------
 # Polygon RPC
 # ---------------------------------------------------------------------------
-RPC_URL = os.environ.get(
-    "POLYGON_RPC_URL",
-    "https://polygon-mainnet.g.alchemy.com/v2/NSDVafyFOpXs26a2uN3Z_",
+_RPC_KEY_FILE = os.path.expanduser("~/.polygon_rpc_url")
+RPC_URL = os.environ.get("POLYGON_RPC_URL") or (
+    open(_RPC_KEY_FILE).read().strip() if os.path.exists(_RPC_KEY_FILE) else ""
 )
 
 # Block range: Nov 2022 (Polymarket CTF Exchange deploy) → Feb 2026

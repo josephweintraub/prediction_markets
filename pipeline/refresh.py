@@ -61,9 +61,9 @@ RESOLUTIONS_OUT = OUTPUT_DIR / "market_resolutions.parquet"
 TRANSFORM_OUTPUT = TRANSFORM_DIR / "output"
 
 PYTHON = "/home/ubuntu/venv/bin/python"
-RPC_URL = os.environ.get(
-    "POLYGON_RPC_URL",
-    "https://polygon-mainnet.g.alchemy.com/v2/NSDVafyFOpXs26a2uN3Z_",
+_RPC_KEY_FILE = os.path.expanduser("~/.polygon_rpc_url")
+RPC_URL = os.environ.get("POLYGON_RPC_URL") or (
+    open(_RPC_KEY_FILE).read().strip() if os.path.exists(_RPC_KEY_FILE) else ""
 )
 GAMMA_BASE = "https://gamma-api.polymarket.com"
 
