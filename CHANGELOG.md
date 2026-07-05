@@ -5,6 +5,30 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-05 — Four mechanism/robustness investigations; two-sided tape introduced
+
+- **Liquidity-gradient decomposition** (`analysis/learnability/liq_diagnostic.py`):
+  per-quintile decile curves, lifecycle thirds, interior (0.10-0.90) vs full
+  slopes, and the p>=0.90 band — tests (and rejects) the near-certainty-trading
+  explanation of the negative liquidity tilt. Artifacts `liq_diagnostic_*.parquet`.
+- **Mutual-proximity (hubness-corrected) novelty**
+  (`analysis/embedding_difficulty/compute_novelty_mp.py` + `mp_check.py`):
+  MP-Gauss rescaled strict-predecessor novelty for the traded universe
+  (`novelty_mp_q.parquet`), tail re-derivation, and the cluster-FE joint model
+  with the MP tail swapped in. Artifacts `mp_check_results.parquet`.
+- **Trader-composition mechanism** (`analysis/learnability/trader_mechanism.py`
+  buy-side + `trader_mechanism_2s.py` two-sided PRIMARY): within-wallet
+  (wallet FE x [1,p]) dimension tilts and participant splits (tail/thin
+  participants measured outside those cells). Artifacts
+  `trader_mechanism*_{walletfe,splits,desc}.parquet`.
+- **Side symmetry** (`analysis/learnability/side_symmetry.py`): two-sided
+  mature tape (`side_symmetry_trades.parquet`; each fill as buyer row +
+  seller-as-complement row at 1-p, is_maker carried) — establishes the exact
+  mirror identity of side-conditional slopes and the maker/taker split.
+  Within-wallet analyses now use the two-sided tape (buy-only conditioning
+  half-observes wallets).
+- Findings live in the write-up (`learnability_paper_v1.html`), not here.
+
 ## 2026-07-04 — Consolidated dimensions layer + learnability horse race v1; comments v1 landed
 
 - **`analysis/learnability/market_dimensions_v1.py`** (new): one row per market
