@@ -5,6 +5,18 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-05 — Junk-floor estimation and filtered re-runs
+
+- **`analysis/learnability/junk_threshold.py`** — estimates where a junk floor on
+  era-adaptive relative volume (market volume / trailing-90d median at birth)
+  would belong, via per-bin price-informativeness slopes + Brier skill vs family
+  base rates (skill-crossing estimator) and a two-regime threshold regression.
+- **`analysis/learnability/junk_filtered_rerun.py`** — re-estimates pooled
+  horizon/topic slopes, the >120d period cells, and the cluster-FE joint model
+  under candidate floors (none / 0.25 / estimated). Artifacts
+  `junk_threshold_*`, `junk_rel_volume`, `junk_filtered_results` parquets.
+  Verdict in the write-up (Section XII), not here.
+
 ## 2026-07-05 — Alternative learnability/difficulty measurement designs
 
 Five committed scripts in `analysis/learnability/` extending measurement beyond
