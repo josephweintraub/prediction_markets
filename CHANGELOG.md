@@ -5,6 +5,31 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-05 — Alternative learnability/difficulty measurement designs
+
+Five committed scripts in `analysis/learnability/` extending measurement beyond
+static-characteristics-to-terminal-calibration (findings in the write-up
+`learnability_paper_v1.html`, not here):
+
+- **`pooled_slices.py`** — whole-window (2022–2026) horizon and topic calibration
+  tables plus the ≤1d horizon-class composition audit.
+- **`experience_curves.py`** — canonical individual learning (within-wallet drift
+  on own cumulative positions, continuous + ordinal buckets), trader-relative
+  novelty (first-ever encounter with a text family, controlling for general
+  experience), dimension tilts by wallet-size bucket, cross-sectional tiers.
+  All on the two-sided tape.
+- **`convergence_speed.py`** — per-market convergence metrics (early/late error,
+  terminal surprise) and the within-series learning test on SPEED rather than
+  terminal calibration; dimension cross-sections.
+- **`family_baserate.py`** — Brier skill of Yes/No markets vs their own text
+  family's strict-precedent base rate (learnability as predictability from
+  precedent).
+- **`variance_ratio.py`** — weekly-vs-daily variance ratios on daily price grids
+  for resolved markets AND for open (unresolved) tokens reconstructed from
+  raw_events + block timestamps: the first difficulty measure immune to
+  resolution censoring. Artifacts `pooled_slices_*`, `experience_*`,
+  `convergence_*`, `baserate_*`, `vr_*` under `/mnt/data/learnability/output/`.
+
 ## 2026-07-05 — Four mechanism/robustness investigations; two-sided tape introduced
 
 - **Liquidity-gradient decomposition** (`analysis/learnability/liq_diagnostic.py`):
