@@ -39,6 +39,7 @@ Everything current lives in `docs/`; superseded material is in `docs/archive/` (
 |---|---|
 | `methods_reference.md` | **Start here.** Durable methods & data practices: filters, calibration measurement, SE spec, data canon + caveats, retired claims. |
 | `native_data_sources.md` | Native Polymarket (Gamma/CLOB/Data) field inventory and field→dimension map. Status header records what has already been pulled. |
+| `data_choices.md` | Co-author-facing record of every data/screening choice (dedup, bots/makers/takers, price conventions, trims) with exact thresholds and rationale. |
 | `EC2_SETUP.md` | Thin EC2 environment notes (Jupyter tunnel, tmux, monitoring). Start/stop/mount live here in CLAUDE.md. |
 | `archive/` | v1–v6-era writeups (learnability writeup + audit, dimension guide, data exploration) and HTML session findings. Reference only. |
 

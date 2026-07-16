@@ -5,6 +5,16 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-07-15 — Data-choices document for co-authors
+
+- **`docs/data_choices.md`** (new): the complete record of data and screening
+  choices with exact thresholds and rationale — sample construction/dedup,
+  the behavioral bot composite (criteria A/B/C/E and the composite rule),
+  maker/taker treatment, up/down market-level exclusion, price conventions
+  (BUY-side mirror identity, bounds, lifecycle windows, weighting), and
+  trimming decisions incl. the no-junk-floor evidence. Requested by Toby;
+  HTML copy shipped to the Dropbox package alongside `bot_filter.py`.
+
 ## 2026-07-05 — Junk-floor estimation and filtered re-runs
 
 - **`analysis/learnability/junk_threshold.py`** — estimates where a junk floor on
