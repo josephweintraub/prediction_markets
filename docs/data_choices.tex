@@ -1,0 +1,131 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+\title{Data and Screening Choices:\\ Polymarket Trade-Level Calibration Work}
+\author{}
+\date{July 15, 2026}
+
+\begin{document}
+\maketitle
+
+Record of the data and screening choices, with exact parameter values. All
+screens are implemented in committed code in the shared replication package
+(Dropbox: \texttt{Polymarket Data and Code/learnability\_paper\_v1/}).
+
+\section{Sample construction}
+
+\textbf{Source.} The complete on-chain trade tape, reconstructed from
+Polymarket exchange \texttt{OrderFilled} events on Polygon (both exchange
+deployments), not the public API feeds: 2{,}036{,}128{,}538 fills through
+June 23, 2026, after deduplication. Cross-validated against an independently
+collected dataset (June 2026). Each fill appears twice, as a buyer row and a
+seller row, each carrying that party's wallet and a maker/taker flag.
+
+\textbf{Deduplication.} Only full-row exact duplicates (identical on all 11
+columns; ingestion replays, about 4\% of raw rows) are removed. Rows matching
+on wallet, market, timestamp, side, and price but differing in counterparty or
+size are retained: they are one order filled against multiple resting orders
+(partial fills). An early audit reporting 17\% duplicates and 20\% wash
+trading keyed on too few columns; both figures were artifacts. Literal
+self-trades (wallet equals counterparty) are essentially zero.
+
+\textbf{Resolution censoring.} Trades are joined to resolved markets, so the
+dataset contains only markets resolved by the resolutions snapshot (July 3,
+2026; 97.4\% of mapped fills). The remainder is markets still open,
+concentrated at long horizons; across-time comparisons must be
+horizon-matched. Resolutions are re-pulled periodically.
+
+\section{Bots, market makers, takers}
+
+We exclude \emph{automation}, not \emph{liquidity provision}, and at the
+wallet level, not the trade level. A wallet is flagged non-human from four
+criteria over its full history:
+
+\begin{center}
+\begin{tabular}{llll}
+\hline
+Criterion & Definition & Definite & Likely \\
+\hline
+A. Inter-trade interval & median seconds between trades & $<1$ s & 1--10 s \\
+B. Intensity & trades per active day & $>500$ & $>200$ \\
+C. Round-the-clock & hour-of-day HHI $<0.06$ and $>500$ trades & & \\
+E. Fixed sizing & CV of trade size $<0.05$ and $>50$ trades & & \\
+\hline
+\end{tabular}
+\end{center}
+
+Composite rule: flagged if A-definite; or A-likely plus any one of
+\{B-definite, B-likely, C, E\}; or B-definite and C; or any two of
+\{B-likely, C, E\}. A cross-market simultaneity criterion was considered and
+dropped (block timestamps lack sub-second precision). Result: 333{,}676
+wallets flagged (20.3\% of wallets, 79.4\% of rows); their trades are excluded
+from all estimates.
+
+\textbf{Makers vs.\ takers.} No exclusion by role. Pooled calibration is
+indistinguishable across roles (maker-initiated buys $+0.003$, taker-initiated
+$+0.008$ slope deviation, both insignificant), so results are not an
+aggressor-side artifact.
+
+\textbf{Mechanical series.} The 5-minute/hourly crypto ``up or down'' series
+are excluded at the market level, from native metadata (event or series slug
+matching \texttt{updown}/\texttt{up-or-down}, the ``Up or Down'' tag, or the
+question containing ``up or down''). Trade-level slug filters are unreliable
+(the trades' event-slug field is empty for newer markets); the exclusion runs
+through a full-coverage token-to-market spine checked at build time.
+
+\section{Prices}
+
+\textbf{Trade prices only, one observation per trade.} The on-chain tape has
+no quotes; no order-book snapshot, midpoint, or spread appears anywhere.
+Every estimate treats each executed trade as its own observation (price,
+outcome, dollar size, wallet, day, market).
+
+\textbf{Side convention.} Each fill enters once, as the buyer's position at
+price $p$. This is innocuous for market-level estimates: the seller's
+position is the exact mirror (complement outcome at $1-p$) and mirroring
+preserves regression slopes, so buyer- and seller-side estimates are
+identical by construction (verified). Wallet-level analyses instead use the
+two-sided tape (sells as complement purchases at $1-p$), since buy-only
+conditioning half-observes a wallet.
+
+\textbf{Bounds and windows.} Trades at $p \le 0.01$ or $p \ge 0.99$ are
+dropped everywhere; a robustness variant restricts to $[0.10, 0.90]$.
+Lifecycle position is $(t - \text{first trade})/(\text{last} -
+\text{first trade})$ per contract; the primary window is 25--80\% of life
+(``mature''); the closing window (80--100\%) is a distinct regime reported
+separately, never pooled.
+
+\textbf{Estimation.} Fixed-width price deciles (not quantiles). Every
+estimate is reported count-weighted and dollar-weighted (by fill size).
+Primary statistic: the calibration-slope deviation, the trade-level OLS slope
+of outcome on price minus one (0 calibrated; positive means longshots
+overpriced). Decile spreads (D10 minus D1) are secondary only; they once
+manufactured a sign-reversal artifact, and that claim is retired. Inference:
+Cameron--Gelbach--Miller three-way clustered standard errors (day $\times$
+wallet $\times$ market); 5{,}000-trade minimum per reported slice, dropped
+slices disclosed.
+
+\section{Trimming}
+
+Trimmed: full-row duplicate fills; the price bounds above; slices below the
+5{,}000-trade floor; slices with degenerate clustered variance.
+
+Deliberately not trimmed:
+\begin{itemize}
+  \item \textbf{No size winsorization.} Count- and dollar-weighted estimates
+  are reported side by side; their divergence is information and would be
+  destroyed by trimming large fills.
+  \item \textbf{No minimum-volume (``junk'') floor.} Tested formally: with
+  relative volume defined as market volume over the trailing-90-day median at
+  birth, price informativeness is near 1 in every bin including the lowest,
+  and prices beat family precedent base rates everywhere, so a skill-crossing
+  estimator finds no threshold; a 25\% floor excludes 35\% of markets but
+  0.06\% of dollars and changes no estimate. Thin markets are biased but
+  informative.
+  \item \textbf{No market-type trimming} beyond the up/down exclusion.
+\end{itemize}
+
+\end{document}

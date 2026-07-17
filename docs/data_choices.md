@@ -87,12 +87,12 @@ build time to cover 100% of tokens in the tape).
 
 ## 3. What prices we look at
 
-- **Trade prices only.** The on-chain tape has no quotes; there is no
-  order-book snapshot in any of our numbers. Where a per-market price series
-  is needed (variance ratios), we use daily last-trade prices on interior
-  prices 0.05-0.95 with gaps of at most 3 days; where a single per-market
-  price is needed (base-rate comparisons), the dollar-weighted mean Yes-price
-  in the mature window.
+- **Trade prices only, one observation per trade.** The on-chain tape has no
+  quotes; there is no order-book snapshot, midpoint, or spread in any of our
+  numbers. Every calibration estimate treats each executed trade as its own
+  observation, carrying its own price, outcome, dollar size, wallet, day, and
+  market. No per-market summary prices or sampling grids enter the main
+  analysis.
 - **BUY-side convention.** Every fill enters once, as the buyer's position at
   price p. This is provably innocuous for market-level calibration: the
   seller's position is the exact mirror (complement outcome at 1-p), and
