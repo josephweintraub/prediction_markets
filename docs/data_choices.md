@@ -110,8 +110,11 @@ build time to cover 100% of tokens in the tape).
 - **Lifecycle windows.** Trade position in a contract's life = (t - first
   trade) / (last trade - first trade), computed on BUY-side trades of the
   token. Primary window: **mature, 25-80%**. The closing window (80-100%) is
-  a distinct public-flow regime and is reported separately, never pooled.
-  Full-window (0-100%) is a robustness variant.
+  analyzed separately for the same reason sports bettors benchmark against
+  the closing line: prices just before resolution are the most informed, and
+  for events without a set start time position in traded life is a good
+  proxy for that, so late prices reflect a different informational regime
+  than mid-life prices. Full-window (0-100%) is a robustness variant.
 - **Binning and weighting.** Fixed-width price deciles (not quantile bins).
   Every estimate is reported count-weighted and dollar-weighted (by fill
   USDC size); trade-level grain is primary, per-contract VWAP the robustness
@@ -149,9 +152,9 @@ What we deliberately do **not** trim, with the evidence:
   the lowest). A skill-crossing estimator therefore finds no junk threshold;
   a two-regime threshold regression picks the top 2% of markets, i.e., it
   recovers the liquidity gradient, not a junk boundary. A 25% floor excludes
-  35% of markets but 0.06% of dollars and changes no estimate. Thin markets
-  are *biased but informative*: excluding them would remove the phenomenon
-  under study while leaving the estimates untouched. (Write-up section XII.)
+  35% of markets but 0.06% of dollars and changes no estimate; excluding thin
+  markets would remove the phenomenon under study while leaving the estimates
+  untouched. (Write-up section XII.)
 - **No outcome/market-type trimming** beyond the up/down exclusion; sports,
   esports, and negRisk multi-outcome markets all stay in, with topic and
   mechanic labels available to slice them.

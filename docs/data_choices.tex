@@ -95,8 +95,11 @@ conditioning half-observes a wallet.
 dropped everywhere; a robustness variant restricts to $[0.10, 0.90]$.
 Lifecycle position is $(t - \text{first trade})/(\text{last} -
 \text{first trade})$ per contract; the primary window is 25--80\% of life
-(``mature''); the closing window (80--100\%) is a distinct regime reported
-separately, never pooled.
+(``mature''). The closing window (80--100\%) is analyzed separately for the
+same reason sports bettors benchmark against the closing line: prices just
+before resolution are the most informed, and for events without a set start
+time position in traded life is a good proxy for that, so late prices
+reflect a different informational regime than mid-life prices.
 
 \textbf{Estimation.} Fixed-width price deciles (not quantiles). Every
 estimate is reported count-weighted and dollar-weighted (by fill size).
@@ -123,8 +126,7 @@ Deliberately not trimmed:
   birth, price informativeness is near 1 in every bin including the lowest,
   and prices beat family precedent base rates everywhere, so a skill-crossing
   estimator finds no threshold; a 25\% floor excludes 35\% of markets but
-  0.06\% of dollars and changes no estimate. Thin markets are biased but
-  informative.
+  0.06\% of dollars and changes no estimate.
   \item \textbf{No market-type trimming} beyond the up/down exclusion.
 \end{itemize}
 
