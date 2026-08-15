@@ -459,6 +459,98 @@ if s is not None:
         ["slice", "n_trades", "n_markets", "slope", "slope_se", "slope_t",
          "slope_dol", "slope_t_dol"]]))
 
+# ---------------- 5b. horizon ----------------
+if summary("horizon", "mature") is not None:
+    add("<h2>5b. Horizon (contract lifetime)</h2>")
+    how("Horizon = time from market creation to close (native closed_time, "
+        "falling back to last trade) — time-on-market, which is also this "
+        "workstream's feedback-speed measure. Bins: &lt;1d, 1–7d, 7–30d, "
+        "30–90d, ≥90d. Because horizon and market family are strongly "
+        "confounded (short-horizon markets are mostly recurring "
+        "sports/esports/weather; long-horizon are mostly judgment markets), "
+        "the within-category panel is the one to interpret: it shows the "
+        "horizon gradient net of category composition.")
+    for win in ("mature", "closing"):
+        s = summary("horizon", win)
+        if s is not None:
+            add(slope_panel(s, f"slope by horizon — {win}"))
+            add(slope_panel(s, f"slope by horizon — {win}, dollar-weighted",
+                            dollar=True))
+    hv = pd.read_parquet(f"{BASE}/horizon_volume.parquet")
+    add("<h3>Where do trades vs. dollars sit across horizons?</h3>")
+    how("If share_trades ≈ share_usd in every bin, trade counts are a fair "
+        "proxy for dollars across horizons; usd_per_trade shows where the "
+        "average ticket is larger.")
+    add(tbl(hv, "{:,.3f}"))
+    sc = summary("horizon_cat", "mature")
+    if sc is not None:
+        d = sc.copy()
+        parts = d["slice"].str.split("|", expand=True)
+        d["cat"], d["hbin"] = parts[0], parts[1]
+        order = ["h1_lt1d", "h2_1_7d", "h3_7_30d", "h4_30_90d", "h5_ge90d"]
+        big = d.groupby("cat")["n_trades"].sum().nlargest(8).index
+        fig, ax = plt.subplots(figsize=(6.4, 3.6))
+        for c in big:
+            sub = d[d["cat"] == c].set_index("hbin").reindex(order)
+            ax.plot(range(len(order)), sub["slope"], "-o", ms=3, label=c)
+        ax.axhline(0, color="k", lw=0.8)
+        ax.set_xticks(range(len(order)))
+        ax.set_xticklabels([o.split("_", 1)[1] for o in order])
+        ax.set_ylabel("slope")
+        ax.set_title("slope by horizon WITHIN category — mature "
+                     "(8 largest categories)")
+        ax.legend(fontsize=7, ncol=2)
+        add(fig64(fig))
+        add("<h3>Category × horizon cells (mature)</h3>")
+        add(tbl(d.sort_values(["cat", "hbin"])[
+            ["slice", "n_trades", "n_markets", "slope", "slope_se",
+             "slope_t", "slope_dol", "slope_t_dol"]]))
+
+    add("<h3>Recurrence and anchorability (native fields)</h3>")
+    how("Two more learnability-style proxies measured in the same engine: "
+        "native series recurrence cadence (daily/weekly/monthly/annual; "
+        "in_series_other = series without a cadence label; none = "
+        "standalone), and anchorability (does the market name a resolution "
+        "source — a price feed or official scorer — vs. blank = judgment "
+        "call; UNKNOWN = no native metadata).")
+    for sch in ("recurrence", "anchor"):
+        s = summary(sch, "mature")
+        if s is not None:
+            add(slope_panel(s, f"slope by {sch} — mature"))
+            add(tbl(s.sort_values("slice")[
+                ["slice", "n_trades", "n_markets", "slope", "slope_se",
+                 "slope_t", "slope_dol", "slope_t_dol"]]))
+
+    sn = summary("novtail_cat", "mature")
+    if sn is not None:
+        add("<h3>Novelty tail within each category (mature)</h3>")
+        how("The novelty-tail test run separately inside each category: "
+            "'tail' = the category's markets in the most-novel within-"
+            "vintage decile, 'rest' = everything else. diff = tail − rest "
+            "slope; positive diff = the category's novel markets are more "
+            "FLB-miscalibrated than its precedented ones.")
+        d = sn.copy()
+        parts = d["slice"].str.split("|", expand=True)
+        d["cat"], d["grp"] = parts[0], parts[1]
+        piv = d.pivot(index="cat", columns="grp",
+                      values=["slope", "slope_t", "n_trades"])
+        rows = []
+        for c in piv.index:
+            try:
+                rows.append({
+                    "category": c,
+                    "tail_slope": piv.loc[c, ("slope", "tail")],
+                    "tail_t": piv.loc[c, ("slope_t", "tail")],
+                    "rest_slope": piv.loc[c, ("slope", "rest")],
+                    "rest_t": piv.loc[c, ("slope_t", "rest")],
+                    "diff": (piv.loc[c, ("slope", "tail")]
+                             - piv.loc[c, ("slope", "rest")]),
+                    "n_tail": piv.loc[c, ("n_trades", "tail")],
+                })
+            except KeyError:
+                continue
+        add(tbl(pd.DataFrame(rows).sort_values("diff", ascending=False)))
+
 # ---------------- 6. granularity ----------------
 add("<h2>6. Approach C — how much heterogeneity does each granularity "
     "reveal?</h2>")

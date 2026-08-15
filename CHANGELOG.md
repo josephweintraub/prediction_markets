@@ -5,147 +5,15 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
-## 2026-07-15 — Data-choices document for co-authors
+## 2026-08-15 — Horizon/recurrence/anchorability schemes + collaborator memo
 
-- **`docs/data_choices.md`** (new): the complete record of data and screening
-  choices with exact thresholds and rationale — sample construction/dedup,
-  the behavioral bot composite (criteria A/B/C/E and the composite rule),
-  maker/taker treatment, up/down market-level exclusion, price conventions
-  (BUY-side mirror identity, bounds, lifecycle windows, weighting), and
-  trimming decisions incl. the no-junk-floor evidence. Requested by Toby;
-  HTML copy shipped to the Dropbox package alongside `bot_filter.py`.
-
-## 2026-07-05 — Junk-floor estimation and filtered re-runs
-
-- **`analysis/learnability/junk_threshold.py`** — estimates where a junk floor on
-  era-adaptive relative volume (market volume / trailing-90d median at birth)
-  would belong, via per-bin price-informativeness slopes + Brier skill vs family
-  base rates (skill-crossing estimator) and a two-regime threshold regression.
-- **`analysis/learnability/junk_filtered_rerun.py`** — re-estimates pooled
-  horizon/topic slopes, the >120d period cells, and the cluster-FE joint model
-  under candidate floors (none / 0.25 / estimated). Artifacts
-  `junk_threshold_*`, `junk_rel_volume`, `junk_filtered_results` parquets.
-  Verdict in the write-up (Section XII), not here.
-
-## 2026-07-05 — Alternative learnability/difficulty measurement designs
-
-Five committed scripts in `analysis/learnability/` extending measurement beyond
-static-characteristics-to-terminal-calibration (findings in the write-up
-`learnability_paper_v1.html`, not here):
-
-- **`pooled_slices.py`** — whole-window (2022–2026) horizon and topic calibration
-  tables plus the ≤1d horizon-class composition audit.
-- **`experience_curves.py`** — canonical individual learning (within-wallet drift
-  on own cumulative positions, continuous + ordinal buckets), trader-relative
-  novelty (first-ever encounter with a text family, controlling for general
-  experience), dimension tilts by wallet-size bucket, cross-sectional tiers.
-  All on the two-sided tape.
-- **`convergence_speed.py`** — per-market convergence metrics (early/late error,
-  terminal surprise) and the within-series learning test on SPEED rather than
-  terminal calibration; dimension cross-sections.
-- **`family_baserate.py`** — Brier skill of Yes/No markets vs their own text
-  family's strict-precedent base rate (learnability as predictability from
-  precedent).
-- **`variance_ratio.py`** — weekly-vs-daily variance ratios on daily price grids
-  for resolved markets AND for open (unresolved) tokens reconstructed from
-  raw_events + block timestamps: the first difficulty measure immune to
-  resolution censoring. Artifacts `pooled_slices_*`, `experience_*`,
-  `convergence_*`, `baserate_*`, `vr_*` under `/mnt/data/learnability/output/`.
-
-## 2026-07-05 — Four mechanism/robustness investigations; two-sided tape introduced
-
-- **Liquidity-gradient decomposition** (`analysis/learnability/liq_diagnostic.py`):
-  per-quintile decile curves, lifecycle thirds, interior (0.10-0.90) vs full
-  slopes, and the p>=0.90 band — tests (and rejects) the near-certainty-trading
-  explanation of the negative liquidity tilt. Artifacts `liq_diagnostic_*.parquet`.
-- **Mutual-proximity (hubness-corrected) novelty**
-  (`analysis/embedding_difficulty/compute_novelty_mp.py` + `mp_check.py`):
-  MP-Gauss rescaled strict-predecessor novelty for the traded universe
-  (`novelty_mp_q.parquet`), tail re-derivation, and the cluster-FE joint model
-  with the MP tail swapped in. Artifacts `mp_check_results.parquet`.
-- **Trader-composition mechanism** (`analysis/learnability/trader_mechanism.py`
-  buy-side + `trader_mechanism_2s.py` two-sided PRIMARY): within-wallet
-  (wallet FE x [1,p]) dimension tilts and participant splits (tail/thin
-  participants measured outside those cells). Artifacts
-  `trader_mechanism*_{walletfe,splits,desc}.parquet`.
-- **Side symmetry** (`analysis/learnability/side_symmetry.py`): two-sided
-  mature tape (`side_symmetry_trades.parquet`; each fill as buyer row +
-  seller-as-complement row at 1-p, is_maker carried) — establishes the exact
-  mirror identity of side-conditional slopes and the maker/taker split.
-  Within-wallet analyses now use the two-sided tape (buy-only conditioning
-  half-observes wallets).
-- Findings live in the write-up (`learnability_paper_v1.html`), not here.
-
-## 2026-07-04 — Consolidated dimensions layer + learnability horse race v1; comments v1 landed
-
-- **`analysis/learnability/market_dimensions_v1.py`** (new): one row per market
-  (1.63M) joining labels v2, embedding novelty + k-means cluster assignments,
-  trade-derived lifetime/liquidity, an explicit resolution-domain anchor ladder
-  (data_feed / official_scorer / social / other_url / none), prior-instances-in-
-  series, and vintage → `market_dimensions_v1.parquet`.
-- **`analysis/learnability/horse_race_v1.py`** (new): the joint interacted
-  calibration model over 8 pre-specified dimensions — per-group [1, price]
-  absorption (no-FE / topic-FE / cluster-k200-FE), count- and dollar-weighted,
-  CGM 3-way clustered SEs on every coefficient; plus dimension VIF/correlation,
-  within-cluster identification shares, univariate quintile gradients, the
-  within-series test (series FE, slope drift on ln prior instances + ordinal
-  thirds), and price-band dollar-transfer tables. Artifacts:
-  `horse_race_v1_*.parquet`, `within_series_v1.parquet`,
-  `horse_race_v1_econ_bands*.parquet` + `_summary.json`; report
-  `learnability_horse_race_v1.html` (local). Findings in the report, not here.
-- **Comments v1 complete**: 365,402 comments (58,945 events scanned, 0 failed,
-  99.998% author-wallet linkage) → `learnability/native/comments_v1.parquet`.
-  Note: comments concentrate in 12,854 events; ~46K events with commentCount>0
-  returned none via the Event entity — entity-type mismatch suspected, unresolved.
-
-## 2026-07-04 — Horizon-matched FLB rerun on the de-censored set; RPC key rotation
-
-- **`analysis/learnability/horizon_flb_v2.py`** (new, committed): horizon × period
-  calibration cells, labels-v2 topic × period, and the three pre-specified subcategory
-  contrasts, all on the refreshed clean set — signed slope primary (with CGM 3-way
-  clustered SE vs slope=1), D10−D1 secondary, count- and dollar-weighted, standard
-  filters. Replaces the lost ad-hoc `fixed_flb.py` (EC2 /tmp, 2026-07-01); 2025 cells
-  reproduce it to the third decimal. Artifacts:
-  `/mnt/data/learnability/output/horizon_flb_v2_*.parquet` + `_summary.json`;
-  report `horizon_flb_v2_report.html` (local). Claim-status change recorded in
-  `docs/methods_reference.md` (retired claims).
-- **Polygon RPC key rotated and removed from code**: all five hardcoded call sites in
-  `pipeline/` now read `POLYGON_RPC_URL` from the environment with fallback to
-  `~/.polygon_rpc_url` (untracked, mode 600). The old key is deactivated, so the
-  copies in git history no longer authenticate.
-
-## 2026-07-04 — Resolutions refresh (de-censoring), labels v2 + hand-lock, native meta v2
-
-- **Resolutions refresh executed** (`pipeline/refresh.py --skip-extract`, first use of the
-  periodic de-censoring path): Stage-4 coverage 96.5% → **97.4%**; canonical clean set now
-  **2,036,128,538 rows** (+17.4M vs the 2026-06-24 build, concentrated at the frontier:
-  2026-05 +4.3M, 2026-06 +7.5M — the previously resolution-censored long-horizon cohorts
-  filling in as markets resolve). Old clean archived (`trades_clean_snap20260624`);
-  `market_flags` (2,388,005 tokens) and `wallet_flags` (333,676 non-human wallets, 20.3%)
-  rebuilt on the new set. Stale pre-V2 archives deleted for disk.
-- **Gamma deprecated offset `/events`** (as with offset `/markets` in May): the eventSlug
-  backfill silently collapsed to 6% coverage mid-refresh; `fetch_events_to_map` now uses
-  `/events/keyset` and warns if the map is suspiciously small. Repaired same-day from the
-  keyset events pull — eventSlug coverage now **100.00%**.
-- **Native market metadata v2**: `native_market_meta_v2.parquet` — 1,629,907 markets
-  (1.58M closed + 45K **open** — the censored class now has metadata) × 54 cols, raw JSONL
-  payloads kept under `native/raw/`. Keyset gotcha: `/markets/keyset` unfiltered returns
-  open-only; pass closed=true and closed=false explicitly. Field coverage audited before
-  use (tags 99.9%, rules 100%, tick size 99.7%; sportsMarketType 46%, volume_num 79% —
-  patchy fields are per-use).
-- **Labels v2** (`analysis/learnability/tag_taxonomy/`): `market_labels_v2.parquet` —
-  topic + subcategory (~35 designed buckets, 96.5% coverage) + mechanic + event_family
-  (Iran is Geopolitics topic + event family, no longer a topic) + entity tags +
-  vote_margin/abstain + provenance + native fields, for all 1.63M markets.
-  **703 top-volume markets hand-locked** (blind classify → 94.2% agreement with the vote →
-  3-judge panel adjudication, 70/72 unanimous, border rules R1–R9 in the module README).
-  **Tail stress test** (500-market adversarial audit): 0.4% topic error; three systematic
-  subcategory fixes shipped (hype-tag misroute of 44,100 Hyperliquid markets; Mentions
-  subcat inheritance; sports non-game routing to Props/Drafts).
-- **Comments v1 sample**: latest ≤100 comments per commented event (58,945 events,
-  author proxyWallet included — joins to the trade tape) →
-  `/mnt/data/learnability/native/comments_v1.parquet` (+ raw JSONL). Capped sample;
-  full universe is 83.3M comments (~2-day job) if ever needed.
+- Embedding-difficulty session 4 (`make_horizon_slices.py`): horizon (creation→close)
+  bins, horizon×category cross-slices, native recurrence-cadence and anchorability
+  (resolution_source) schemes, per-category novelty-tail test, and a trades-vs-dollars-
+  by-horizon table — all on the fixed plumbing. Report v4 section 5b.
+- `memo_kaushik_20260815.md` (workstream dir): written answers to collaborator
+  follow-ups (short-horizon FLB composition, count-vs-dollar proxy quality by horizon,
+  learnability-proxy inventory, category-by-category novelty tail).
 
 ## 2026-07-03 — Extended-set filter gaps FIXED in shared plumbing; liquidity axis
 

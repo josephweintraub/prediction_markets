@@ -271,6 +271,50 @@ set, the standard trade filters, the calibration measurement spec, and the EC2 w
 - [x] Report v3 rendered with section 4b (field coverage, agreement matrix, port check,
       per-variant d01 table + panels).
 
+## 2026-08-15 — Session 4: collaborator (Kaushik) follow-ups
+
+Questions received: (1) reconcile negative FLB at short horizons — which categories
+drive it; (2) trades vs dollars across horizons — is count a good proxy; (3) which
+learnability proxies were tried and what did they show; (4) category-by-category?
+Also the ambiguous "the learning results we had before don't seem present any more" —
+interpreted (and answered in the memo) as: prior-era gradient results vs the rebuilt
+post-fix analysis. His read almost certainly predates the two plumbing fixes
+(stale spine halving the sample; up/down leakage), so all answers here are FRESH runs
+on the fixed data, not quotes of prior outputs.
+
+- Design: horizon = created_at → closed_time (fallback last trade); bins <1d/1-7d/
+  7-30d/30-90d/≥90d; horizon×category cross-slices (the composition question);
+  native recurrence cadence + anchorability (resolution_source sourced vs judgment)
+  schemes in the same engine; per-category novelty tail (within-vintage d01 vs rest);
+  horizon_volume table (share of trades vs dollars per bin).
+- Note on sign conventions for the memo: our slope > 0 = classic FLB (longshots
+  overpriced); "negative FLB" in the email = negative slope = longshots UNDERpriced.
+- Bug hit & fixed: pandas fillna(ndarray) TypeError in make_horizon_slices (wrap in
+  Series); chain rerun clean.
+- **Results (mature, count-weighted unless noted):**
+  Horizon pooled: <1d −0.0811 (t=−4.1***), 1–7d −0.0202 (t=−3.1**), 7–30d −0.027 (ns),
+  30–90d +0.016 (ns), ≥90d +0.0349 (t=+1.9). **Closing window <1d FLIPS to +0.0667
+  (t=+5.7***; dollar +0.149, t=+7.0)** — short-horizon reverse-FLB is a mature-window
+  phenomenon; classic FLB appears at the very end of life in ultra-short markets.
+  Horizon×category: short-horizon negative driven by Sports <1d −0.118***, Esports 1–7d
+  −0.132***, Weather 1–7d −0.026*** (dollar −0.114, t=−12); within-category horizon
+  gradients also present (Economy ≥90d +0.163***, Politics 30–90d +0.054***, Tech +);
+  Sports ≤0 at every horizon. Both composition AND gradient — composition bigger.
+  Trades-vs-dollars by horizon: counts overweight <7d (~1.25×) and underweight 30d+
+  (~0.75×); ticket ~$90 short vs ~$151 long; <1d mature slope −0.081 count vs −0.016
+  (ns) dollar — the short-horizon reverse-FLB is small-ticket.
+  Recurrence: daily −0.0427*** vs annual +0.0679*, monthly +0.047 — tracks family signs,
+  not a clean learning gradient. Anchorability: sourced −0.0246*** (dollar −0.094,
+  t=−5.2) vs judgment +0.0111 (ns).
+  Novelty tail per category: diff(tail−rest) positive in 8/12 (Culture +0.101, Politics
+  +0.086 w/ tail t=+3.7***, Esports +0.163 w/ tail dollar +0.53 t=+5.1, Geopolitics,
+  Crypto, Iran, Mentions, Weather); **Sports the substantive exception (−0.078, tail
+  −0.086, t=−2.7**)** — novelty amplifies sports' own error direction; Tech ≈ flat;
+  Finance/Economy negative on small tails.
+- Memo to collaborator: `memo_kaushik_20260815.md` (answers Q1–Q4 + the "learning
+  results gone?" reconciliation). Report v4 adds section 5b (horizon, recurrence,
+  anchorability, per-category novelty tail, trades-vs-dollars table).
+
 ### Artifacts (this session)
 
 - `/mnt/data/embedding_difficulty/`: universe_markets/tokens, flb_base_{mature,closing},
