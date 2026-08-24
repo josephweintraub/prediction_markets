@@ -5,17 +5,16 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
-## 2026-08-24 — Telonex catalog datasets + token-grain coverage crosswalk
+## 2026-08-24 — Calibration diagnostic reverts to decile-first (spec change)
 
-- `scripts/build_telonex_datasets.py`: pulls Telonex (telonex.io) free Polymarket
-  datasets — markets catalog (3.10M markets, per-channel data-coverage dates) and
-  tags — to `/mnt/data/telonex/`, and builds `telonex_coverage_by_token.parquet`
-  (one row per `market_flags.parquet` token: Telonex ids + quotes/book/trades/
-  onchain-fills coverage windows). 100% of our 2.39M trades_clean tokens matched;
-  91.8% carry quote coverage (quotes exist only from 2025-10-11; token counts skew
-  to recent series markets). Delivered with README to Dropbox
-  `Polymarket Data and Code/telonex/`. Context: Kaushik mid-price request (bids/asks
-  vs traded prices for the Kalshi/Polymarket comparison); Telonex has no Kalshi data.
+- **Measurement spec amended** (`docs/methods_reference.md`): the primary calibration
+  diagnostic is the full price-decile profile (per-decile calibration error + clustered
+  SEs), headlined by D1/D10 tail errors and the D10−D1 spread; the signed slope is
+  demoted to an auxiliary summary. Decision JW+KV 2026-08-24; thin-tail guard retained
+  (tail counts always shown; no sign claims from the spread alone).
+- Embedding-difficulty report rebuilt decile-first (v5, `render_report.py`): tail-error
+  panels, slice×decile heatmaps with significance marks, decile-first tables; no
+  recompute — the engine always stored full decile tables per scheme×window.
 
 ## 2026-08-15 — Horizon/recurrence/anchorability schemes + collaborator memo
 

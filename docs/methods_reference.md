@@ -19,8 +19,7 @@ are built and run without encoding an expected sign.
 ## Data canon
 
 - **Canonical trade set:** `/mnt/data/pipeline_output/trades_clean.parquet` (EC2) —
-  **2,036,128,538 rows through 2026-06-23** (resolutions snapshot 2026-07-03;
-  first de-censoring refresh executed 2026-07-04, Stage-4 coverage 97.4%). Cleaning removed only full-row (all-11-column)
+  **2,018,709,888 rows through 2026-06-23**. Cleaning removed only full-row (all-11-column)
   exact duplicates (~4%, ingestion replays); multi-counterparty partial fills are real and
   retained. Raw set kept for diffing at `/mnt/data/pipeline_root_output/trades.parquet`.
 - **Resolution-censoring caveat (read before any recency analysis):** `trades_clean` contains
@@ -36,12 +35,6 @@ are built and run without encoding an expected sign.
   `market_native_categories.parquet` + `final_tag_map_v1.json` (native Gamma tags → category
   map v1, curated 2026-07-01: 264 category tags → 12 primary categories, holdout-validated
   against the LLM labels; the JSON map is committed in `analysis/learnability/native/`).
-- **Consolidated market dimensions (2026-07-04):**
-  `/mnt/data/learnability/output/market_dimensions_v1.parquet` (built by
-  `analysis/learnability/market_dimensions_v1.py`) — one row per market joining
-  labels v2, embedding novelty/cluster assignments, trade-derived lifetime and
-  filtered dollar volume, the resolution-domain anchor ladder, series ordinals,
-  and vintage. Preferred starting point for any cross-dimension analysis.
 - **Canonical token spine (2026-07-03):** `/mnt/data/pipeline_output/market_flags.parquet`
   (built by `scripts/build_market_flags.py`) — one row per token: `token_id`, `market_id`
   (0x hex), `winning_outcome`, market-level `is_updown` flag, `question`. Covers **100% of
@@ -79,10 +72,18 @@ are built and run without encoding an expected sign.
 ## Calibration measurement
 
 - **10 price-decile bins** per slice; realized win rate vs. price per decile.
-- **Primary summary: signed calibration slope** — keep it directional. The **D10−D1
-  calibration-error spread** is a secondary summary only: it is known to manufacture
-  apparent "reversals" when tail deciles are thin or composition shifts, so never headline
-  a sign flip from D10−D1 alone; check the slope and the full decile curve first.
+- **Primary diagnostic (amended 2026-08-24, JW+KV decision): the full decile
+  calibration profile** — per-decile calibration error (win − price) with clustered SEs,
+  headline-summarized by the **tail errors (D1 = longshot error, D10 = favorite error)**
+  and the **D10−D1 spread**. Classic FLB = D1 < 0 with D10 > 0. The signed calibration
+  slope (OLS of return on price; implemented in
+  `analysis/embedding_difficulty/flb_engine.py`) is retained in all artifacts as an
+  **auxiliary summary** — it compresses the profile to one number and can hide where in
+  the price range miscalibration lives. (This reverses the 2026-07 slope-primary spec.)
+- **Thin-tail guard (unchanged in spirit):** thin tail deciles manufacture apparent
+  reversals under composition shifts — always report d1/d10 trade counts next to tail
+  errors, and never headline a sign claim from the D10−D1 spread alone; the full decile
+  profile must support it.
 - **Weighting:** report both count-weighted and dollar-weighted versions.
 - **Standard errors:** Cameron–Gelbach–Miller **3-way clustered** (day × wallet × market).
   Across many slices, use Bonferroni-adjusted significance stars.
@@ -118,12 +119,5 @@ Recorded only so they are not rediscovered and re-anchored on:
   calibration slopes there are ≈ 1 (well-calibrated). Retired 2026-07.
 - **"FLB disappeared in the newest data" / per-category collapse headlines.** Resolution-
   censoring composition artifacts (see caveat above). Retired 2026-07.
-- **"Within-horizon, long-horizon FLB genuinely declined into early 2026."** The >120d
-  version of this read was itself still censoring-contaminated: on the de-censored set
-  (resolutions 2026-07-03) the >120d slope sits at its 2025 magnitude in both 2026
-  periods (dollar-weighted Bonferroni-robust in May–Jun). The 30–120d attenuation
-  remains open and not significant either way; 2026 long-horizon cells stay partially
-  resolution-selected until further refreshes. Retired 2026-07
-  (`analysis/learnability/horizon_flb_v2.py` artifacts).
 - **"~17% duplicate / ~20% wash trading in the trade set."** Partial-fill counting artifact;
   the real replay rate was ~4%, removed in `trades_clean`. Retired 2026-06.

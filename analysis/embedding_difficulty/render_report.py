@@ -1,15 +1,22 @@
-"""Render the embedding-difficulty session report (self-contained HTML), v2.
+"""Render the embedding-difficulty session report (self-contained HTML), v5.
 
-v2 (2026-07-03): de-cluttered slice axes (common prefixes stripped, wider
-panels), per-section "How to read" guides, and a liquidity section (volume
-gradient, inclusion floors, rolling-median rule, novelty x liquidity).
+v5 (2026-08-24): DECILE-FIRST diagnostic. Per project decision (JW + KV), the
+primary calibration object is the full 10-price-decile table — per-decile
+calibration error (win − price) with CGM 3-way clustered SEs — presented as
+tail-error panels (D1 = longshot error, D10 = favorite error), slice × decile
+heatmaps, and D10−D1 spreads. The signed slope remains in the artifacts and
+appears as an auxiliary column only. Thin-tail guard: tail-decile trade
+counts are shown next to every D1/D10 number; sign claims require the full
+decile profile, never the spread alone.
 
 Reproducibility: every number is read from artifacts produced by committed
 scripts in analysis/embedding_difficulty/ (build_universe.py,
-build_flb_base.py, embed_universe.py, run_pca.py, make_cluster_slices.py,
-compute_novelty.py, novelty_diagnostics.py, make_novelty_slices.py,
-make_actsubj_slices.py, make_baseline_slices.py, make_liquidity_slices.py,
-run_schemes.py). Artifact root: /mnt/data/embedding_difficulty/.
+build_flb_base.py, embed_universe.py, embed_fields.py, run_pca.py,
+make_cluster_slices.py, compute_novelty.py, novelty_diagnostics.py,
+make_novelty_slices.py, make_actsubj_slices.py, make_baseline_slices.py,
+make_liquidity_slices.py, make_field_variants.py, make_field_novelty_slices.py,
+make_horizon_slices.py, run_schemes.py). Artifact root:
+/mnt/data/embedding_difficulty/.
 
 Output: /mnt/data/embedding_difficulty/report/embedding_difficulty_report.html
 """
@@ -32,16 +39,12 @@ os.makedirs(OUT, exist_ok=True)
 plt.rcParams.update({"figure.dpi": 110, "font.size": 9,
                      "axes.grid": True, "grid.alpha": 0.3})
 
+C_D1 = "#D55E00"   # longshot-decile error (vermillion)
+C_D10 = "#0072B2"  # favorite-decile error (blue)
+CMAP = "RdBu_r"    # diverging, neutral midpoint at 0
 
-# ---------------- helpers ----------------
 
-def fig64(fig) -> str:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    return ("<img src='data:image/png;base64,"
-            + base64.b64encode(buf.getvalue()).decode() + "'/>")
-
+# ---------------- data access ----------------
 
 def summary(scheme: str, window: str) -> pd.DataFrame | None:
     p = f"{BASE}/output/flb_summary_{scheme}_{window}.parquet"
@@ -53,11 +56,48 @@ def summary(scheme: str, window: str) -> pd.DataFrame | None:
 
 def deciles(scheme: str, window: str) -> pd.DataFrame | None:
     p = f"{BASE}/output/flb_deciles_{scheme}_{window}.parquet"
-    return pd.read_parquet(p) if os.path.exists(p) else None
+    if not os.path.exists(p):
+        return None
+    df = pd.read_parquet(p)
+    return df if len(df) else None
+
+
+def dtable(scheme: str, window: str) -> pd.DataFrame | None:
+    """Per-slice decile-first table: D1/D10 errors (+n, t), spread, aux slope."""
+    dec = deciles(scheme, window)
+    s = summary(scheme, window)
+    if dec is None or s is None:
+        return None
+    d1 = dec[dec["decile"] == 1].set_index("slice")
+    d10 = dec[dec["decile"] == 10].set_index("slice")
+    t = s.set_index("slice")
+    out = pd.DataFrame(index=t.index)
+    out["n_trades"] = t["n_trades"]
+    out["d1_n"] = d1["n"]
+    out["d1_err"] = d1["cal_error"]
+    out["d1_t"] = d1["cal_error"] / d1["se"]
+    out["d10_n"] = d10["n"]
+    out["d10_err"] = d10["cal_error"]
+    out["d10_t"] = d10["cal_error"] / d10["se"]
+    out["spread"] = t["spread"]
+    out["spread_t"] = t["spread_t"]
+    out["spread_dol"] = t["spread_dol"]
+    out["spread_t_dol"] = t["spread_t_dol"]
+    out["slope_aux"] = t["slope"]
+    return out.reset_index().sort_values("slice")
+
+
+# ---------------- figure helpers ----------------
+
+def fig64(fig) -> str:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    return ("<img src='data:image/png;base64,"
+            + base64.b64encode(buf.getvalue()).decode() + "'/>")
 
 
 def short_labels(labels: list[str]) -> list[str]:
-    """Strip the longest common prefix (up to its last '_') for display."""
     if len(labels) < 2:
         return labels
     pref = os.path.commonprefix(labels)
@@ -65,31 +105,75 @@ def short_labels(labels: list[str]) -> list[str]:
     return [l[cut:] for l in labels] if cut >= 2 else labels
 
 
-def slope_panel(df: pd.DataFrame, title: str, order=None, dollar=False) -> str:
-    col, se = ("slope_dol", "slope_se_dol") if dollar else ("slope", "slope_se")
-    d = df.copy()
-    if order is None:
-        order = sorted(d["slice"])
-    d = d.set_index("slice").loc[[o for o in order if o in set(df["slice"])]] \
-         .reset_index()
-    fig, ax = plt.subplots(figsize=(max(4.4, 0.72 * len(d)), 3.2))
-    x = np.arange(len(d))
-    ax.errorbar(x, d[col], yerr=1.96 * d[se], fmt="o", ms=4, capsize=3, lw=1)
+def tail_panel(scheme: str, window: str, title: str, order=None,
+               dollar: bool = False) -> str:
+    """D1 (longshot) and D10 (favorite) calibration error across slices."""
+    dec = deciles(scheme, window)
+    if dec is None:
+        return ""
+    err, se = ("cal_error_dol", "se_dol") if dollar else ("cal_error", "se")
+    d1 = dec[dec["decile"] == 1].set_index("slice")
+    d10 = dec[dec["decile"] == 10].set_index("slice")
+    labs = order if order is not None else sorted(d1.index)
+    labs = [l for l in labs if l in d1.index]
+    x = np.arange(len(labs))
+    fig, ax = plt.subplots(figsize=(max(4.6, 0.78 * len(labs)), 3.3))
+    ax.errorbar(x - 0.08, d1.loc[labs, err], yerr=1.96 * d1.loc[labs, se],
+                fmt="o", ms=5, capsize=3, lw=1, color=C_D1,
+                label="D1 error (longshots)")
+    ax.errorbar(x + 0.08, d10.loc[labs, err], yerr=1.96 * d10.loc[labs, se],
+                fmt="s", ms=5, capsize=3, lw=1, color=C_D10,
+                label="D10 error (favorites)")
     ax.axhline(0, color="k", lw=0.8)
     ax.set_xticks(x)
-    ax.set_xticklabels(short_labels(d["slice"].tolist()), rotation=35,
-                       ha="right", fontsize=8)
-    ax.set_ylabel("signed slope" + (" ($-wt)" if dollar else ""))
+    ax.set_xticklabels(short_labels(labs), rotation=35, ha="right", fontsize=8)
+    ax.set_ylabel("calibration error (win − price)"
+                  + (" [$-wt]" if dollar else ""))
     ax.set_title(title)
+    ax.legend(fontsize=8)
+    return fig64(fig)
+
+
+def decile_heatmap(scheme: str, window: str, title: str, order=None,
+                   dollar: bool = False, vmax: float | None = None) -> str:
+    """slices × 10 price-deciles, cell = calibration error, dot = |t|>1.96."""
+    dec = deciles(scheme, window)
+    if dec is None:
+        return ""
+    err, se = ("cal_error_dol", "se_dol") if dollar else ("cal_error", "se")
+    piv = dec.pivot(index="slice", columns="decile", values=err)
+    pse = dec.pivot(index="slice", columns="decile", values=se)
+    labs = order if order is not None else sorted(piv.index)
+    labs = [l for l in labs if l in piv.index]
+    M = piv.loc[labs].to_numpy(float)
+    T = M / pse.loc[labs].to_numpy(float)
+    if vmax is None:
+        vmax = float(np.nanquantile(np.abs(M), 0.98))
+        vmax = max(vmax, 0.02)
+    fig, ax = plt.subplots(figsize=(6.4, 0.34 * len(labs) + 1.4))
+    im = ax.imshow(M, aspect="auto", cmap=CMAP, vmin=-vmax, vmax=vmax)
+    yy, xx = np.where(np.abs(T) > 1.96)
+    ax.scatter(xx, yy, s=6, c="black", marker=".")
+    ax.set_xticks(range(10))
+    ax.set_xticklabels([f"D{i}" for i in range(1, 11)], fontsize=8)
+    ax.set_yticks(range(len(labs)))
+    ax.set_yticklabels(short_labels(labs), fontsize=8)
+    ax.grid(False)
+    cb = fig.colorbar(im, ax=ax, shrink=0.85)
+    cb.set_label("calibration error" + (" [$-wt]" if dollar else ""),
+                 fontsize=8)
+    ax.set_title(title + "  (· = |t| > 1.96)")
     return fig64(fig)
 
 
 def decile_curve(dec: pd.DataFrame, title: str) -> str:
     fig, ax = plt.subplots(figsize=(4.6, 3.2))
     ax.errorbar(dec["decile"], dec["cal_error"], yerr=1.96 * dec["se"],
-                fmt="-o", ms=4, capsize=3, lw=1, label="count-wt")
+                fmt="-o", ms=4, capsize=3, lw=1, color=C_D10,
+                label="count-wt")
     ax.errorbar(dec["decile"], dec["cal_error_dol"], yerr=1.96 * dec["se_dol"],
-                fmt="-s", ms=4, capsize=3, lw=1, label="dollar-wt", alpha=0.7)
+                fmt="-s", ms=4, capsize=3, lw=1, color=C_D1, alpha=0.75,
+                label="dollar-wt")
     ax.axhline(0, color="k", lw=0.8)
     ax.set_xlabel("price decile (1 = longshots, 10 = favorites)")
     ax.set_ylabel("calibration error (win − price)")
@@ -98,22 +182,24 @@ def decile_curve(dec: pd.DataFrame, title: str) -> str:
     return fig64(fig)
 
 
-def excess_dispersion(df: pd.DataFrame) -> dict:
-    w = df["n_trades"] / df["n_trades"].sum()
-    m = (w * df["slope"]).sum()
-    wvar = (w * (df["slope"] - m) ** 2).sum()
-    noise = (w * df["slope_se"] ** 2).sum()
-    z = norm.ppf(1 - 0.025 / max(len(df), 1))
-    return {"n_slices": int(len(df)), "wmean_slope": float(m),
+def spread_dispersion(df: pd.DataFrame) -> dict:
+    """Noise-corrected dispersion of TRUE D10−D1 spreads across slices."""
+    d = df.dropna(subset=["spread", "spread_se"])
+    w = d["n_trades"] / d["n_trades"].sum()
+    m = (w * d["spread"]).sum()
+    wvar = (w * (d["spread"] - m) ** 2).sum()
+    noise = (w * d["spread_se"] ** 2).sum()
+    z = norm.ppf(1 - 0.025 / max(len(d), 1))
+    return {"n_slices": int(len(d)), "wmean_spread": float(m),
             "raw_sd": float(np.sqrt(wvar)),
             "signal_sd": float(np.sqrt(max(wvar - noise, 0))),
-            "share_sig_bonf": float((df["slope_t"].abs() > z).mean()),
-            "min_slope": float(df["slope"].min()),
-            "max_slope": float(df["slope"].max())}
+            "share_sig_bonf": float((d["spread_t"].abs() > z).mean())}
 
+
+# ---------------- html scaffolding ----------------
 
 H = ["<html><head><meta charset='utf-8'><title>Embedding-based intrinsic "
-     "difficulty — sessions 1–2</title><style>",
+     "difficulty — decile-first report</title><style>",
      "body{font-family:Georgia,serif;max-width:1100px;margin:24px auto;"
      "padding:0 16px;line-height:1.45;color:#1a1a1a}",
      "h1{font-size:22px} h2{font-size:18px;border-bottom:1px solid #ccc;"
@@ -137,36 +223,56 @@ def how(text: str) -> None:
 
 
 def tbl(df: pd.DataFrame, fl="{:+.4f}") -> str:
-    return df.to_html(index=False, float_format=lambda x: fl.format(x), border=0)
+    def fmt(x):
+        if isinstance(x, (int, np.integer)):
+            return f"{x:,}"
+        return fl.format(x)
+    return df.to_html(index=False, float_format=lambda x: fl.format(x),
+                      border=0)
 
 
-def fmt_t(row, col="slope", se="slope_se", t="slope_t"):
-    return f"{row[col]:+.4f} (t={row[t]:+.1f})"
+def add_dtable(scheme: str, window: str, order=None) -> None:
+    t = dtable(scheme, window)
+    if t is None:
+        return
+    if order is not None:
+        t = t.set_index("slice").reindex([o for o in order
+                                          if o in set(t["slice"])]).reset_index()
+    cols = ["slice", "n_trades", "d1_n", "d1_err", "d1_t", "d10_n",
+            "d10_err", "d10_t", "spread", "spread_t", "spread_dol",
+            "spread_t_dol", "slope_aux"]
+    add(tbl(t[cols]))
 
 
 # ---------------- header ----------------
 cov = json.load(open(f"{BASE}/build_universe_coverage.json"))
 bmeta = json.load(open(f"{BASE}/flb_base_meta.json"))
-add("<h1>Embedding-based intrinsic difficulty — sessions 1–2 (2026-07-03)</h1>")
+add("<h1>Embedding-based intrinsic difficulty — decile-first report "
+    "(v5, 2026-08-24)</h1>")
 add("<div class='prov'><b>Provenance.</b> All numbers are rendered from "
     "artifacts under <code>/mnt/data/embedding_difficulty/</code> produced by "
-    "committed scripts in <code>analysis/embedding_difficulty/</code> "
-    "(see script list in render_report.py header). Measurement: standard "
-    "filters; <b>signed calibration slope</b> primary; D10−D1 secondary; CGM "
-    "3-way clustered SEs (day × wallet × market); 5,000-trade slice floor; "
-    "mature (25–80% of lifetime) and closing (80–100%) windows. Embeddings: "
-    "BAAI/bge-small-en-v1.5 on question text.</div>")
-how("One metric appears everywhere: the <b>signed calibration slope</b> — a "
-    "per-slice regression of trade returns on price. Slope = 0 means prices "
-    "are calibrated (longshots and favorites win exactly as often as their "
-    "prices imply). Slope &gt; 0 is the classic favorite–longshot bias "
-    "(longshots overpriced, favorites underpriced); slope &lt; 0 is the "
-    "reverse. In every point-plot below, each dot is one slice of markets, "
-    "whiskers are 95% confidence intervals from SEs clustered three ways "
-    "(same day, same wallet, same market) — so a dot whose whiskers exclude "
-    "zero indicates statistically distinguishable miscalibration. "
-    "Count-weighted treats every trade equally; dollar-weighted weights by "
-    "trade size (what the marginal dollar experiences).")
+    "committed scripts in <code>analysis/embedding_difficulty/</code> (script "
+    "list in render_report.py header). Standard trade filters; CGM 3-way "
+    "clustered SEs (day × wallet × market); 5,000-trade slice floor; mature "
+    "(25–80% of lifetime) and closing (80–100%) windows; count- and "
+    "dollar-weighted. Embeddings: BAAI/bge-small-en-v1.5. <b>v5 spec change "
+    "(project decision 2026-08-24): the primary calibration diagnostic is the "
+    "full price-decile profile; the signed slope is retained in artifacts as "
+    "an auxiliary summary only.</b></div>")
+how("Every market slice gets a 10-bin calibration profile: trades are grouped "
+    "by price decile (D1 = cheapest longshots, D10 = priciest favorites) and "
+    "each bin shows the mean of (win − price) — the <b>calibration error</b>. "
+    "A perfectly priced bin sits at 0. <b>Classic favorite–longshot bias = "
+    "D1 below zero (longshots overpriced) together with D10 above zero "
+    "(favorites underpriced)</b>; the reverse pattern is longshots "
+    "underpriced. Three views recur: (i) <b>tail panels</b> — D1 (red "
+    "circles) and D10 (blue squares) errors with 95% CIs across slices; "
+    "(ii) <b>heatmaps</b> — every slice's full 10-decile profile, red = "
+    "positive error (bin wins more than its price), blue = negative, black "
+    "dot = |t| &gt; 1.96; (iii) <b>D10−D1 spread</b> as a one-number "
+    "summary, always read alongside the full profile, never alone. Tail-"
+    "decile trade counts (d1_n, d10_n) appear in every table — thin tails "
+    "make noisy tail errors, so treat small-count cells with suspicion.")
 
 # ---------------- 1. data ----------------
 add(f"<h2>1. Data</h2><p>Universe: <b>{cov['markets_universe']:,}</b> "
@@ -175,71 +281,53 @@ add(f"<h2>1. Data</h2><p>Universe: <b>{cov['markets_universe']:,}</b> "
     f"{cov['markets_ge1_filtered_trade']:,} with ≥1 standard-filtered trade. "
     f"Filtered BUY trades: {bmeta['buy_filtered_rows']:,} → mature window "
     f"{bmeta['rows_mature']:,}, closing {bmeta['rows_closing']:,}.</p>")
-add("<div class='note'><b>Two data-plumbing findings surfaced by this build "
-    "(affect any standard-filter run on the June-2026 extended trade set):</b> "
-    "(a) the March resolutions spine covers only ~49% of extended trade rows — "
+add("<div class='note'><b>Two data-plumbing findings from this build (affect "
+    "any standard-filter run on the June-2026 extended trade set):</b> (a) "
+    "the March resolutions spine covers only ~49% of extended trade rows — "
     "this build uses the fresh June-24 spine (100% token coverage); (b) "
     "trades' <code>eventSlug</code> is empty for newer markets, so the "
     f"standard up/down exclusion catches ~nothing; {cov['markets_updown_flagged']:,} "
-    f"up/down markets (~1.34B raw rows) were excluded here at market level "
-    "from Gamma metadata. Both fixes are now shared plumbing: "
-    "<code>scripts/build_market_flags.py</code>.</div>")
+    "up/down markets (~1.34B raw rows) were excluded at market level from "
+    "Gamma metadata. Shared fix: <code>scripts/build_market_flags.py</code>."
+    "</div>")
 
 # ---------------- 2. baseline ----------------
 add("<h2>2. Baseline calibration</h2>")
-how("These curves show raw calibration by price decile: for trades bought at "
-    "prices in each decile, the average of (won − price). A perfectly "
-    "calibrated decile sits at 0. Classic FLB looks like below-zero on the "
-    "left (longshots) and above-zero on the right (favorites). The table "
-    "gives the pooled slope per lifecycle window.")
+how("The pooled decile curves are the reference: if the whole sample were "
+    "classically FLB-biased the curve would slope up left-to-right through "
+    "zero. The category panels then show each curated category's tails and "
+    "full profile.")
 for win in ("mature", "closing"):
     d = deciles("all", win)
     if d is not None and len(d):
         add(decile_curve(d[d["slice"] == "ALL"], f"Pooled — {win} window"))
-s_all = pd.concat([x.assign(window=w) for w in ("mature", "closing")
-                   if (x := summary("all", w)) is not None])
-add(tbl(s_all[["window", "n_trades", "slope", "slope_se", "slope_t",
-               "slope_dol", "slope_t_dol", "spread", "spread_t"]]))
-pooled_m = s_all[s_all["window"] == "mature"].iloc[0]
-add(f"<p><i>Interpretation:</i> the pooled mature-window slope is "
-    f"{pooled_m['slope']:+.4f} (t={pooled_m['slope_t']:+.1f}) — statistically "
-    "indistinguishable from calibrated. Everything below asks where "
-    "miscalibration hides underneath this aggregate zero.</p>")
+add_dtable("all", "mature")
+add_dtable("all", "closing")
 
-cat_m = summary("category", "mature")
-if cat_m is not None:
-    cat_m = cat_m.sort_values("slope")
+cat_t = dtable("category", "mature")
+if cat_t is not None:
+    order = cat_t.sort_values("spread")["slice"].tolist()
     add("<h3>By curated category (mature)</h3>")
-    how("Each dot is one of the 12 curated native categories (plus UNKNOWN "
-        "for unmapped markets). Categories left of zero have longshots "
-        "UNDERpriced; right of zero, overpriced. This is the comparison "
-        "baseline for the finer, label-free slicings in section 6.")
-    add(slope_panel(cat_m, "slope by category — mature",
-                    order=cat_m["slice"].tolist()))
-    add(tbl(cat_m[["slice", "n_trades", "n_markets", "slope", "slope_se",
-                   "slope_t", "slope_dol", "slope_t_dol"]]))
-ser_m = summary("series_membership", "mature")
-if ser_m is not None:
+    add(tail_panel("category", "mature", "tail errors by category — mature",
+                   order=order))
+    add(decile_heatmap("category", "mature",
+                       "decile profiles by category — mature", order=order))
+    add_dtable("category", "mature", order=order)
+ser = dtable("series_membership", "mature")
+if ser is not None:
     add("<h3>Series membership (recurrence axis)</h3>")
-    how("Native Polymarket series group recurring market instances (NBA "
-        "games, weekly crypto closes). If repetition alone produced "
-        "calibration, in-series should differ from standalone.")
-    add(tbl(ser_m[["slice", "n_trades", "slope", "slope_se", "slope_t",
-                   "slope_dol", "slope_t_dol"]]))
+    add_dtable("series_membership", "mature")
 
 # ---------------- 3. PCA ----------------
 add("<h2>3. Approach A — PCA structure of question space</h2>")
-how("PCA finds the main axes along which market question texts vary. The bar "
-    "chart shows how much variance each axis explains. The correlation table "
-    "is the guardrail: top components of sentence embeddings are known to "
-    "pick up question length and template frequency rather than meaning, so "
-    "an axis is only interpreted through what it correlates with. The "
-    "quintile panels then ask whether calibration varies along each axis: "
-    "markets are sorted by their position on the axis and cut into five "
-    "equal groups (q1 = lowest).")
+how("Markets are sorted along each principal component of the question-"
+    "embedding space and cut into quintiles (q1 = lowest). The heatmaps show "
+    "each quintile's full decile profile; the correlation table is the "
+    "guardrail against interpreting components that merely encode question "
+    "length or attention.")
 evr = json.load(open(f"{BASE}/pca_evr.json"))["evr"]
 fig, ax = plt.subplots(figsize=(5, 2.6))
-ax.bar(range(1, 21), evr[:20])
+ax.bar(range(1, 21), evr[:20], color=C_D10)
 ax.set_xlabel("principal component")
 ax.set_ylabel("explained variance ratio")
 add(fig64(fig))
@@ -251,323 +339,227 @@ piv = piv[[c for c in piv.columns if c <= 8]]
 add(piv.reset_index().to_html(index=False, border=0,
                               float_format=lambda x: f"{x:+.2f}"))
 for i in range(1, 5):
-    s = summary(f"pca_pc{i}_quintile", "mature")
-    if s is not None:
-        add(slope_panel(s, f"slope by PC{i} quintile — mature"))
-add("<p><i>Interpretation:</i> PC1 (correlated with question length, trade "
-    "count, and series membership) carries a monotone calibration gradient "
-    "in the mature window; PC2–PC3 carry little. In the closing window the "
-    "PC1 gradient flattens (see closing artifacts) — position-in-question-"
-    "space miscalibration is corrected as resolution approaches.</p>")
+    sch = f"pca_pc{i}_quintile"
+    if deciles(sch, "mature") is not None:
+        o = sorted(deciles(sch, "mature")["slice"].unique())
+        add(decile_heatmap(sch, "mature",
+                           f"decile profiles by PC{i} quintile — mature",
+                           order=o))
+add_dtable("pca_pc1_quintile", "mature")
 
 # ---------------- 4. novelty ----------------
 add("<h2>4. Approach B — novelty / precedent density at birth</h2>")
 nmeta = json.load(open(f"{BASE}/novelty_meta.json"))
 hub = json.load(open(f"{BASE}/novelty_hubness.json"))
-how("For every market we measure how similar its question is to markets "
-    "created STRICTLY BEFORE it (no lookahead): sim_k25 = mean cosine "
-    "similarity to its 25 nearest predecessors. High = the market has close "
-    "precedents; low = nothing like it existed. The _x variant excludes "
-    "same-series/same-event predecessors, so recurring templates can't "
-    "trivially count as their own precedent. Markets are then cut into "
-    "deciles: <b>d01 = most novel, d10 = most precedented</b>. The "
-    "within-vintage variant forms deciles inside each birth year, so 'novel' "
-    "means novel relative to its own era, not to the platform's early days.")
+how("For every market: similarity of its question to markets created "
+    "STRICTLY before it (no lookahead); the _x variant excludes same-series/"
+    "same-event predecessors. Deciles within birth year: <b>d01 = most novel "
+    "of its era, d10 = most precedented</b>. In the heatmaps the rows are "
+    "novelty deciles and the columns are PRICE deciles — the question is "
+    "whether the top row (most novel markets) shows the classic tail "
+    "pattern (blue D1 cell, red D10 cell) while lower rows sit near white.")
 add(f"<p>τ = {nmeta['tau']:.3f} ({nmeta['tau_quantile']} quantile of "
-    f"random-pair similarity). Birth fallback (first trade) for "
+    f"random-pair similarity). Birth fallback for "
     f"{nmeta['birth_fallback_n']:,} markets. Hubness: k-occurrence skewness "
     f"{hub['k_occurrence_skewness']:.1f} (max {hub['max_occurrence']:,}) — "
-    "high; rank-based deciles soften this but a mutual-proximity rescale is "
-    "a pending robustness item.</p>")
+    "high; rank-based deciles soften it; mutual-proximity rescale pending.</p>")
 dist = pd.read_parquet(f"{BASE}/novelty_dist.parquet")
 fig, ax = plt.subplots(figsize=(5, 2.8))
-ax.plot(dist["year"], dist["p50"], "-o", ms=3, label="median")
+ax.plot(dist["year"], dist["p50"], "-o", ms=3, color=C_D10, label="median")
 ax.fill_between(dist["year"], dist["p10"], dist["p90"], alpha=0.25,
-                label="p10–p90")
+                color=C_D10, label="p10–p90")
 ax.set_ylabel("sim_k25_x")
 ax.set_title("novelty distribution by vintage (excl. same-series neighbors)")
 ax.legend()
 add(fig64(fig))
 conf = pd.read_parquet(f"{BASE}/novelty_confounds.parquet")
 add("<h3>Confound table</h3>")
-how("Correlations and standardized OLS betas of the novelty score on the "
-    "known artifact channels (question length, volume, platform growth, "
-    "series membership). If novelty were just recovering one of these, its "
-    "calibration gradient would be an artifact — this table is what any "
-    "referee checks first.")
 add(tbl(conf[conf["target"] == "sim_k25_x"], "{:+.3f}"))
-for sch, ttl in (("nov_k25", "novelty deciles (incl. same-series)"),
-                 ("nov_k25x", "novelty deciles (EXCL. same-series/event)"),
-                 ("nov_k25x_vint", "novelty deciles within vintage year"),
-                 ("nov_cnt", "precedent-count bins (τ-neighbors, excl. series)")):
-    s = summary(sch, "mature")
-    if s is not None:
-        add(slope_panel(s, f"{ttl} — mature"))
-        add(tbl(s.sort_values("slice")[
-            ["slice", "n_trades", "n_markets", "slope", "slope_se",
-             "slope_t", "slope_dol", "slope_t_dol"]]))
-sx = summary("nov_k25x_vint", "closing")
-if sx is not None:
-    add(slope_panel(sx, "novelty deciles within vintage year — closing window"))
-add("<p><i>Interpretation:</i> the signal is a TAIL effect, concentrated in "
-    "d01 (the most-novel decile): classic-FLB-direction miscalibration, "
-    "strongest in the within-vintage variant, roughly halving but persisting "
-    "in the closing window. Middle and high deciles are ≈ calibrated, and "
-    "the precedent-COUNT bins are flat: having <i>no close analog</i> "
-    "predicts miscalibration; the number of analogs beyond the first few "
-    "does not.</p>")
+for sch, ttl in (("nov_k25x_vint", "novelty deciles within vintage year"),
+                 ("nov_k25x", "novelty deciles (excl. same-series/event)"),
+                 ("nov_cnt", "precedent-count bins")):
+    if deciles(sch, "mature") is not None:
+        o = sorted(deciles(sch, "mature")["slice"].unique())
+        add(decile_heatmap(sch, "mature", f"{ttl} — mature", order=o))
+add("<h3>Within-vintage novelty deciles — table (mature)</h3>")
+add_dtable("nov_k25x_vint", "mature")
+if deciles("nov_k25x_vint", "closing") is not None:
+    o = sorted(deciles("nov_k25x_vint", "closing")["slice"].unique())
+    add(decile_heatmap("nov_k25x_vint", "closing",
+                       "novelty deciles within vintage year — closing",
+                       order=o))
 ex = pd.read_parquet(f"{BASE}/novelty_examples.parquet")
 add("<h3>Qualitative anchors</h3>")
-how("Spot-check of what the measure calls novel vs. precedented: the 15 most "
-    "novel and 15 most precedented trade-viable markets with their nearest "
-    "predecessor. The measure is working if the 'most novel' rows look "
-    "genuinely unusual and the 'most precedented' rows are template "
-    "repeats.")
 add(ex.to_html(index=False, border=0))
 
-# ---------------- 4b. multi-field variants ----------------
+# ---- 4b. field variants ----
 if os.path.exists(f"{BASE}/field_compare.parquet"):
     add("<h2>4b. Multi-field text variants: question vs. rules vs. context</h2>")
-    how("Three native text fields describe a market: the QUESTION, the RULES "
-        "(the market's resolution-criteria description), and the CONTEXT "
-        "(the event-level description — the closest native field to 'market "
-        "context'; shared by sibling markets of one event). Each field is "
-        "embedded separately; combined variants are weighted sums of the "
-        "normalized field embeddings with PRE-REGISTERED weights (equal "
-        "thirds, and a question/context-heavy 0.45/0.10/0.45), renormalized "
-        "per market over available fields. For each variant the whole "
-        "novelty pipeline is re-run (strict predecessors, same-series/event "
-        "exclusion, within-vintage deciles).")
-    if os.path.exists(f"{BASE}/field_recon.json"):
-        fr = json.load(open(f"{BASE}/field_recon.json"))
-        add("<p>Field coverage/uniqueness: "
-            + "; ".join(f"{k}: {v:,}" if isinstance(v, int) else f"{k}: {v}"
-                        for k, v in fr.items()) + ".</p>")
+    how("The novelty pipeline re-run on embeddings of the RULES text and the "
+        "event-level CONTEXT, plus pre-registered combined weightings. The "
+        "table shows each variant's most-novel slice: its D1/D10 tail errors "
+        "and spread — which text field carries the difficulty signal.")
     fc = pd.read_parquet(f"{BASE}/field_compare.parquet")
-    add("<h3>Do the fields agree on what is novel?</h3>")
-    how("Pairwise correlations of the novelty score (sim_k25_x) across "
-        "variants, over viable markets where all variants are defined. High "
-        "correlation = the fields are interchangeable; low = each field "
-        "captures distinct precedent structure.")
     add(tbl(fc, "{:+.3f}"))
     if os.path.exists(f"{BASE}/novelty_port_check.json"):
         pc = json.load(open(f"{BASE}/novelty_port_check.json"))
-        add(f"<p><i>Engine check:</i> torch-ported novelty engine reproduces "
-            f"the session-1 numpy scores (corr = {pc['corr']:.6f}, max abs "
-            f"diff = {pc['max_abs_diff']:.2e}).</p>")
-    add("<h3>Novelty-tail FLB by variant (mature)</h3>")
-    how("The headline test repeated per variant: within-birth-year novelty "
-        "deciles, d01 = most novel of its era. The summary table shows the "
-        "d01 slope for each variant on all viable markets and on the ≥$10k "
-        "subset — which text field carries the difficulty signal, and does "
-        "it survive the liquidity floor?")
-    d01_rows = []
-    base_variants = [("q (question, session 1)", "nov_k25x_vint",
-                      "novx_vint_f10k")]
+        add(f"<p><i>Engine check:</i> torch novelty engine reproduces the "
+            f"numpy scores (corr = {pc['corr']:.6f}).</p>")
+    rows = []
+    variants = [("q (question)", "nov_k25x_vint", "novx_vint_f10k")]
     for v in ("rules", "context", "comb_eq", "comb_qc"):
-        base_variants.append((v, f"nv_{v}", f"nv_{v}_f10k"))
-    for label, sch, sch_f in base_variants:
-        for sub, name in ((sch, "all viable"), (sch_f, ">=$10k")):
-            t = summary(sub, "mature")
+        variants.append((v, f"nv_{v}", f"nv_{v}_f10k"))
+    for label, sch, schf in variants:
+        for sub, name in ((sch, "all viable"), (schf, ">=$10k")):
+            t = dtable(sub, "mature")
             if t is None:
                 continue
             r = t.sort_values("slice").iloc[0]
-            d01_rows.append({"variant": label, "sample": name,
-                             "d01_slope": r["slope"], "d01_t": r["slope_t"],
-                             "d01_slope_dol": r["slope_dol"],
-                             "d01_t_dol": r["slope_t_dol"],
-                             "n_trades_d01": r["n_trades"]})
-    if d01_rows:
-        add(tbl(pd.DataFrame(d01_rows)))
-    for v in ("rules", "context", "comb_eq", "comb_qc"):
-        s = summary(f"nv_{v}", "mature")
-        if s is not None:
-            add(slope_panel(s, f"novelty deciles within vintage year "
-                               f"({v} embedding) — mature"))
+            rows.append({"variant": label, "sample": name,
+                         "d1_err": r["d1_err"], "d1_t": r["d1_t"],
+                         "d1_n": int(r["d1_n"]),
+                         "d10_err": r["d10_err"], "d10_t": r["d10_t"],
+                         "spread": r["spread"], "spread_t": r["spread_t"]})
+    if rows:
+        add("<h3>Most-novel slice (d01) tails by variant — mature</h3>")
+        add(tbl(pd.DataFrame(rows)))
 
 # ---------------- 5. liquidity ----------------
 add("<h2>5. Liquidity: the FLB–liquidity gradient and inclusion floors</h2>")
 lmeta = json.load(open(f"{BASE}/liquidity_meta.json"))
-how("Liquidity proxy: the market's dollar volume under the standard filters "
-    "(BUY side, bots excluded) — volume, not order-book depth. Three "
-    "questions: (i) is miscalibration concentrated in thin markets? (tier "
-    "and era-relative panels); (ii) how sensitive are headline results to "
-    "excluding thin markets? (floors table); (iii) does the novelty-tail "
-    "result survive a liquidity floor, or was novelty just proxying "
-    "illiquidity? (last panel).")
-s = summary("liq_tier", "mature")
-if s is not None:
-    add(slope_panel(s, "slope by absolute volume tier — mature"))
-    add(slope_panel(s, "slope by absolute volume tier — mature, dollar-weighted",
-                    dollar=True))
-    add(tbl(s.sort_values("slice")[
-        ["slice", "n_trades", "n_markets", "slope", "slope_se", "slope_t",
-         "slope_dol", "slope_t_dol"]]))
-sc = summary("liq_tier", "closing")
-if sc is not None:
-    add(slope_panel(sc, "slope by absolute volume tier — closing"))
-s = summary("liq_pctl_vint", "mature")
-if s is not None:
-    add(slope_panel(s, "slope by era-relative volume quintile "
-                       "(within birth month) — mature"))
+how("Liquidity proxy = the market's dollar volume under standard filters. "
+    "The heatmap rows run from thinnest (&lt;$1k) to deepest (≥$1M) "
+    "markets; classic FLB in a row = blue left cell, red right cell.")
+o = sorted(deciles("liq_tier", "mature")["slice"].unique()) \
+    if deciles("liq_tier", "mature") is not None else None
+if o:
+    add(decile_heatmap("liq_tier", "mature",
+                       "decile profiles by volume tier — mature", order=o))
+    add(decile_heatmap("liq_tier", "mature",
+                       "volume tiers — mature, dollar-weighted", order=o,
+                       dollar=True))
+    add(tail_panel("liq_tier", "mature",
+                   "tail errors by volume tier — mature", order=o))
+    add_dtable("liq_tier", "mature", order=o)
+if deciles("liq_tier", "closing") is not None:
+    add(decile_heatmap("liq_tier", "closing",
+                       "volume tiers — closing", order=o))
+if deciles("liq_pctl_vint", "mature") is not None:
+    o2 = sorted(deciles("liq_pctl_vint", "mature")["slice"].unique())
+    add(decile_heatmap("liq_pctl_vint", "mature",
+                       "era-relative volume quintiles (within birth month) "
+                       "— mature", order=o2))
 
-add("<h3>Inclusion-floor sensitivity</h3>")
-how("Each row re-estimates the POOLED calibration slope after dropping "
-    "markets below a volume floor. 'rollmed25' is the rolling rule: a market "
-    "is kept only if its volume is ≥ 25% of the median volume of markets "
-    "born in the trailing 90 days (era-adaptive junk filter). If the pooled "
-    "slope moves materially with the floor, thin markets were driving it.")
+add("<h3>Inclusion-floor sensitivity (pooled tails under floors)</h3>")
+how("Each row re-estimates the POOLED profile after dropping markets below "
+    "a volume floor; 'rollmed25' keeps markets ≥25% of the trailing-90-day "
+    "median volume. If tails moved materially with the floor, thin markets "
+    "were driving them.")
 rows = []
-for sch, label, kept_key in (("all", "no floor", None),
-                             ("all_f1k", "≥ $1k", "floor_1k_markets_kept"),
-                             ("all_f10k", "≥ $10k", "floor_10k_markets_kept"),
-                             ("all_f100k", "≥ $100k", "floor_100k_markets_kept"),
-                             ("rollmed25", "rolling-median 25%",
-                              "rollmed_markets_kept")):
-    t = summary(sch, "mature")
+for sch, label, kept in (("all", "no floor", None),
+                         ("all_f1k", ">= $1k", "floor_1k_markets_kept"),
+                         ("all_f10k", ">= $10k", "floor_10k_markets_kept"),
+                         ("all_f100k", ">= $100k", "floor_100k_markets_kept"),
+                         ("rollmed25", "rolling-median 25%",
+                          "rollmed_markets_kept")):
+    t = dtable(sch, "mature")
     if t is None:
         continue
     r = t.iloc[0]
-    rows.append({"floor": label, "n_markets_kept":
-                 lmeta.get(kept_key, cov["markets_ge1_filtered_trade"]),
-                 "n_trades": r["n_trades"], "slope": r["slope"],
-                 "slope_t": r["slope_t"], "slope_dol": r["slope_dol"],
-                 "slope_t_dol": r["slope_t_dol"]})
+    rows.append({"floor": label,
+                 "markets_kept": lmeta.get(kept,
+                                           cov["markets_ge1_filtered_trade"]),
+                 "n_trades": int(r["n_trades"]),
+                 "d1_err": r["d1_err"], "d1_t": r["d1_t"],
+                 "d10_err": r["d10_err"], "d10_t": r["d10_t"],
+                 "spread": r["spread"], "spread_t": r["spread_t"]})
 add(tbl(pd.DataFrame(rows)))
 add(f"<p>Rolling rule excludes {lmeta['rollmed_share_excluded']:.1%} of "
-    "trade-viable markets overall; per-year exclusion below.</p>")
-rstats = pd.read_parquet(f"{BASE}/rollmed_stats.parquet")
-add(tbl(rstats, "{:,.3f}"))
-
-add("<h3>Is the novelty tail just illiquidity?</h3>")
-nv = pd.read_parquet(f"{BASE}/schemes/scheme_nov_k25x_vint.parquet")
-uu = pd.read_parquet(f"{BASE}/universe_markets.parquet",
-                     columns=["market_id", "usd_buy_filtered"])
-nvu = nv.merge(uu, on="market_id")
-volt = nvu.groupby("slice")["usd_buy_filtered"].median().reset_index() \
-    .rename(columns={"usd_buy_filtered": "median_market_usd"})
-add(tbl(volt, "{:,.0f}"))
-s = summary("novx_vint_f10k", "mature")
-if s is not None:
-    how("Novelty deciles rebuilt using ONLY markets with ≥ $10k volume "
-        "(d01 = most novel within its birth year). If the d01 effect "
-        "vanished here, the novelty result would just be thin-market "
-        "noise.")
-    add(slope_panel(s, "novelty deciles within vintage year, "
-                       "≥$10k markets only — mature"))
-    add(tbl(s.sort_values("slice")[
-        ["slice", "n_trades", "n_markets", "slope", "slope_se", "slope_t",
-         "slope_dol", "slope_t_dol"]]))
+    "trade-viable markets (~0.7% of trades).</p>")
+if deciles("novx_vint_f10k", "mature") is not None:
+    o3 = sorted(deciles("novx_vint_f10k", "mature")["slice"].unique())
+    add("<h3>Is the novelty tail just illiquidity?</h3>")
+    add(decile_heatmap("novx_vint_f10k", "mature",
+                       "novelty deciles within vintage, ≥$10k markets only "
+                       "— mature", order=o3))
 
 # ---------------- 5b. horizon ----------------
-if summary("horizon", "mature") is not None:
+if deciles("horizon", "mature") is not None:
     add("<h2>5b. Horizon (contract lifetime)</h2>")
-    how("Horizon = time from market creation to close (native closed_time, "
-        "falling back to last trade) — time-on-market, which is also this "
-        "workstream's feedback-speed measure. Bins: &lt;1d, 1–7d, 7–30d, "
-        "30–90d, ≥90d. Because horizon and market family are strongly "
-        "confounded (short-horizon markets are mostly recurring "
-        "sports/esports/weather; long-horizon are mostly judgment markets), "
-        "the within-category panel is the one to interpret: it shows the "
-        "horizon gradient net of category composition.")
+    how("Horizon = market creation → close. Rows run from &lt;1 day to ≥90 "
+        "days. Watch how the tail pattern rotates: which tail carries the "
+        "short-horizon error, and does the long-horizon row show the classic "
+        "blue-left/red-right shape? The within-category panels separate "
+        "composition (families living at short horizons) from a genuine "
+        "horizon gradient.")
+    ho = ["h1_lt1d", "h2_1_7d", "h3_7_30d", "h4_30_90d", "h5_ge90d"]
     for win in ("mature", "closing"):
-        s = summary("horizon", win)
-        if s is not None:
-            add(slope_panel(s, f"slope by horizon — {win}"))
-            add(slope_panel(s, f"slope by horizon — {win}, dollar-weighted",
-                            dollar=True))
+        if deciles("horizon", win) is not None:
+            add(decile_heatmap("horizon", win,
+                               f"decile profiles by horizon — {win}",
+                               order=ho))
+    add(tail_panel("horizon", "mature", "tail errors by horizon — mature",
+                   order=ho))
+    add_dtable("horizon", "mature", order=ho)
+    add_dtable("horizon", "closing", order=ho)
     hv = pd.read_parquet(f"{BASE}/horizon_volume.parquet")
     add("<h3>Where do trades vs. dollars sit across horizons?</h3>")
-    how("If share_trades ≈ share_usd in every bin, trade counts are a fair "
-        "proxy for dollars across horizons; usd_per_trade shows where the "
-        "average ticket is larger.")
     add(tbl(hv, "{:,.3f}"))
-    sc = summary("horizon_cat", "mature")
-    if sc is not None:
-        d = sc.copy()
-        parts = d["slice"].str.split("|", expand=True)
-        d["cat"], d["hbin"] = parts[0], parts[1]
-        order = ["h1_lt1d", "h2_1_7d", "h3_7_30d", "h4_30_90d", "h5_ge90d"]
-        big = d.groupby("cat")["n_trades"].sum().nlargest(8).index
-        fig, ax = plt.subplots(figsize=(6.4, 3.6))
-        for c in big:
-            sub = d[d["cat"] == c].set_index("hbin").reindex(order)
-            ax.plot(range(len(order)), sub["slope"], "-o", ms=3, label=c)
-        ax.axhline(0, color="k", lw=0.8)
-        ax.set_xticks(range(len(order)))
-        ax.set_xticklabels([o.split("_", 1)[1] for o in order])
-        ax.set_ylabel("slope")
-        ax.set_title("slope by horizon WITHIN category — mature "
-                     "(8 largest categories)")
-        ax.legend(fontsize=7, ncol=2)
-        add(fig64(fig))
+    dec_hc = deciles("horizon_cat", "mature")
+    if dec_hc is not None:
+        d1 = dec_hc[dec_hc["decile"] == 1].copy()
+        d10 = dec_hc[dec_hc["decile"] == 10].copy()
+        for dd, ttl, col in ((d1, "D1 (longshot) error", C_D1),
+                             (d10, "D10 (favorite) error", C_D10)):
+            parts = dd["slice"].str.split("|", expand=True)
+            dd["cat"], dd["hbin"] = parts[0], parts[1]
+            big = dd.groupby("cat")["n"].sum().nlargest(8).index
+            fig, ax = plt.subplots(figsize=(6.4, 3.4))
+            for c in big:
+                sub = dd[dd["cat"] == c].set_index("hbin").reindex(ho)
+                ax.plot(range(len(ho)), sub["cal_error"], "-o", ms=3,
+                        label=c)
+            ax.axhline(0, color="k", lw=0.8)
+            ax.set_xticks(range(len(ho)))
+            ax.set_xticklabels([h.split("_", 1)[1] for h in ho])
+            ax.set_ylabel("calibration error")
+            ax.set_title(f"{ttl} by horizon WITHIN category — mature")
+            ax.legend(fontsize=7, ncol=2)
+            add(fig64(fig))
         add("<h3>Category × horizon cells (mature)</h3>")
-        add(tbl(d.sort_values(["cat", "hbin"])[
-            ["slice", "n_trades", "n_markets", "slope", "slope_se",
-             "slope_t", "slope_dol", "slope_t_dol"]]))
-
+        add_dtable("horizon_cat", "mature")
     add("<h3>Recurrence and anchorability (native fields)</h3>")
-    how("Two more learnability-style proxies measured in the same engine: "
-        "native series recurrence cadence (daily/weekly/monthly/annual; "
-        "in_series_other = series without a cadence label; none = "
-        "standalone), and anchorability (does the market name a resolution "
-        "source — a price feed or official scorer — vs. blank = judgment "
-        "call; UNKNOWN = no native metadata).")
     for sch in ("recurrence", "anchor"):
-        s = summary(sch, "mature")
-        if s is not None:
-            add(slope_panel(s, f"slope by {sch} — mature"))
-            add(tbl(s.sort_values("slice")[
-                ["slice", "n_trades", "n_markets", "slope", "slope_se",
-                 "slope_t", "slope_dol", "slope_t_dol"]]))
-
-    sn = summary("novtail_cat", "mature")
-    if sn is not None:
+        if deciles(sch, "mature") is not None:
+            o4 = sorted(deciles(sch, "mature")["slice"].unique())
+            add(decile_heatmap(sch, "mature",
+                               f"decile profiles by {sch} — mature",
+                               order=o4))
+            add_dtable(sch, "mature", order=o4)
+    if dtable("novtail_cat", "mature") is not None:
         add("<h3>Novelty tail within each category (mature)</h3>")
-        how("The novelty-tail test run separately inside each category: "
-            "'tail' = the category's markets in the most-novel within-"
-            "vintage decile, 'rest' = everything else. diff = tail − rest "
-            "slope; positive diff = the category's novel markets are more "
-            "FLB-miscalibrated than its precedented ones.")
-        d = sn.copy()
-        parts = d["slice"].str.split("|", expand=True)
-        d["cat"], d["grp"] = parts[0], parts[1]
-        piv = d.pivot(index="cat", columns="grp",
-                      values=["slope", "slope_t", "n_trades"])
-        rows = []
-        for c in piv.index:
-            try:
-                rows.append({
-                    "category": c,
-                    "tail_slope": piv.loc[c, ("slope", "tail")],
-                    "tail_t": piv.loc[c, ("slope_t", "tail")],
-                    "rest_slope": piv.loc[c, ("slope", "rest")],
-                    "rest_t": piv.loc[c, ("slope_t", "rest")],
-                    "diff": (piv.loc[c, ("slope", "tail")]
-                             - piv.loc[c, ("slope", "rest")]),
-                    "n_tail": piv.loc[c, ("n_trades", "tail")],
-                })
-            except KeyError:
-                continue
-        add(tbl(pd.DataFrame(rows).sort_values("diff", ascending=False)))
+        how("Per category: the most-novel within-vintage decile ('tail') vs "
+            "everything else ('rest'). Compare each pair's D1/D10 errors — "
+            "does novelty push the category's tails toward the classic "
+            "pattern?")
+        add_dtable("novtail_cat", "mature")
 
 # ---------------- 6. granularity ----------------
 add("<h2>6. Approach C — how much heterogeneity does each granularity "
     "reveal?</h2>")
-how("Markets are clustered on their embeddings at four granularities "
-    "(k = 12 … 1000) and the calibration slope is estimated per cluster. "
-    "raw_sd is the trade-weighted spread of estimated slopes; signal_sd "
-    "subtracts estimation noise — it is the spread of TRUE slopes, the "
-    "honest measure of how much difficulty heterogeneity exists at that "
-    "granularity. share_sig_bonf = share of slices significant after "
-    "Bonferroni. Rising signal_sd with k means finer slices keep revealing "
-    "real structure that coarser ones average away.")
+how("Markets clustered on embeddings at four granularities; per-cluster "
+    "decile profiles summarized by the D10−D1 spread. signal_sd = the "
+    "noise-corrected dispersion of TRUE spreads across slices — how much "
+    "real calibration heterogeneity exists at that granularity. Rising "
+    "signal_sd with k means finer slices keep revealing structure that "
+    "coarser ones average away. (Slope-based version in prior report "
+    "versions; ordering of granularities is unchanged.)")
 disp_rows = []
 for sch in ("category", "cluster_k12", "cluster_k50", "cluster_k200",
             "cluster_k1000"):
     s = summary(sch, "mature")
     if s is not None and len(s) > 2:
-        disp_rows.append({"scheme": sch, **excess_dispersion(s)})
+        disp_rows.append({"scheme": sch, **spread_dispersion(s)})
 if disp_rows:
     add(tbl(pd.DataFrame(disp_rows)))
 for k in (50, 200):
@@ -577,19 +569,16 @@ for k in (50, 200):
     terms = pd.read_parquet(f"{BASE}/cluster_terms_k{k}.parquet")
     m = s.merge(terms, left_on="slice", right_on="cluster")
     fig, ax = plt.subplots(figsize=(5.4, 3.2))
-    ax.scatter(np.log10(m["n_trades"]), m["slope"], s=12, alpha=0.6)
+    ax.scatter(np.log10(m["n_trades"]), m["spread"], s=12, alpha=0.6,
+               color=C_D10)
     ax.axhline(0, color="k", lw=0.8)
     ax.set_xlabel("log10 slice trades")
-    ax.set_ylabel("slope")
-    ax.set_title(f"k={k}: per-cluster slope vs size — mature")
+    ax.set_ylabel("D10−D1 spread")
+    ax.set_title(f"k={k}: per-cluster spread vs size — mature")
     add(fig64(fig))
-    m = m.sort_values("slope")
-    cols = ["slice", "n_trades", "slope", "slope_t", "top_terms", "ex1"]
-    add(f"<h3>k={k}: most negative / most positive slope clusters</h3>")
-    how("Extremes of the per-cluster slope distribution with each cluster's "
-        "top TF-IDF terms and an example question — what kinds of markets "
-        "sit at each end. Negative = longshots underpriced in that family; "
-        "positive = classic FLB.")
+    m = m.sort_values("spread")
+    cols = ["slice", "n_trades", "spread", "spread_t", "top_terms", "ex1"]
+    add(f"<h3>k={k}: most negative / most positive spread clusters</h3>")
     add(pd.concat([m.head(8), m.tail(8)])[cols].to_html(
         index=False, border=0, float_format=lambda x: f"{x:+.3f}"))
 
@@ -598,47 +587,36 @@ add("<h2>7. Approach D — action × subject precedent (exploratory)</h2>")
 add("<p class='note'>Stage-2 labels cover 379K/850K markets (59% of filtered "
     "trades), none after the pre-June universe — vintage-confounded; "
     "suggestive only.</p>")
-how("A market is decomposed as subject (Lakers, Bitcoin, Trump) × action "
-    "(win game, cross price threshold, tweet count). For each market at its "
-    "birth we count prior markets with the SAME action, and prior markets "
-    "sharing a subject. Bins: 0 / 1–9 / 10–99 / 100–999 / 1000+ priors. The "
-    "2×2 splits markets by whether the action and the subject had ≥10 "
-    "priors. The vintage-controlled panel re-forms action-precedent "
-    "quintiles within each birth year (q1 = least precedented).")
+how("Markets decomposed as subject × action; bins by how many prior markets "
+    "shared the action / a subject. The heatmaps show each bin's full "
+    "profile — the question is whether low-precedent bins show the classic "
+    "tail pattern and high-precedent bins sit near white.")
 for sch, ttl in (("act_prec", "action precedent count"),
                  ("subj_prec", "subject precedent count"),
                  ("actsubj_2x2", "action-seen × subject-seen"),
                  ("act_prec_vint",
                   "action precedent, quintiles WITHIN vintage year")):
-    s = summary(sch, "mature")
-    if s is not None:
-        add(slope_panel(s, f"{ttl} — mature"))
-        add(tbl(s.sort_values("slice")[
-            ["slice", "n_trades", "n_markets", "slope", "slope_se",
-             "slope_t", "slope_dol", "slope_t_dol"]]))
-add("<p><i>Interpretation:</i> the gradient lives on the ACTION axis — "
-    "never-seen action types show classic FLB, fading with precedent; "
-    "subject familiarity is flat everywhere. The vintage-controlled variant "
-    "attenuates the gradient but keeps its monotone shape, so part of the "
-    "raw effect is platform era, part survives within-era.</p>")
+    if deciles(sch, "mature") is not None:
+        o5 = sorted(deciles(sch, "mature")["slice"].unique())
+        add(decile_heatmap(sch, "mature", f"{ttl} — mature", order=o5))
+        add_dtable(sch, "mature", order=o5)
 
 # ---------------- 8. caveats ----------------
 add("<h2>8. Caveats & open items</h2><ul>"
-    "<li>Resolution censoring (methods_reference): the trade set contains "
-    "only markets resolved by build time; late-vintage slices are "
+    "<li><b>Thin-tail guard:</b> D1/D10 errors from cells with small d1_n / "
+    "d10_n are noisy and composition-sensitive; sign claims require the "
+    "full decile profile and adequate tail counts — never the spread "
+    "alone.</li>"
+    "<li>Resolution censoring: the trade set contains only markets resolved "
+    "by build time; long-horizon and late-vintage cells are "
     "horizon-censored.</li>"
     "<li>wallet_flags built 2026-06-11; bot coverage of newest-era wallets "
     "unaudited.</li>"
-    "<li>Liquidity proxy is realized filtered volume, not order-book depth; "
-    "volume is also an outcome, so floors condition on an endogenous "
-    "variable — floors are inclusion-sensitivity checks, not causal "
-    "controls.</li>"
+    "<li>Liquidity proxy is realized volume (an outcome); floors are "
+    "inclusion-sensitivity checks, not causal controls.</li>"
     "<li>Hubness in the neighbor graph is high; mutual-proximity rescale "
-    "pending.</li>"
-    "<li>Slope is trade-level; contract-level robustness not yet run.</li>"
-    "<li>Encoder robustness (second model family) and the question+rules "
-    "text variant pending; lexical (TF-IDF) baseline pending.</li>"
-    "<li>All slicings are cross-sectional; within-series designs are the "
+    "pending. Encoder robustness and lexical baseline pending.</li>"
+    "<li>All slicings cross-sectional; within-series designs are the "
     "natural next step.</li></ul>")
 add("</body></html>")
 

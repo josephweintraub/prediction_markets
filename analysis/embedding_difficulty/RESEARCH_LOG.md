@@ -315,6 +315,24 @@ on the fixed data, not quotes of prior outputs.
   results gone?" reconciliation). Report v4 adds section 5b (horizon, recurrence,
   anchorability, per-category novelty tail, trades-vs-dollars table).
 
+## 2026-08-24 — Session 5: measurement spec pivot — decile-first diagnostic
+
+- **Project decision (JW + KV):** primary calibration diagnostic reverts from the
+  signed slope to the **full price-decile profile** — per-decile calibration error with
+  CGM clustered SEs, headline-summarized by the tail errors (D1 = longshot error,
+  D10 = favorite error) and the D10−D1 spread. Rationale: the slope compresses the
+  10-bin profile to one linear number and hides WHERE miscalibration lives (both tails?
+  one tail? mid-range?); with the family-level heterogeneity we found, tail-resolved
+  diagnostics are the informative object. Slope stays in all artifacts as auxiliary.
+- No recompute needed: the engine always wrote full decile tables (count+dollar, with
+  SEs) for every scheme×window — this is a diagnostic/reporting pivot.
+- Thin-tail guard retained from the old spec: d1_n/d10_n shown beside every tail error;
+  sign claims require the full profile, never the spread alone.
+- `docs/methods_reference.md` amended (dated); report v5 rebuilt decile-first:
+  tail panels (D1 red circles / D10 blue squares, CVD-validated pair), slice×price-decile
+  heatmaps (diverging, neutral at 0, significance dots), decile-first tables everywhere;
+  granularity dispersion recomputed on spreads (ordering unchanged).
+
 ### Artifacts (this session)
 
 - `/mnt/data/embedding_difficulty/`: universe_markets/tokens, flb_base_{mature,closing},
