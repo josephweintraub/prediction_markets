@@ -5,6 +5,18 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-08-24 — Telonex catalog datasets + token-grain coverage crosswalk
+
+- `scripts/build_telonex_datasets.py`: pulls Telonex (telonex.io) free Polymarket
+  datasets — markets catalog (3.10M markets, per-channel data-coverage dates) and
+  tags — to `/mnt/data/telonex/`, and builds `telonex_coverage_by_token.parquet`
+  (one row per `market_flags.parquet` token: Telonex ids + quotes/book/trades/
+  onchain-fills coverage windows). 100% of our 2.39M trades_clean tokens matched;
+  91.8% carry quote coverage (quotes exist only from 2025-10-11; token counts skew
+  to recent series markets). Delivered with README to Dropbox
+  `Polymarket Data and Code/telonex/`. Context: Kaushik mid-price request (bids/asks
+  vs traded prices for the Kalshi/Polymarket comparison); Telonex has no Kalshi data.
+
 ## 2026-08-15 — Horizon/recurrence/anchorability schemes + collaborator memo
 
 - Embedding-difficulty session 4 (`make_horizon_slices.py`): horizon (creation→close)
