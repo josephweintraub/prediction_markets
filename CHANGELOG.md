@@ -5,6 +5,21 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-08-25 — Telonex bid/ask tick pull ($500k-floor universe) + merged quote datasets
+
+- Systematic Telonex quotes pull (`scripts/scope_telonex_pull.py`,
+  `scripts/pull_telonex_quotes.py`): all non-updown markets with >=$500k USD volume
+  since 2025-10-11, one token per market -> 16,179 markets, 316,403 contract-day
+  files (24.4 GB raw, 0 failures; ~5% of contract-days have no Telonex file).
+  Raw files at `/mnt/data/telonex/quotes_raw/`; resume-safe, floor can be lowered
+  to extend. Key confirmed on a paid/unlimited tier via canary.
+- `scripts/merge_telonex_quotes.py`: consolidated `quotes_ticks/` (1.29B rows,
+  month-partitioned, token_id/timestamp_us/bid/ask/mid, 7.3 GB) +
+  `quotes_daily.parquet` (316,415 token-days). Delivered to Dropbox
+  `Polymarket Data and Code/telonex/` with updated README. Purpose: mid prices
+  for the Kalshi/Polymarket comparison (Kaushik); Kalshi side still needs
+  Kalshi-native data.
+
 ## 2026-08-24 — Calibration diagnostic reverts to decile-first (spec change)
 
 - **Measurement spec amended** (`docs/methods_reference.md`): the primary calibration
