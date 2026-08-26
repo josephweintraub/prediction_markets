@@ -39,12 +39,13 @@ ERROR_LOG = "/mnt/data/telonex/pull_errors.log"
 KEY_PATH = os.path.expanduser("~/.telonex_api_key")
 
 
-def build_tasks(floor: float, limit: int | None):
+def build_tasks(floor: float, ceiling: float | None, limit: int | None):
     con = duckdb.connect()
+    ceil_clause = f"AND market_usd_vol < {ceiling}" if ceiling is not None else ""
     rows = con.execute(f"""
         SELECT token_id, quotes_from, quotes_to
         FROM read_parquet('{CAND}')
-        WHERE market_usd_vol >= {floor}
+        WHERE market_usd_vol >= {floor} {ceil_clause}
         ORDER BY market_usd_vol DESC
     """).fetchall()
     tasks = []
@@ -121,6 +122,8 @@ async def fetch(client, tok, date, path, stats, abort):
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--floor", type=float, required=True)
+    ap.add_argument("--ceiling", type=float, default=None,
+                    help="exclusive upper volume bound (tranche mode)")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--concurrency", type=int, default=10)
     args = ap.parse_args()
@@ -128,7 +131,7 @@ async def main():
     with open(KEY_PATH) as f:
         key = f.read().strip()
 
-    tasks, n_markets = build_tasks(args.floor, args.limit)
+    tasks, n_markets = build_tasks(args.floor, args.ceiling, args.limit)
     print(f"{n_markets} markets at floor {args.floor:,.0f}; {len(tasks)} files to fetch",
           flush=True)
     if not tasks:
