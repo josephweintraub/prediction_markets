@@ -544,6 +544,96 @@ if deciles("horizon", "mature") is not None:
             "pattern?")
         add_dtable("novtail_cat", "mature")
 
+# ---------------- 5c. liquidity vs maturity disentangled ----------------
+if deciles("liqrate", "mature") is not None:
+    add("<h2>5c. Disentangling liquidity from maturity</h2>")
+    lhm = json.load(open(f"{BASE}/liq_horizon_meta.json"))
+    how("Total volume mechanically accumulates with time-open, so total-"
+        "volume liquidity and horizon are confounded. Liquidity here is the "
+        "<b>volume RATE</b> — standard-filtered dollars per day of market "
+        "life (rq1 = thinnest quarter, rq4 = deepest), pooled and within "
+        "birth month. The cross panel is the key object: volume-rate "
+        "quartiles are formed WITHIN each horizon bin, so each horizon "
+        "stratum has balanced liquidity groups — read down a quartile to "
+        "see the horizon effect net of liquidity, and across a horizon row "
+        "to see the liquidity effect net of horizon.")
+    add(f"<p>De-confounding check: corr(log horizon, log TOTAL volume) = "
+        f"{lhm['corr_loghorizon_logtotalusd']:+.3f} vs corr(log horizon, "
+        f"log volume RATE) = {lhm['corr_loghorizon_logvolrate']:+.3f}.</p>")
+    o = ["rq1", "rq2", "rq3", "rq4"]
+    add(decile_heatmap("liqrate", "mature",
+                       "volume-rate quartiles — mature", order=o))
+    add(tail_panel("liqrate", "mature",
+                   "tail errors by volume-rate quartile — mature", order=o))
+    add_dtable("liqrate", "mature", order=o)
+    ov = ["rqv1", "rqv2", "rqv3", "rqv4"]
+    if deciles("liqrate_vint", "mature") is not None:
+        add(decile_heatmap("liqrate_vint", "mature",
+                           "volume-rate quartiles WITHIN birth month — "
+                           "mature", order=ov))
+    ho = ["h1_lt1d", "h2_1_7d", "h3_7_30d", "h4_30_90d", "h5_ge90d"]
+    oc = [f"{h}|rq{q}" for h in ho for q in (1, 2, 3, 4)]
+    if deciles("hor_x_liqrate", "mature") is not None:
+        add("<h3>The cross: horizon × within-bin volume-rate quartile "
+            "(mature)</h3>")
+        add(decile_heatmap("hor_x_liqrate", "mature",
+                           "horizon × volume-rate quartile — mature",
+                           order=oc))
+        add_dtable("hor_x_liqrate", "mature", order=oc)
+    if deciles("hor_x_liqrate", "closing") is not None:
+        add(decile_heatmap("hor_x_liqrate", "closing",
+                           "horizon × volume-rate quartile — closing",
+                           order=oc))
+
+    if deciles("liq1d", "mature") is not None:
+        add("<h3>Fixed-window ('cross-sectional time') liquidity: first "
+            "1d / 7d / 30d volume</h3>")
+        how("Instead of whole-life totals or rates, volume measured in a "
+            "FIXED window after the market's first filtered trade — every "
+            "market gets the same accumulation footprint. Markets shorter "
+            "than the window contribute their whole life, so the 1-day "
+            "window is the only one fully comparable across all horizon "
+            "bins and is the variable used in the cross below.")
+        for tag, ttl in (("liq1d", "first-1-day volume quartiles"),
+                         ("liq7d", "first-7-day volume quartiles"),
+                         ("liq30d", "first-30-day volume quartiles")):
+            if deciles(tag, "mature") is not None:
+                ot = sorted(deciles(tag, "mature")["slice"].unique())
+                add(decile_heatmap(tag, "mature", f"{ttl} — mature",
+                                   order=ot))
+        add_dtable("liq1d", "mature")
+        oc1 = [f"{h}|w1q{q}" for h in ho for q in (1, 2, 3, 4)]
+        if deciles("hor_x_liq1d", "mature") is not None:
+            add("<h3>The cross, fixed-window version: horizon × within-bin "
+                "first-1d volume quartile (mature)</h3>")
+            add(decile_heatmap("hor_x_liq1d", "mature",
+                               "horizon × first-1d volume quartile — mature",
+                               order=oc1))
+            add_dtable("hor_x_liq1d", "mature", order=oc1)
+
+    add("<h3>Maturity measured cleanly: dropouts removed</h3>")
+    how("In multi-outcome events (elections), dropout candidates resolve No "
+        "early, contaminating per-market horizon. Two clean samples: "
+        "<b>standalone binaries</b> (events with exactly one market — no "
+        "dropouts possible) and <b>final-two</b> (binaries plus the two "
+        "markets of each multi-market event that survived latest, e.g. the "
+        "final mayoral pair; dropouts excluded). Compare these horizon "
+        "profiles with the all-sample version in section 5b.")
+    add(f"<p>Contamination scale: of {lhm['multi_markets_with_end']:,} "
+        f"multi-event markets, {lhm['dropout_markets']:,} "
+        f"({lhm['dropout_share_of_multi']:.1%}) resolved &gt;2 days before "
+        f"their event's end (dropout-style early resolution). Clean samples: "
+        f"{lhm['horizon_binary_markets']:,} standalone-binary and "
+        f"{lhm['horizon_final2_markets']:,} final-two markets.</p>")
+    for sch, ttl in (("horizon_binary",
+                      "horizon — standalone binaries only"),
+                     ("horizon_final2",
+                      "horizon — binaries + final-two of multi events")):
+        for win in ("mature", "closing"):
+            if deciles(sch, win) is not None:
+                add(decile_heatmap(sch, win, f"{ttl} — {win}", order=ho))
+        add_dtable(sch, "mature", order=ho)
+
 # ---------------- 6. granularity ----------------
 add("<h2>6. Approach C — how much heterogeneity does each granularity "
     "reveal?</h2>")

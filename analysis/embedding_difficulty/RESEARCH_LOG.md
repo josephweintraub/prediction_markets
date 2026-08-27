@@ -333,6 +333,59 @@ on the fixed data, not quotes of prior outputs.
   heatmaps (diverging, neutral at 0, significance dots), decile-first tables everywhere;
   granularity dispersion recomputed on spreads (ordering unchanged).
 
+## 2026-08-27 — Session 6: liquidity vs maturity disentangled; clean-maturity samples
+
+Direction (JW + KV): focus on horizon and liquidity. Recorded rationale for the
+decile-first spec: in a 5-candidate election all priced ≈20¢ there are simply no
+observations near 50¢ — a fitted slope extrapolates through empty price space;
+deciles only ever use populated bins.
+
+- **Liquidity redefined as a rate.** Total volume accumulates mechanically with
+  time-open (the liquidity↔maturity confound KV flagged). New measure: vol_rate =
+  standard-filtered BUY dollars / day of market life (denominator floored at 1h),
+  in QUARTILES (pooled + within birth month). De-confounding check saved to
+  liq_horizon_meta.json: corr(log horizon, log total USD) vs corr(log horizon,
+  log vol rate).
+- **The cross:** scheme_hor_x_liqrate — vol-rate quartiles formed WITHIN each horizon
+  bin (marginals balanced by construction), 20 cells — liquidity effect net of horizon
+  and horizon effect net of liquidity, decile-first.
+- **Maturity cleaned of dropout contamination.** In multi-market events, dropouts
+  resolve No early (e.g. a candidate exiting a mayoral race), corrupting per-market
+  horizon. Fixes: (a) scheme_horizon_final2 — standalone binaries + the TWO markets
+  per multi-market event that survived latest (ties by volume): the "final two";
+  (b) scheme_horizon_binary — standalone binaries only (no dropouts possible).
+  Dropout = resolving >2 days before its event's last resolution; contamination share
+  saved to meta (overall + by horizon bin).
+- Housekeeping: EBS at 86% (401G/492G) — worth a cleanup pass of rebuildable
+  intermediates before the next heavy session.
+- **Results (mature, D1/D10 tail errors):**
+  - De-confounding stat: corr(log horizon, log TOTAL vol) = +0.171 but corr(log horizon,
+    log vol RATE) = **−0.275** — short-horizon markets are the more liquid per day;
+    total-volume liquidity was entangled with maturity exactly as suspected.
+  - **Volume-rate quartiles flip the liquidity picture.** Classic two-tailed FLB
+    (D1<0, D10>0) is strong across the bottom THREE rate quartiles — rq2: −0.021/+0.025
+    (t=−20/+21); rq3: −0.019/+0.027 (t=−14/+29) — not just the thinnest sliver as under
+    total volume. Only the top rate quartile differs (D1 +0.020: longshots underpriced).
+  - **The cross (horizon × within-bin rate quartile): liquidity dominates.** The classic
+    pattern holds in rq1–rq3 at EVERY horizon; the top quartile's longshot-underpricing
+    is a SHORT-horizon phenomenon (h1|rq4 D1 +0.105, t=+6.7 — fast recurring markets);
+    at ≥90d even the deepest quartile is classic (h5|rq4: −0.028/+0.029, t=−8.4/+7.4).
+    Most of section 5b's raw horizon pattern dissolves once rate-liquidity is held fixed.
+  - **Clean-maturity samples.** Standalone binaries: mid-horizons calibrated (both tails
+    ≈0, 1–90d), but ≥90d shows textbook FLB — D1 −0.029 (t=−4.7), D10 +0.033 (t=+10.6).
+    Long-dated true binaries are the classic-FLB home. Final-two sample is dominated by
+    sports events (multi-market events include games: moneyline/spread/totals), giving
+    reverse tails at short horizons (h2 D1 +0.066/D10 −0.024) — the dropping rule needs
+    a winner-take-all (negRisk) or Politics restriction to isolate elections; logged as
+    next refinement.
+  - **Fixed windows (1d/7d/30d):** pooled first-1d quartiles are washy (first-day volume
+    is a poor liquidity proxy for markets that trade mostly near resolution — timing of
+    volume differs by market type); within-horizon cross mirrors the rate cross at long
+    horizons (h5|w1q4 classic −0.028/+0.029). Rate is the sharper de-confounded measure;
+    fixed windows kept as robustness.
+- [x] Report v6/v6b rendered (section 5c: rate quartiles, both crosses, fixed windows,
+      clean-maturity samples, contamination stats).
+
 ### Artifacts (this session)
 
 - `/mnt/data/embedding_difficulty/`: universe_markets/tokens, flb_base_{mature,closing},
