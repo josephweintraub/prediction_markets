@@ -32,7 +32,8 @@ MIN_TRADES = 5000
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--window", required=True, choices=["mature", "closing"])
+    ap.add_argument("--window", required=True,
+                    choices=["mature", "closing", "full"])
     ap.add_argument("--schemes", nargs="*", default=None,
                     help="scheme names (default: every scheme_*.parquet)")
     ap.add_argument("--min-trades", type=int, default=MIN_TRADES)

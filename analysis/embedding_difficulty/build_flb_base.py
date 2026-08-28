@@ -37,7 +37,8 @@ WALLET_FLAGS = "/mnt/data/learnability/cache/wallet_flags.parquet"
 OUT_DIR = "/mnt/data/embedding_difficulty"
 POLYMARKET_START_TIMESTAMP = 1590969600  # 2020-06-01 UTC
 
-WINDOWS = {"mature": (0.25, 0.80), "closing": (0.80, 1.00)}
+WINDOWS = {"mature": (0.25, 0.80), "closing": (0.80, 1.00),
+           "full": (0.0, 1.00)}
 
 con = duckdb.connect()
 con.execute(f"SET threads TO {os.cpu_count()}")

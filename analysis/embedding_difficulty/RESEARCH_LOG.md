@@ -385,6 +385,48 @@ deciles only ever use populated bins.
     fixed windows kept as robustness.
 - [x] Report v6/v6b rendered (section 5c: rate quartiles, both crosses, fixed windows,
       clean-maturity samples, contamination stats).
+- [x] Standalone deliverable: `render_liq_maturity_brief.py` → `liq_maturity_brief.html`
+      (just the disentangling portion, decile-first; auto-detects EC2 vs local artifact
+      mirror). Script created locally 2026-08-27 — **commit on EC2 next session**.
+
+## 2026-08-27 (cont.) — Session 7: full-lifetime window + data-vintage re-baseline
+
+- Direction (JW): the liquidity/maturity analyses use the FULL lifecycle window
+  (0–100%) as primary. Added `full` to build_flb_base windows and run_schemes.
+- **Data-vintage break caught before shipping mixed results.** Rebuilding the base
+  tables produced 123.8M filtered rows vs the 145.3M baseline — because the canonical
+  data was refreshed 2026-07-03/04 AFTER this workstream's baseline: trades_clean
+  2,018,709,888 → 2,036,128,538 rows (resolution-censoring refresh), **wallet_flags
+  REBUILT Jul-4 (333,676 nonhuman wallets — closes the stale-bot-coverage caveat and
+  drives most of the row drop)**, and the resolutions/token_map spine files also
+  refreshed (+~7.5–12.7K newly resolved markets).
+- **Decision: single-vintage re-baseline** on current canonical data rather than
+  shipping mixed-vintage numbers: rebuild universe → base tables → all viability-
+  dependent schemes → rerun full-window FLB for the liquidity/maturity set → re-render
+  the brief. Sessions 1–6 artifacts remain pre-refresh vintage (their input data no
+  longer exists on disk); report v6 unchanged as historical; the BRIEF is the
+  single-vintage full-window deliverable.
+- Universe grew 850,015 → **857,468** (+7,453 newly resolved markets from the refreshed
+  spine). Growth accepted (assert now fails only on shrinkage).
+  **⚠ Embedding-positional artifacts (emb_*.npy, novelty.parquet, pca_scores,
+  cluster schemes) remain pinned to the ORIGINAL 850,015-row universe ordering — any
+  embedding/PCA/cluster RERUN must first top up embeddings for the new markets
+  (compute_novelty/run_pca/make_cluster_slices assert length and will fail loudly).
+  Novelty coverage of the new universe: 99.1% via id-merge (new markets lack scores).**
+
+- **Session 7b results (FULL window, single vintage — refreshed canonical data):**
+  De-confounding corr essentially unchanged (+0.184 total / −0.261 rate) — robust to the
+  data refresh. Pooled ALL: D1 −0.002 (ns) / D10 +0.009 (t=+3.2). Rate quartiles: classic
+  two-tailed FLB in rq2 (−0.016/+0.019, t=−8.5/+18.4) and rq3 (−0.018/+0.022, t=−16/+26);
+  rq1 favorite-side only; rq4 ≈ flat. Cross: classic pattern in mid quartiles at BOTH
+  short and long horizons (h2|rq2 −0.022/+0.024, t=−10/+19; h5|rq2 −0.022/+0.022) —
+  liquidity dominates; notably the mature-window h1|rq4 longshot-underpricing anomaly
+  (D1 +0.105) shrinks to +0.008 (ns) under the full window: a within-lifecycle rotation,
+  not a full-life miscalibration. Standalone binaries ≥90d keep textbook FLB
+  (−0.025/+0.027, t=−4.5/+5.3); shorter binary bins flat.
+  Full-window narrative: pooled ≈ calibrated; classic FLB lives in below-median per-day
+  liquidity at every horizon + long-dated binaries.
+- Brief re-rendered single-vintage full-window (`liq_maturity_brief.html`).
 
 ### Artifacts (this session)
 

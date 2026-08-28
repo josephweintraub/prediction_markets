@@ -5,6 +5,18 @@ Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a 
 
 Research *findings* are not tracked here — methods live in `docs/methods_reference.md`; historical writeups in `docs/archive/`.
 
+## 2026-08-27 — Full-lifetime window + single-vintage re-baseline
+
+- `full` (0–100%) lifecycle window added to `build_flb_base.py`/`run_schemes.py`; the
+  liquidity/maturity analyses use it as primary (JW decision).
+- **Data-vintage break handled**: canonical trades_clean + wallet_flags + spine were
+  refreshed 2026-07-03/04 (after this workstream's baseline) — trade-side artifacts
+  re-baselined on current data (universe 850,015 → 857,468 markets; viability-dependent
+  schemes rebuilt; full-window FLB rerun). Embedding-positional artifacts remain pinned
+  to the original 850,015-row ordering — top up embeddings before any embedding rerun
+  (guarded by length asserts). `render_liq_maturity_brief.py` added (standalone
+  decile-first brief; auto-detects EC2/local artifact root; window-agnostic).
+
 ## 2026-08-27 — Liquidity–maturity disentangling (rate + fixed windows + clean samples)
 
 - Embedding-difficulty sessions 6/6b (`make_liq_horizon_slices.py`,
