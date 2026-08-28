@@ -184,6 +184,16 @@ add(f"<div class='key'>Classic two-tailed FLB across the bottom THREE rate "
     f"sliver. The top per-day quartile differs: D1 "
     f"{cell('liqrate','rq4','d1_err'):+.4f} "
     f"(t={cell('liqrate','rq4','d1_t'):+.1f}).</div>")
+qs_path = f"{META_DIR}/liqrate_quartile_stats.parquet"
+if os.path.exists(qs_path):
+    qs = pd.read_parquet(qs_path)
+    add("<div class='how'>Are the quartiles economically distinct? Per-"
+        "quartile distributions of the rate ($/day), TOTAL market volume, "
+        "and horizon, plus each quartile's share of all trades/dollars. "
+        "The quartile boundaries (rate_min/rate_max) show where the splits "
+        "fall.</div>")
+    add(qs.to_html(index=False, border=0,
+                   float_format=lambda x: f"{x:,.2f}"))
 add(heatmap("liqrate", WIN,
             "volume-rate quartiles (rq1 thinnest … rq4 deepest) — " + WIN + "",
             ["rq1", "rq2", "rq3", "rq4"]))
