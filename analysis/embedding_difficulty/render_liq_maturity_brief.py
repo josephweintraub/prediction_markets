@@ -206,6 +206,22 @@ if deciles("liqrate_vint", WIN) is not None:
     add(tbl(dtable("liqrate_vint", WIN,
                    ["rqv1", "rqv2", "rqv3", "rqv4"])))
 
+if deciles("liqrate_usdq", WIN) is not None:
+    add("<h3>Equal-USD-volume buckets (KV, 2026-08-28)</h3>")
+    add("<div class='how'>Same rate ordering, but buckets cut so each holds "
+        "~25% of TOTAL dollar volume: uq1 = a huge number of thin markets, "
+        "uq4 = a few deep ones — equal economic weight per bucket. Because "
+        "the deep quartile held ~96% of dollars, uq1 absorbs all of rq1–rq3 "
+        "plus part of rq4; the split magnifies where, within the dollar "
+        "mass, calibration breaks.</div>")
+    if os.path.exists(f"{META_DIR}/usdq_stats.parquet"):
+        add(pd.read_parquet(f"{META_DIR}/usdq_stats.parquet").to_html(
+            index=False, border=0, float_format=lambda x: f"{x:,.2f}"))
+    add(heatmap("liqrate_usdq", WIN,
+                "equal-USD buckets (uq1 thinnest … uq4 deepest) — " + WIN,
+                ["uq1", "uq2", "uq3", "uq4"]))
+    add(tbl(dtable("liqrate_usdq", WIN, ["uq1", "uq2", "uq3", "uq4"])))
+
 add("<h2>3. The cross: horizon × within-bin volume-rate quartile</h2>")
 add("<div class='how'>Quartiles are formed WITHIN each horizon bin, so every "
     "horizon stratum has balanced liquidity groups. Read across a horizon's "
@@ -224,6 +240,13 @@ OC = [f"{h}|rq{q}" for h in HO for q in (1, 2, 3, 4)]
 add(heatmap("hor_x_liqrate", WIN,
             "horizon × within-bin volume-rate quartile — " + WIN + "", OC))
 add(tbl(dtable("hor_x_liqrate", WIN, OC)))
+
+if deciles("hor_x_usdq", WIN) is not None:
+    OCU = [f"{h}|uq{q}" for h in HO for q in (1, 2, 3, 4)]
+    add("<h3>The cross with equal-USD buckets</h3>")
+    add(heatmap("hor_x_usdq", WIN,
+                "horizon × within-bin equal-USD bucket — " + WIN, OCU))
+    add(tbl(dtable("hor_x_usdq", WIN, OCU)))
 
 add("<h2>4. Maturity measured cleanly (dropout fix)</h2>")
 add(f"<p>Of {meta['multi_markets_with_end']:,} multi-event markets, "
