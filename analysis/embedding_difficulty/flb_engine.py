@@ -1,11 +1,11 @@
-"""FLB measurement engine for the embedding-difficulty workstream.
+"""FLB measurement engine for the calibration-heterogeneity workstream.
 
 Operates on the compact base tables from build_flb_base.py plus a
 market_id -> slice map. Measurement follows the project spec
 (docs/methods_reference.md):
   - 10 price deciles per slice; count- AND dollar-weighted stats
-  - D10 - D1 calibration-error spread (secondary)
-  - SIGNED CALIBRATION SLOPE (primary): per-slice OLS of ret on price,
+  - D1 and D10 tail errors plus their D10 - D1 spread (headline summaries)
+  - Signed calibration slope (auxiliary): per-slice OLS of ret on price,
     ret = won - price, so slope > 0 <=> classic FLB direction
     (longshots overpriced / favorites underpriced); slope = 0 <=> calibrated.
     Implemented count-weighted (OLS) and dollar-weighted (WLS, w = usdc).
@@ -71,6 +71,53 @@ def cluster_se_mean(ret, c1, c2, c3, weights=None) -> float:
     return float(np.sqrt(_cgm_var(scores, c1, c2, c3)) / norm)
 
 
+def cluster_se_difference(
+    low_ret,
+    high_ret,
+    low_c1,
+    low_c2,
+    low_c3,
+    high_c1,
+    high_c2,
+    high_c3,
+    low_weights=None,
+    high_weights=None,
+) -> float:
+    """Three-way clustered SE for ``mean(high_ret) - mean(low_ret)``.
+
+    The two means share day, wallet, and market clusters. Computing their standard errors
+    separately and adding their variances assumes zero covariance and is generally wrong.
+    This function stacks the two groups' influence scores before applying the CGM
+    inclusion-exclusion calculation, preserving that covariance.
+    """
+    low = np.asarray(low_ret, float)
+    high = np.asarray(high_ret, float)
+    if len(low) == 0 or len(high) == 0:
+        return np.nan
+
+    low_w = np.ones(len(low)) if low_weights is None else np.asarray(low_weights, float)
+    high_w = (
+        np.ones(len(high)) if high_weights is None else np.asarray(high_weights, float)
+    )
+    low_norm = float(low_w.sum())
+    high_norm = float(high_w.sum())
+    if low_norm <= 0 or high_norm <= 0:
+        return np.nan
+
+    low_mean = float((low_w * low).sum() / low_norm)
+    high_mean = float((high_w * high).sum() / high_norm)
+    scores = np.concatenate(
+        [
+            -low_w * (low - low_mean) / low_norm,
+            high_w * (high - high_mean) / high_norm,
+        ]
+    )
+    c1 = np.concatenate([np.asarray(low_c1), np.asarray(high_c1)])
+    c2 = np.concatenate([np.asarray(low_c2), np.asarray(high_c2)])
+    c3 = np.concatenate([np.asarray(low_c3), np.asarray(high_c3)])
+    return float(np.sqrt(_cgm_var(scores, c1, c2, c3)))
+
+
 def slope_and_se(price, ret, c1, c2, c3, weights=None):
     """(Weighted) OLS slope of ret on price with 3-way clustered SE."""
     x = np.asarray(price, float)
@@ -111,14 +158,14 @@ def sig_stars(t):
 
 # ---------- per-slice computation ----------
 
-def compute_slice(sub: pd.DataFrame, n_bins: int = 10):
+def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 50):
     """sub: trade-level frame with price, ret, won, usdc, day, wallet_code,
     market_code (one slice). Returns (decile_rows list, summary dict)."""
     cl = (sub["day"], sub["wallet_code"], sub["market_code"])
     dec_rows = []
     for d in range(1, n_bins + 1):
         s = sub[sub["decile"] == d]
-        if len(s) < 50:
+        if len(s) < min_decile_trades:
             dec_rows.append({"decile": d, "n": len(s), "usd": float(s["usdc"].sum()),
                              "impl_prob": np.nan, "win_rate": np.nan,
                              "cal_error": np.nan, "se": np.nan,
@@ -141,30 +188,36 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10):
             "se_dol": cluster_se_mean(r, *scl, weights=w),
         })
 
-    # D10 - D1 spread (secondary summary)
+    # D10 - D1 spread. Apply the same tail floor used by the decile table and estimate
+    # its clustered variance jointly so shared-cluster covariance is retained.
     d1 = sub[sub["decile"] == 1]
     dn = sub[sub["decile"] == n_bins]
 
     def _spread(weighted: bool):
-        if not (len(d1) and len(dn)):
+        if len(d1) < min_decile_trades or len(dn) < min_decile_trades:
             return np.nan, np.nan
         if weighted:
             m1 = (d1["usdc"] * d1["ret"]).sum() / d1["usdc"].sum()
             mn = (dn["usdc"] * dn["ret"]).sum() / dn["usdc"].sum()
-            s1 = cluster_se_mean(d1["ret"], d1["day"], d1["wallet_code"],
-                                 d1["market_code"], weights=d1["usdc"])
-            sn = cluster_se_mean(dn["ret"], dn["day"], dn["wallet_code"],
-                                 dn["market_code"], weights=dn["usdc"])
+            se = cluster_se_difference(
+                d1["ret"], dn["ret"],
+                d1["day"], d1["wallet_code"], d1["market_code"],
+                dn["day"], dn["wallet_code"], dn["market_code"],
+                low_weights=d1["usdc"], high_weights=dn["usdc"],
+            )
         else:
             m1, mn = d1["ret"].mean(), dn["ret"].mean()
-            s1 = cluster_se_mean(d1["ret"], d1["day"], d1["wallet_code"], d1["market_code"])
-            sn = cluster_se_mean(dn["ret"], dn["day"], dn["wallet_code"], dn["market_code"])
-        return float(mn - m1), float(np.sqrt(s1 ** 2 + sn ** 2))
+            se = cluster_se_difference(
+                d1["ret"], dn["ret"],
+                d1["day"], d1["wallet_code"], d1["market_code"],
+                dn["day"], dn["wallet_code"], dn["market_code"],
+            )
+        return float(mn - m1), se
 
     spread, spread_se = _spread(False)
     spread_d, spread_se_d = _spread(True)
 
-    # signed slope (primary)
+    # Signed slope (auxiliary summary).
     slope, slope_se = slope_and_se(sub["price"], sub["ret"], *cl)
     slope_d, slope_se_d = slope_and_se(sub["price"], sub["ret"], *cl,
                                        weights=sub["usdc"])
@@ -174,6 +227,8 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10):
         "n_contracts": int(sub["token_code"].nunique()) if "token_code" in sub else np.nan,
         "n_markets": int(sub["market_code"].nunique()),
         "total_usd": float(sub["usdc"].sum()),
+        "d1_n": int(len(d1)), "d10_n": int(len(dn)),
+        "d1_usd": float(d1["usdc"].sum()), "d10_usd": float(dn["usdc"].sum()),
         "slope": slope, "slope_se": slope_se,
         "slope_t": slope / slope_se if slope_se and slope_se > 0 else np.nan,
         "slope_dol": slope_d, "slope_se_dol": slope_se_d,
@@ -195,7 +250,8 @@ def run_scheme(con, base_parquet: str, slice_map: pd.DataFrame, scheme: str,
     """
     con.register("_slice_map", slice_map[["market_code", "slice"]])
     df = con.execute(f"""
-        SELECT b.*, LEAST(FLOOR(b.price * 10)::INT, 9) + 1 AS decile, m.slice
+        SELECT b.*, LEAST(FLOOR(b.price * {n_bins})::INT, {n_bins - 1}) + 1 AS decile,
+               m.slice
         FROM read_parquet('{base_parquet}') b
         JOIN _slice_map m USING (market_code)
     """).fetchdf()

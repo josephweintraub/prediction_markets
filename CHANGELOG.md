@@ -14,6 +14,15 @@
   endpoint. Replaced the endpoint example in active configuration with a placeholder.
 - No analysis code, data, or EBS artifact was moved or deleted.
 
+### Calibration-engine guardrails
+
+- Corrected D10−D1 clustered inference by stacking the two tails' influence scores before
+  applying three-way CGM clustering, retaining their shared-cluster covariance.
+- Applied the 50-trade tail floor consistently to both decile cells and summary spreads;
+  added D1/D10 observation and dollar counts to summary artifacts.
+- Made missing scheme files and zero-overlap scheme joins fail loudly.
+- Added six synthetic unit tests covering the corrected tail and scheme-selection behavior.
+
 Notable changes to the **prediction_markets** project — infrastructure, data/dataset, tooling, and docs.
 Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 

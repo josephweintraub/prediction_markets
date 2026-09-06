@@ -3,8 +3,9 @@
 A scheme is a parquet file `scheme_<name>.parquet` with columns
   market_id (0x hex), slice (string or int)
 Every scheme is joined against the compact base table for the chosen
-lifecycle window and measured with flb_engine.compute_slice (signed slope
-primary, D10-D1 secondary, CGM 3-way clustered SEs, 5,000-trade floor).
+lifecycle window and measured with flb_engine.compute_slice (full decile profile
+primary, D1/D10/spread headline summaries, auxiliary signed slope, CGM 3-way
+clustered SEs, 5,000-trade slice floor).
 
 Usage (EC2):
   python run_schemes.py --window mature [--schemes s1 s2 ...]
@@ -28,6 +29,27 @@ from flb_engine import compute_slice, sig_stars
 BASE_DIR = "/mnt/data/embedding_difficulty"
 OUT_DIR = f"{BASE_DIR}/output"
 MIN_TRADES = 5000
+
+
+def select_scheme_files(base_dir: str, requested: list[str] | None) -> list[str]:
+    """Resolve scheme paths and fail if the selection is empty or incomplete."""
+    files = sorted(glob.glob(f"{base_dir}/schemes/scheme_*.parquet"))
+    if requested:
+        want = set(requested)
+        found = {
+            os.path.basename(f)[len("scheme_"):-len(".parquet")]
+            for f in files
+        }
+        missing = sorted(want - found)
+        if missing:
+            raise FileNotFoundError(f"Requested scheme files not found: {missing}")
+        files = [
+            f for f in files
+            if os.path.basename(f)[len("scheme_"):-len(".parquet")] in want
+        ]
+    if not files:
+        raise FileNotFoundError(f"No scheme files found under {base_dir}/schemes")
+    return files
 
 
 def main() -> None:
@@ -59,11 +81,7 @@ def main() -> None:
     id2code = dict(zip(mkt_map["market_id"], mkt_map["market_code"]))
     max_code = int(mkt_map["market_code"].max())
 
-    files = sorted(glob.glob(f"{BASE_DIR}/schemes/scheme_*.parquet"))
-    if args.schemes:
-        want = set(args.schemes)
-        files = [f for f in files
-                 if os.path.basename(f)[len("scheme_"):-len(".parquet")] in want]
+    files = select_scheme_files(BASE_DIR, args.schemes)
     print(f"{len(files)} schemes: "
           f"{[os.path.basename(f) for f in files]}", flush=True)
 
@@ -78,6 +96,10 @@ def main() -> None:
         lookup[codes[ok].astype(int).to_numpy()] = sl_codes[ok.to_numpy()]
         sl = lookup[mc]
         keep = sl >= 0
+        if not keep.any():
+            raise ValueError(
+                f"Scheme {scheme!r} has no markets in the {args.window!r} trade base"
+            )
         df = base.loc[keep].copy()
         df["slice_code"] = sl[keep]
         print(f"[{scheme}|{args.window}] {len(df):,} trades, "

@@ -36,9 +36,10 @@ notes in `RESEARCH_LOG.md` and `../../docs/project_status.md`.
 
 ## Required stabilization before the next full run
 
-- Correct D10-D1 inference to include tail covariance.
-- Apply the thin-tail floor consistently to decile and summary outputs.
-- Fail on an empty or unexpectedly small scheme join.
+- Regenerate saved summaries after the 2026-09-06 D10-D1 covariance and thin-tail fixes.
 - Add equal-market-weighted robustness estimates.
 - Add synthetic unit tests and one small end-to-end fixture.
 - Add immutable run manifests with input fingerprints.
+
+Initial synthetic tests now cover tail covariance, thin-tail suppression, summary/decile
+agreement, and missing scheme files. An end-to-end fixture remains to be added.

@@ -64,8 +64,9 @@ These are working findings, not finalized causal claims:
 
 ## Known blockers to publication-quality inference
 
-- Current D10-D1 standard errors ignore covariance between the two tail estimates.
-- Summary spreads can include tail cells that the decile table suppresses for low counts.
+- Existing saved summaries predate the 2026-09-06 correction to D10-D1 covariance and
+  thin-tail handling. Their point estimates are unchanged, but spread SEs and t-statistics
+  must be regenerated before use.
 - Exploratory grids currently use unadjusted significance markers despite the documented
   multiplicity rule.
 - Current point estimates are trade- or dollar-weighted, not equal-market-weighted.
@@ -78,4 +79,5 @@ These are working findings, not finalized causal claims:
 
 Run the pre-specified cross of standalone binary markets, duration of at least 90 days,
 and liquidity-rate tier, with count-, dollar-, and equal-market-weighted estimates. Do not
-begin that run until the engine tests, artifact manifest, and data-vintage checks exist.
+begin that run until the artifact manifest, data-vintage checks, and equal-market estimand
+exist; the initial engine tests were added on 2026-09-06.

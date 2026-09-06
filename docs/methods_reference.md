@@ -84,12 +84,15 @@ are built and run without encoding an expected sign.
 - **Thin-tail guard (unchanged in spirit):** thin tail deciles manufacture apparent
   reversals under composition shifts — always report d1/d10 trade counts next to tail
   errors, and never headline a sign claim from the D10−D1 spread alone; the full decile
-  profile must support it.
+  profile must support it. A tail with fewer than 50 observations is suppressed in both
+  the decile table and the summary spread.
 - **Weighting:** report both count-weighted and dollar-weighted versions. Equal-market
   weighting is required as a robustness check before publication-level claims about
   markets; it is not yet implemented in the active engine.
 - **Standard errors:** Cameron–Gelbach–Miller **3-way clustered** (day × wallet × market).
-  Across many slices, use Bonferroni-adjusted significance stars.
+  The D10−D1 SE is computed from a joint stacked influence score so covariance between
+  the two tail means is retained. Across many slices, use Bonferroni-adjusted significance
+  stars.
 - **Grain:** trade-level calibration is the default; contract-level (equal-weighted VWAP)
   is the robustness variant.
 - **Active engine:** `analysis/embedding_difficulty/flb_engine.py`; driver
