@@ -23,6 +23,17 @@
 - Made missing scheme files and zero-overlap scheme joins fail loudly.
 - Added six synthetic unit tests covering the corrected tail and scheme-selection behavior.
 
+### Workstream consolidation
+
+- Renamed the sole active empirical workstream from `analysis/embedding_difficulty/` to
+  `analysis/calibration_heterogeneity/` to match its actual scope.
+- Moved the v1-v7 learnability branch, early broad-FLB modules, May 2026 paper scripts,
+  superseded novelty diagnostics, and historical session runners into dated code archives.
+- Archived the stale slope-primary data-choices note and August collaborator memo with
+  explicit status headers.
+- Kept shared filtering/data-access utilities, the classification harnesses, current
+  pipeline, and operational scripts outside the archive.
+
 Notable changes to the **prediction_markets** project — infrastructure, data/dataset, tooling, and docs.
 Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 

@@ -1,4 +1,4 @@
-"""Build the market-level universe for the embedding-difficulty workstream.
+"""Build the market-level universe for the calibration-heterogeneity workstream.
 
 Grain: one row per MARKET (0x condition id).
 

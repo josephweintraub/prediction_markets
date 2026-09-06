@@ -1,3 +1,7 @@
+> **Archived 2026-09-06.** This 2026-07-15 co-author note predates the decile-first and
+> full-window decisions. Its slope-primary and mature-primary language is superseded by
+> `../methods_reference.md` and `../project_status.md`.
+
 # Data and screening choices: Polymarket trade-level work
 
 Prepared 2026-07-15 for co-authors (Toby's request; Kaushik is writing the

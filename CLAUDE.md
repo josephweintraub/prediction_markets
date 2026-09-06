@@ -18,7 +18,7 @@ Research codebase studying **price calibration / favorite-longshot bias (FLB)** 
 
 **Current focus:** how calibration varies with liquidity, market duration, semantic market
 family, and textual novelty or precedent. The active workstream is
-`analysis/embedding_difficulty/` (scheduled to be renamed once its interfaces are stable).
+`analysis/calibration_heterogeneity/`.
 Direction is measured, not presumed — do not import expected signs from earlier writeups.
 
 **Read `docs/project_status.md` and `docs/methods_reference.md` before any analysis.** The
@@ -27,14 +27,12 @@ auxiliary. The methods reference also records the standard filters, clustered-SE
 the **resolution-censoring caveat** governing end-of-sample comparisons.
 
 Workstreams:
-- **`analysis/embedding_difficulty/`** — active calibration-heterogeneity analysis.
-- **`analysis/paper/`** — publication-facing scripts and figures pending reconciliation
-  with the current specification.
-- **`analysis/learnability/`** — mixed historical/supporting v1-v7 work; do not assume it
-  represents the active specification.
+- **`analysis/calibration_heterogeneity/`** — active calibration-heterogeneity analysis.
 - **`analysis/stage0_v2/`** — contract classification and cross-platform support.
 - **`pipeline/`** — rebuilds the trade dataset from Polygon logs (see its README). Rare; only for data refreshes.
 - **`scripts/`** — clean-trades build/dedup/resort one-offs.
+- **`archive/`** — superseded learnability, early-FLB, May-paper, diagnostic, and session
+  code retained for provenance only.
 
 ## Repository & version control
 
@@ -74,9 +72,9 @@ Everything current lives in `docs/`; superseded material is in `docs/archive/` (
 
 **Heavy queries run in subprocesses.** `analysis/subprocess_runner.py:sp_run(fn, *args)` — worker computes, writes parquet, exits; parent re-registers it as a lazy VIEW. `sp_run` skips work if the output exists (delete the file to force rebuild). **Clear these with `DROP VIEW IF EXISTS`, never `DROP TABLE`.**
 
-**Active calibration engine:** `analysis/embedding_difficulty/flb_engine.py`, called by
-`run_schemes.py`. `analysis/learnability/flb_per_slice.py`, `run_phase1.py`, and `run_v7.py`
-belong to the earlier learnability path. Root-level broad-FLB modules are legacy.
+**Active calibration engine:** `analysis/calibration_heterogeneity/flb_engine.py`, called
+by `run_schemes.py`. Earlier calibration engines and broad-FLB modules are archived under
+`archive/analyses/`.
 
 ## EC2 for heavy lifting
 
@@ -131,7 +129,7 @@ Local sync: `/Users/josephweintraub/Library/CloudStorage/Dropbox/Polymarket Data
 - **Docs.** New docs → `docs/` + a line in the Documents map. Superseded docs → `docs/archive/` with a status header, and prune stale claims from live docs at the same time. Convert relative dates to absolute.
 - **Data & secrets never in git** — enforced by `.gitignore` (`*.parquet`, `*.pem`, `.anthropic_api_key`, …).
 - **Where things go.** Current heterogeneity analysis →
-  `analysis/embedding_difficulty/` until its planned rename; operational utilities →
+  `analysis/calibration_heterogeneity/`; operational utilities →
   `scripts/`; immutable generated runs → `/mnt/data/runs/`; finished shared deliverables
   → Dropbox; superseded source and documents → indexed archives.
 - **Findings reports.** Delivered as self-contained HTML opened in the browser. Reproducibility rule: a finalized report's headline numbers come from a committed script's summary artifact (parquet/JSON), and the report names that script + artifact near the top — no hand-transcribed ad-hoc query results. See `docs/methods_reference.md` ("Reporting reproducibility").

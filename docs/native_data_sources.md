@@ -1,4 +1,4 @@
-> **Status 2026-07-02:** the §7 re-pull was **executed 2026-06-21** → `/mnt/data/learnability/native/native_market_meta.parquet` (1.44M markets, 99.98% coverage — but **closed markets only**, contrary to §6's pull-both-halves advice; open markets are not covered). The tags→category map shipped 2026-07-01 (`analysis/learnability/native/final_tag_map_v1.json`). The field inventory and field→dimension map below remain the working reference; universe counts ("620K") and request estimates predate the June data extension.
+> **Status 2026-09-06:** the §7 re-pull was **executed 2026-06-21** → `/mnt/data/learnability/native/native_market_meta.parquet` (1.44M markets, 99.98% coverage — but **closed markets only**, contrary to §6's pull-both-halves advice; open markets are not covered). The tags→category map shipped 2026-07-01 and is retained at `archive/analyses/learnability_v1_v7/tag_taxonomy/final_tag_map_v1.json`. The field inventory remains useful, but the v1-v7 dimension implementation is archived and universe counts ("620K") and request estimates below predate the June data extension.
 
 # Polymarket Native Data — Inventory & Field Guide
 

@@ -11,7 +11,7 @@ market_id -> slice map. Measurement follows the project spec
     Implemented count-weighted (OLS) and dollar-weighted (WLS, w = usdc).
   - Cameron-Gelbach-Miller 3-way clustered SEs (day x wallet x market) for
     decile means, spread, and slope. CGM helpers match the canonical engine
-    (analysis/learnability/flb_per_slice.py) exactly; the slope SE applies the
+    (archived v7 learnability engine) exactly; the slope SE applies the
     same inclusion-exclusion to the OLS/WLS scores z_i = w_i * xtilde_i * e_i
     with normalizer sum(w * xtilde^2).
   - Slice floor: 5,000 trades (caller can override); dropped slices reported.

@@ -4,6 +4,18 @@ This file records decisions that change the interpretation or reproducibility of
 project. Newest entries come first. Findings belong in `project_status.md` or a report;
 implementation changes also belong in `CHANGELOG.md`.
 
+## 2026-09-06: maintain one active empirical workstream
+
+**Decision:** Rename the current workstream to `analysis/calibration_heterogeneity/` and
+move superseded analytical branches into dated Git archives.
+
+**Reason:** The old `embedding_difficulty` name no longer covered the liquidity and duration
+work, while `analysis/paper`, `analysis/learnability`, and root analysis modules appeared
+current despite using older data paths and specifications.
+
+**Consequences:** New empirical analysis belongs in `analysis/calibration_heterogeneity/`.
+Archived code remains recoverable and readable but must not be imported by current code.
+
 ## 2026-09-06: stabilize the repository before extending the analysis
 
 **Decision:** Pause new empirical analysis while the repository, workflow, inference

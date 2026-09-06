@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-ENGINE_DIR = Path(__file__).parents[1] / "analysis" / "embedding_difficulty"
+ENGINE_DIR = Path(__file__).parents[1] / "analysis" / "calibration_heterogeneity"
 sys.path.insert(0, str(ENGINE_DIR))
 
 from flb_engine import cluster_se_difference, compute_slice  # noqa: E402

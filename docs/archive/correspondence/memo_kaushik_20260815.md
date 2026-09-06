@@ -1,3 +1,6 @@
+> **Archived 2026-09-06.** Historical collaborator correspondence; later decisions and
+> refreshed results are recorded in `../../project_status.md` and `../../decisions.md`.
+
 # Reply memo — FLB heterogeneity follow-ups (2026-08-15)
 
 Answers to the four questions, from fresh runs on the rebuilt data. All

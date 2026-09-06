@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 
-ENGINE_DIR = Path(__file__).parents[1] / "analysis" / "embedding_difficulty"
+ENGINE_DIR = Path(__file__).parents[1] / "analysis" / "calibration_heterogeneity"
 sys.path.insert(0, str(ENGINE_DIR))
 
 from run_schemes import select_scheme_files  # noqa: E402

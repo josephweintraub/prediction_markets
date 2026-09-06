@@ -4,7 +4,8 @@ Stage 0 slug/question normalization + Stage 2 LLM tagging, with parallel Polymar
 sub-pipelines sharing one prompt + 13-category taxonomy.
 
 > **Status (2026-07):** superseded for learnability-dimension work by native Polymarket fields
-> (see `docs/native_data_sources.md` and the v7 pipeline in `analysis/learnability/`), but the
+> (see `docs/native_data_sources.md`; the v7 pipeline is archived under
+> `archive/analyses/learnability_v1_v7/`), but the
 > per-contract classifications remain the cross-check / holdout reference for the native tag
 > taxonomy, and the Kalshi side is the only classification that exists for Kalshi.
 

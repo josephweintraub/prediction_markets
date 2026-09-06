@@ -4,8 +4,7 @@
 
 This directory began as an embedding-based difficulty study and now contains the active
 analysis of calibration heterogeneity across liquidity, duration, semantic market family,
-and textual novelty. It will be renamed to `analysis/calibration_heterogeneity/` after its
-interfaces and artifact paths are covered by tests.
+and textual novelty.
 
 Read, in order:
 

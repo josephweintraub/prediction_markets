@@ -24,17 +24,15 @@ but it is not a data-compatible execution environment.
 
 | Path | Status | Purpose |
 |---|---|---|
-| `analysis/embedding_difficulty/` | **Active** | Calibration-heterogeneity workstream. The directory will be renamed after its interfaces are stabilized. |
-| `analysis/paper/` | Active publication support | Existing paper tables, figures, and robustness scripts. |
-| `analysis/learnability/` | Mixed; mostly historical | Earlier v1-v7 learnability analyses and the older calibration engine. See its README before reuse. |
+| `analysis/calibration_heterogeneity/` | **Active** | Current liquidity, duration, semantic-family, novelty, and FLB workstream. |
 | `analysis/stage0_v2/` | Supporting | Polymarket and Kalshi contract-normalization pipelines and regression harnesses. |
 | `pipeline/` | Active but infrequent | Builds and refreshes the canonical on-chain trade dataset. |
 | `scripts/` | Supporting operations | Data cleaning, flags, and Telonex acquisition utilities. |
 | `docs/` | Source of record | Current methods, status, workflow, decisions, and archived findings. |
+| `archive/` | Historical | Superseded code retained with status and provenance. |
 
-Root-level legacy analysis modules remain temporarily for reproducibility. They should
-not be treated as the current paper specification; their eventual archival is tracked in
-the repository cleanup plan.
+The earlier learnability, broad FLB, and May 2026 paper branches are under `archive/`.
+They are retained for provenance and are not the current paper specification.
 
 ## Environment
 

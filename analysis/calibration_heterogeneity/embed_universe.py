@@ -1,4 +1,4 @@
-"""Embed the market-text universe for the embedding-difficulty workstream.
+"""Embed the market-text universe for the calibration-heterogeneity workstream.
 
 Input : universe parquet (from build_universe.py) with one row per market
         (market grain = 0x condition_id), columns at minimum:

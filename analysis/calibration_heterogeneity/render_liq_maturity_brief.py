@@ -12,7 +12,7 @@ horizon_binary, horizon_final2, liq1d, hor_x_liq1d}_{mature,closing}.parquet
 make_timeliq_slices.py, run_schemes.py.
 
 Runs on EC2 (artifact root /mnt/data/embedding_difficulty) or locally against
-the pulled mirror (analysis/embedding_difficulty/output_session1) — the root
+the pulled mirror (`analysis/calibration_heterogeneity/output_session1`) — the root
 is auto-detected.
 """
 from __future__ import annotations

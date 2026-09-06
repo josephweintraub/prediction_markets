@@ -4,7 +4,7 @@
 
 **Current stage:** repository stabilization before the next confirmatory analysis
 
-**Active workstream:** `analysis/embedding_difficulty/` (calibration heterogeneity)
+**Active workstream:** `analysis/calibration_heterogeneity/`
 
 This document is the short source of truth for where the project stands. Durable methods
 belong in `methods_reference.md`; methodological choices and reversals belong in

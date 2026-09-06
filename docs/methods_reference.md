@@ -35,7 +35,8 @@ are built and run without encoding an expected sign.
   only** — mirrors the trade set's censoring, same caveat applies) and
   `market_native_categories.parquet` + `final_tag_map_v1.json` (native Gamma tags → category
   map v1, curated 2026-07-01: 264 category tags → 12 primary categories, holdout-validated
-  against the LLM labels; the JSON map is committed in `analysis/learnability/native/`).
+  against the LLM labels; the JSON map is retained at
+  `archive/analyses/learnability_v1_v7/tag_taxonomy/final_tag_map_v1.json`).
 - **Canonical token spine (2026-07-03):** `/mnt/data/pipeline_output/market_flags.parquet`
   (built by `scripts/build_market_flags.py`) — one row per token: `token_id`, `market_id`
   (0x hex), `winning_outcome`, market-level `is_updown` flag, `question`. Covers **100% of
@@ -78,7 +79,7 @@ are built and run without encoding an expected sign.
   headline-summarized by the **tail errors (D1 = longshot error, D10 = favorite error)**
   and the **D10−D1 spread**. Classic FLB = D1 < 0 with D10 > 0. The signed calibration
   slope (OLS of return on price; implemented in
-  `analysis/embedding_difficulty/flb_engine.py`) is retained in all artifacts as an
+  `analysis/calibration_heterogeneity/flb_engine.py`) is retained in all artifacts as an
   **auxiliary summary** — it compresses the profile to one number and can hide where in
   the price range miscalibration lives. (This reverses the 2026-07 slope-primary spec.)
 - **Thin-tail guard (unchanged in spirit):** thin tail deciles manufacture apparent
@@ -95,9 +96,9 @@ are built and run without encoding an expected sign.
   stars.
 - **Grain:** trade-level calibration is the default; contract-level (equal-weighted VWAP)
   is the robustness variant.
-- **Active engine:** `analysis/embedding_difficulty/flb_engine.py`; driver
-  `analysis/embedding_difficulty/run_schemes.py`. The older
-  `analysis/learnability/flb_per_slice.py` engine and its v6/v7 drivers are retained for
+- **Active engine:** `analysis/calibration_heterogeneity/flb_engine.py`; driver
+  `analysis/calibration_heterogeneity/run_schemes.py`. The older learnability engine and
+  its v6/v7 drivers are retained under `archive/analyses/learnability_v1_v7/` for
   historical reproduction. Active artifacts currently live in
   `/mnt/data/embedding_difficulty/` pending migration to immutable run directories.
 

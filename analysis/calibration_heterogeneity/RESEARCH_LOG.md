@@ -434,4 +434,5 @@ deciles only ever use populated bins.
   code_maps, emb_q.npy + emb_ids, pca_{evr,scores,correlates}, novelty.parquet +
   neighbors_top25.npy + diagnostics, cluster_terms_k{12,50,200,1000}, schemes/ (20),
   output/ (flb_{deciles,summary,dropped} per scheme×window), report/.
-- Local mirrors of the small summaries: `analysis/embedding_difficulty/output_session1/`.
+- Local mirrors of the small summaries:
+  `analysis/calibration_heterogeneity/output_session1/` after the repository rename.

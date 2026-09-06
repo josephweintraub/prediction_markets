@@ -1,88 +1,99 @@
-# Repository map and cleanup classification
+# Repository map
 
-**Inventory date:** 2026-09-06
+**Last structural review:** 2026-09-06
 
-This is the working classification for the repository cleanup. Moving code is deferred
-until imports and reproduction targets have tests. Classification does not imply that an
-old result is valid.
+The repository has one active empirical workstream. Earlier paths remain available under
+`archive/` for provenance but should not be imported by current code.
 
-## Active
+## Active analysis
 
-### `analysis/embedding_difficulty/`
+### `analysis/calibration_heterogeneity/`
 
-The current calibration-heterogeneity workstream: universe and compact trade-base builds,
-market slicing, embeddings and novelty, calibration estimation, and current report
-renderers. The name is historical; liquidity and maturity are now equally central.
+The current liquidity, duration, semantic-family, novelty, and FLB analysis. It contains:
 
-Planned destination: `analysis/calibration_heterogeneity/` after entry points and artifact
-paths are stabilized.
+- Universe and compact trade-base builders
+- Market-to-slice specifications
+- Embedding, cluster, and novelty features
+- The current decile calibration and clustered-inference engine
+- Artifact-based report renderers
+- A research log explaining prior experiments and data corrections
 
-### `analysis/paper/`
+New empirical analysis belongs here until a narrower publication package is extracted.
 
-Publication-facing scripts and figures from the current paper effort. These need a later
-reconciliation against the current decile-first specification before being labeled final.
+### Shared analysis utilities
+
+`analysis/bot_filter.py`, `analysis/config.py`, `analysis/data_loader.py`, and
+`analysis/subprocess_runner.py` remain shared data-access and filtering utilities. They will
+move into a small importable package only after compatibility tests exist.
+
+## Data construction and supporting code
 
 ### `pipeline/`
 
-Canonical refresh implementation. `refresh.py`, `extraction/`, `transform/`, and
-`goldsky/` are active. `_legacy/` is historical and will be archived after the current
-pipeline receives a small integration test and an updated README.
+Canonical trade-data refresh implementation. `refresh.py`, `extraction/`, `transform/`,
+and `goldsky/` are active. `_legacy/` remains historical pending a pipeline integration
+fixture.
 
 ### `scripts/`
 
-Operational utilities for clean-trade construction, market and wallet flags, and Telonex
-data. These are supporting code; each retained script must eventually document inputs,
-outputs, and whether it is idempotent.
-
-## Supporting but not central
+Operational utilities for clean-trade construction, flags, and Telonex acquisition. Each
+retained script must eventually identify its inputs, outputs, and idempotence behavior.
 
 ### `analysis/stage0_v2/`
 
 Polymarket and Kalshi normalization/classification code. Native metadata superseded the
-Polymarket LLM labels for the current heterogeneity analysis, but the classification
-harnesses and Kalshi pipeline remain useful for cross-platform work.
+Polymarket LLM labels for the active heterogeneity analysis, but the harnesses and Kalshi
+pipeline remain useful for validation and future cross-platform work.
 
-## Historical or mixed
+## Documentation
 
-### `analysis/learnability/`
+- `project_status.md`: current state, vintage, findings, blockers, and next step.
+- `methods_reference.md`: durable data and statistical rules.
+- `workflow.md`: how exploration, confirmation, artifacts, and reporting work.
+- `decisions.md`: dated changes that alter interpretation.
+- `storage_inventory_2026-09-06.md`: EBS retention-planning snapshot.
+- `archive/`: superseded documents with historical status.
 
-Contains the v1-v7 learnability path, its older calibration engine, audits, and native-tag
-work. Some utilities remain dependencies, but most research scripts represent superseded
-specifications. Archive only after import dependencies are mapped and active equivalents
-are tested.
+## Code archive
 
-### Root-level `analysis/*.py`
+### `archive/analyses/early_flb_2026/`
 
-The first broad FLB, trader-characteristic, P&L, market-accuracy, closing-price, and
-Manifold analyses. Retain temporarily for reproduction archaeology; do not use as the
-current specification.
+Initial broad FLB, trader, P&L, market-accuracy, closing-price, and Manifold modules. They
+predate the present data and measurement specification.
 
-### Session runners and memos
+### `archive/analyses/paper_may_2026/`
 
-`run_session*.sh`, `run_chain.sh`, `run_followup.sh`, and dated collaborator memos preserve
-the actual exploratory sequence. They belong in a dated research archive once current
-entry points replace them.
+The first publication-facing scripts and figures. They use pre-refresh paths and the
+earlier post-event-filtered specification; the directory name `analysis/paper` did not mean
+that these were the current paper pipeline.
 
-### `docs/archive/`
+### `archive/analyses/learnability_v1_v7/`
 
-Historical findings and audits. Files are reference material only and must retain visible
-status/correction headers.
+The LLM- and native-dimension learnability sequence, its older calibration engine, audits,
+and tag-taxonomy construction. The native tag-map provenance remains here.
 
-## Generated or external
+### `archive/analyses/calibration_heterogeneity_diagnostics_2026/`
 
-- Data and heavy artifacts belong under `/mnt/data`, not the repository.
-- `analysis/output/`, pipeline logs, caches, and Python bytecode are generated.
-- Small publication tables and figures may be committed only when a documented immutable
-  run produced them.
-- The local Mac artifact mirror is not authoritative and may mix vintages.
+Superseded multiprocessing novelty and cross-engine comparison utilities.
 
-## Migration order
+### `archive/run_scripts/calibration_heterogeneity_2026/`
 
-1. Secure credentials and document the current source of truth.
-2. Add environment, workflow, manifest, and validation guardrails.
-3. Test and correct the active calibration engine.
-4. Stabilize one active command/configuration interface.
-5. Rename the current workstream using `git mv`.
-6. Move superseded code into indexed archives using `git mv`.
-7. Reproduce the headline results and reconcile `analysis/paper/`.
-8. Review EBS retention candidates separately; delete nothing based solely on age.
+Session shell scripts that preserve the original exploratory run order. They are not
+supported workflow entry points.
+
+## Generated and external material
+
+- Heavy data and artifacts live under `/mnt/data`, never in Git.
+- The current EBS analysis namespace remains `/mnt/data/embedding_difficulty` until its
+  mixed vintages are replaced by immutable run directories.
+- A local Mac artifact mirror is non-authoritative and may mix vintages.
+- Publication figures and tables may enter Git only from a documented validated run.
+
+## Remaining migration work
+
+1. Add immutable run manifests and data-vintage validation.
+2. Add an end-to-end synthetic fixture for the active analysis and pipeline.
+3. Add equal-market weighting and explicit exploratory-grid multiplicity handling.
+4. Reproduce current headline results using the corrected engine.
+5. Build a clean `paper/` replication surface from validated runs.
+6. Review EBS retention candidates separately; delete nothing based solely on age.

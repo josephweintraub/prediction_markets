@@ -1,4 +1,15 @@
-# Learnability study
+# Archived: learnability study v1-v7
+
+**Archived:** 2026-09-06
+
+This directory preserves the earlier LLM- and native-dimension learnability program, its
+calibration engine, audits, and tag taxonomy. It is retained for provenance and is not the
+current specification. The active replacement is
+`analysis/calibration_heterogeneity/`.
+
+The remainder of this README reflects the workstream when it was active.
+
+## Historical overview
 
 Does price calibration (FLB) vary with how *learnable* a market is? Dimensions label every
 BUY trade into slices; within each slice the engine runs a 10-decile price calibration.

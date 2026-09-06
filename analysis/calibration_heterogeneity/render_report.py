@@ -10,7 +10,7 @@ counts are shown next to every D1/D10 number; sign claims require the full
 decile profile, never the spread alone.
 
 Reproducibility: every number is read from artifacts produced by committed
-scripts in analysis/embedding_difficulty/ (build_universe.py,
+scripts in analysis/calibration_heterogeneity/ (build_universe.py,
 build_flb_base.py, embed_universe.py, embed_fields.py, run_pca.py,
 make_cluster_slices.py, compute_novelty.py, novelty_diagnostics.py,
 make_novelty_slices.py, make_actsubj_slices.py, make_baseline_slices.py,
@@ -251,7 +251,7 @@ add("<h1>Embedding-based intrinsic difficulty — decile-first report "
     "(v5, 2026-08-24)</h1>")
 add("<div class='prov'><b>Provenance.</b> All numbers are rendered from "
     "artifacts under <code>/mnt/data/embedding_difficulty/</code> produced by "
-    "committed scripts in <code>analysis/embedding_difficulty/</code> (script "
+    "committed scripts in <code>analysis/calibration_heterogeneity/</code> (script "
     "list in render_report.py header). Standard trade filters; CGM 3-way "
     "clustered SEs (day × wallet × market); 5,000-trade slice floor; mature "
     "(25–80% of lifetime) and closing (80–100%) windows; count- and "
