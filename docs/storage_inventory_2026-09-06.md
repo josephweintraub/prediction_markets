@@ -44,3 +44,26 @@ must be tied to a reproducible replacement or external backup before removal.
 4. Reproduce one candidate cache before declaring it rebuildable.
 5. Review a concrete deletion list separately.
 6. Prefer moving reviewed historical material to cheaper storage before permanent deletion.
+
+## Provisional retention review
+
+No files were moved or deleted during this review. The following is the proposed policy,
+ordered by how much independent information an object preserves.
+
+| Class | Objects | Proposed action |
+|---|---|---|
+| Canonical analysis input | `pipeline_output/trades_clean.parquet` | Retain on EBS and add an off-instance backup before publication |
+| Expensive source/refresh insurance | `pipeline_data/raw_events.parquet`, `pipeline_root_output/trades.parquet` | Retain until checksummed backup and a tested rebuild path both exist |
+| External-source acquisition | `telonex/quotes_ticks`, Kalshi source artifacts | Retain; first document acquisition completeness and replacement cost |
+| Active compact inputs | current flags, metadata, universe, code maps, FLB bases, and scheme maps | Retain on EBS; bind them to committed vintage declarations and run manifests |
+| Historical snapshots | `pipeline_root_output/trades_snap20260624.parquet`, `pipeline_output/trades_clean_snap20260624.parquet` | First cold-storage candidates; together approximately 59 GB |
+| Rebuildable but expensive intermediate | `pipeline_data/resolved_trades.parquet` | Keep for now; prove one full rebuild before considering cold storage or removal |
+| Likely superseded intermediate | `pipeline_root_output/trades_no_event_slug.parquet` | Verify no downstream consumer, then prefer cold storage; approximately 37 GB |
+| Stale positional analysis cache | five pre-refresh embedding matrices and dependent nearest-neighbor/PCA artifacts | Preserve as historical reproduction inputs until refreshed embeddings reproduce expected coverage |
+| Historical analysis outputs | older `analysis_output`, `learnability`, and mixed-vintage `embedding_difficulty` outputs | Inventory by producing commit/run before moving; do not infer disposability from age |
+
+The safest first capacity action, after backup verification, is moving the two June 24
+trade snapshots to cold storage. The next review should resolve downstream consumers of
+`trades_no_event_slug.parquet`; deletion is not proposed here. Immutable new results now
+go under `/mnt/data/runs`, which makes future retention decisions attributable to a run
+instead of a mutable filename.

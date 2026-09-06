@@ -87,20 +87,30 @@ are built and run without encoding an expected sign.
   errors, and never headline a sign claim from the D10−D1 spread alone; the full decile
   profile must support it. A tail with fewer than 50 observations is suppressed in both
   the decile table and the summary spread.
-- **Weighting:** report both count-weighted and dollar-weighted versions. Equal-market
-  weighting is required as a robustness check before publication-level claims about
-  markets; it is not yet implemented in the active engine.
+- **Weighting:** report count-, dollar-, and equal-market-weighted versions. The
+  equal-market estimand first computes a dollar-weighted VWAP within each market × price
+  decile, then averages those market values equally. Equivalently, trade `i` receives
+  weight `usdc_i / sum(usdc)` within its market × decile. This retains within-market
+  economic-size information while preventing high-activity markets from dominating the
+  robustness estimate.
 - **Standard errors:** Cameron–Gelbach–Miller **3-way clustered** (day × wallet × market).
   The D10−D1 SE is computed from a joint stacked influence score so covariance between
-  the two tail means is retained. Across many slices, use Bonferroni-adjusted significance
-  stars.
-- **Grain:** trade-level calibration is the default; contract-level (equal-weighted VWAP)
-  is the robustness variant.
+  the two tail means is retained. Equal-market estimates use the same three cluster
+  dimensions with market-normalized trade weights.
+- **Exploratory multiplicity:** within each scheme, a decile family contains all
+  slice × decile calibration tests for one weighting; a summary family contains all
+  slices for one estimand and weighting. Artifacts retain raw two-sided normal p-values,
+  Bonferroni values, and Benjamini–Hochberg FDR values. Exploratory figures and tables use
+  Bonferroni-adjusted markers by default. Confirmatory families must be declared before
+  output is inspected.
+- **Grain:** trade-level calibration is the default; equal-market VWAP is the required
+  market-composition robustness variant.
 - **Active engine:** `analysis/calibration_heterogeneity/flb_engine.py`; driver
   `analysis/calibration_heterogeneity/run_schemes.py`. The older learnability engine and
   its v6/v7 drivers are retained under `archive/analyses/learnability_v1_v7/` for
-  historical reproduction. Active artifacts currently live in
-  `/mnt/data/embedding_difficulty/` pending migration to immutable run directories.
+  historical reproduction. Reusable bases and scheme maps live in
+  `/mnt/data/embedding_difficulty/`; run outputs belong only in immutable directories
+  under `/mnt/data/runs/`.
 
 ## Compute practices
 

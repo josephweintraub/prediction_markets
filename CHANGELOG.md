@@ -23,6 +23,21 @@
 - Made missing scheme files and zero-overlap scheme joins fail loudly.
 - Added six synthetic unit tests covering the corrected tail and scheme-selection behavior.
 
+### Reproducible analysis runs
+
+- Added a committed July 4 data-vintage declaration with exact row counts, byte sizes,
+  schemas, and hashes for the current foundational artifacts and lifecycle bases.
+- Replaced mutable scheme outputs with unique `/mnt/data/runs/` directories and manifests
+  recording Git state, environment, command, parameters, validated inputs, and output
+  fingerprints. Confirmatory runs reject dirty worktrees.
+- Added equal-market VWAP decile and tail estimates using market-normalized dollar weights
+  with the same day × wallet × market clustered inference as the main estimates.
+- Added raw, Bonferroni, and Benjamini–Hochberg p-values under explicit within-scheme
+  exploratory test families.
+- Added a small synthetic Parquet-to-manifest integration fixture and unit coverage for
+  equal-market replication invariance, multiplicity adjustment, and vintage mismatch.
+- Completed a provisional EBS retention classification without moving or deleting data.
+
 ### Workstream consolidation
 
 - Renamed the sole active empirical workstream from `analysis/embedding_difficulty/` to

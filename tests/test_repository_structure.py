@@ -23,6 +23,7 @@ def test_expected_repository_entry_points_exist() -> None:
         ROOT / "docs" / "decisions.md",
         ROOT / "analysis" / "calibration_heterogeneity" / "flb_engine.py",
         ROOT / "analysis" / "calibration_heterogeneity" / "run_schemes.py",
+        ROOT / "configs" / "data_vintages" / "polymarket_2026-07-04.json",
         ROOT / "pipeline" / "refresh.py",
     ]
 

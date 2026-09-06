@@ -18,6 +18,8 @@ market_id -> slice map. Measurement follows the project spec
 """
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -156,6 +158,107 @@ def sig_stars(t):
     return ""
 
 
+def equal_market_weights(frame: pd.DataFrame) -> np.ndarray:
+    """Trade weights for an equal-market average of within-market dollar VWAPs.
+
+    Within each market, trades retain their economic-size weights. Each market then
+    contributes total weight one, irrespective of its trade count or total volume.
+    """
+    market_usd = frame.groupby("market_code", sort=False)["usdc"].transform("sum")
+    denominator = market_usd.to_numpy(float)
+    weights = np.divide(
+        frame["usdc"].to_numpy(float),
+        denominator,
+        out=np.zeros(len(frame), dtype=float),
+        where=denominator > 0,
+    )
+    return weights
+
+
+def two_sided_p_value(t: float) -> float:
+    """Normal-approximation two-sided p-value for a t/z statistic."""
+    if not np.isfinite(t):
+        return np.nan
+    return float(math.erfc(abs(float(t)) / math.sqrt(2.0)))
+
+
+def adjust_pvalues(values, method: str) -> np.ndarray:
+    """Adjust finite p-values using Bonferroni or Benjamini-Hochberg FDR."""
+    p = np.asarray(values, dtype=float)
+    adjusted = np.full(len(p), np.nan, dtype=float)
+    valid = np.flatnonzero(np.isfinite(p))
+    if len(valid) == 0:
+        return adjusted
+    pv = np.clip(p[valid], 0.0, 1.0)
+    if method == "bonferroni":
+        adjusted[valid] = np.minimum(pv * len(pv), 1.0)
+    elif method == "fdr_bh":
+        order = np.argsort(pv)
+        ranked = pv[order]
+        corrected = ranked * len(ranked) / np.arange(1, len(ranked) + 1)
+        corrected = np.minimum.accumulate(corrected[::-1])[::-1]
+        restored = np.empty(len(ranked), dtype=float)
+        restored[order] = np.minimum(corrected, 1.0)
+        adjusted[valid] = restored
+    else:
+        raise ValueError(f"Unknown p-value adjustment method: {method}")
+    return adjusted
+
+
+def add_multiple_testing_columns(
+    deciles: pd.DataFrame, summaries: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Add raw and adjusted p-values within each scheme/effect family.
+
+    Decile families contain every slice x decile cell for one weighting. Summary
+    families contain every slice for one estimand and weighting. Both Bonferroni and
+    Benjamini-Hochberg values are retained; exploratory displays should use Bonferroni.
+    """
+    deciles = deciles.copy()
+    summaries = summaries.copy()
+
+    decile_effects = [
+        ("cal_error", "se", "cal"),
+        ("cal_error_dol", "se_dol", "cal_dol"),
+        ("cal_error_mkt", "se_mkt", "cal_mkt"),
+    ]
+    summary_effects = [
+        ("slope", "slope_se", "slope"),
+        ("slope_dol", "slope_se_dol", "slope_dol"),
+        ("spread", "spread_se", "spread"),
+        ("spread_dol", "spread_se_dol", "spread_dol"),
+        ("spread_mkt", "spread_se_mkt", "spread_mkt"),
+    ]
+
+    def add(frame: pd.DataFrame, effects) -> pd.DataFrame:
+        if frame.empty:
+            return frame
+        groups = frame.groupby("scheme", sort=False).groups
+        for estimate, se, prefix in effects:
+            denom = frame[se].to_numpy(float)
+            numer = frame[estimate].to_numpy(float)
+            t = np.divide(
+                numer,
+                denom,
+                out=np.full(len(frame), np.nan),
+                where=np.isfinite(denom) & (denom > 0),
+            )
+            frame[f"{prefix}_t"] = t
+            frame[f"{prefix}_p"] = [two_sided_p_value(value) for value in t]
+            frame[f"{prefix}_p_bonferroni"] = np.nan
+            frame[f"{prefix}_p_fdr_bh"] = np.nan
+            for indices in groups.values():
+                idx = np.asarray(indices, dtype=int)
+                raw = frame.loc[idx, f"{prefix}_p"].to_numpy(float)
+                frame.loc[idx, f"{prefix}_p_bonferroni"] = adjust_pvalues(
+                    raw, "bonferroni"
+                )
+                frame.loc[idx, f"{prefix}_p_fdr_bh"] = adjust_pvalues(raw, "fdr_bh")
+        return frame
+
+    return add(deciles, decile_effects), add(summaries, summary_effects)
+
+
 # ---------- per-slice computation ----------
 
 def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 50):
@@ -167,17 +270,23 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 
         s = sub[sub["decile"] == d]
         if len(s) < min_decile_trades:
             dec_rows.append({"decile": d, "n": len(s), "usd": float(s["usdc"].sum()),
+                             "n_markets": int(s["market_code"].nunique()),
                              "impl_prob": np.nan, "win_rate": np.nan,
                              "cal_error": np.nan, "se": np.nan,
                              "impl_prob_dol": np.nan, "win_rate_dol": np.nan,
-                             "cal_error_dol": np.nan, "se_dol": np.nan})
+                             "cal_error_dol": np.nan, "se_dol": np.nan,
+                             "impl_prob_mkt": np.nan, "win_rate_mkt": np.nan,
+                             "cal_error_mkt": np.nan, "se_mkt": np.nan})
             continue
         scl = (s["day"], s["wallet_code"], s["market_code"])
         w = s["usdc"].to_numpy(float)
+        w_mkt = equal_market_weights(s)
         r = s["ret"].to_numpy(float)
         W = w.sum()
+        W_mkt = w_mkt.sum()
         dec_rows.append({
             "decile": d, "n": int(len(s)), "usd": float(W),
+            "n_markets": int((s.groupby("market_code")["usdc"].sum() > 0).sum()),
             "impl_prob": float(s["price"].mean()),
             "win_rate": float(s["won"].mean()),
             "cal_error": float(r.mean()),
@@ -186,6 +295,14 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 
             "win_rate_dol": float((w * s["won"].to_numpy(float)).sum() / W),
             "cal_error_dol": float((w * r).sum() / W),
             "se_dol": cluster_se_mean(r, *scl, weights=w),
+            "impl_prob_mkt": float(
+                (w_mkt * s["price"].to_numpy(float)).sum() / W_mkt
+            ),
+            "win_rate_mkt": float(
+                (w_mkt * s["won"].to_numpy(float)).sum() / W_mkt
+            ),
+            "cal_error_mkt": float((w_mkt * r).sum() / W_mkt),
+            "se_mkt": cluster_se_mean(r, *scl, weights=w_mkt),
         })
 
     # D10 - D1 spread. Apply the same tail floor used by the decile table and estimate
@@ -214,8 +331,26 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 
             )
         return float(mn - m1), se
 
+    def _spread_equal_market():
+        if len(d1) < min_decile_trades or len(dn) < min_decile_trades:
+            return np.nan, np.nan
+        w1 = equal_market_weights(d1)
+        wn = equal_market_weights(dn)
+        if w1.sum() <= 0 or wn.sum() <= 0:
+            return np.nan, np.nan
+        m1 = np.average(d1["ret"].to_numpy(float), weights=w1)
+        mn = np.average(dn["ret"].to_numpy(float), weights=wn)
+        se = cluster_se_difference(
+            d1["ret"], dn["ret"],
+            d1["day"], d1["wallet_code"], d1["market_code"],
+            dn["day"], dn["wallet_code"], dn["market_code"],
+            low_weights=w1, high_weights=wn,
+        )
+        return float(mn - m1), se
+
     spread, spread_se = _spread(False)
     spread_d, spread_se_d = _spread(True)
+    spread_m, spread_se_m = _spread_equal_market()
 
     # Signed slope (auxiliary summary).
     slope, slope_se = slope_and_se(sub["price"], sub["ret"], *cl)
@@ -228,6 +363,8 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 
         "n_markets": int(sub["market_code"].nunique()),
         "total_usd": float(sub["usdc"].sum()),
         "d1_n": int(len(d1)), "d10_n": int(len(dn)),
+        "d1_markets": int(d1["market_code"].nunique()),
+        "d10_markets": int(dn["market_code"].nunique()),
         "d1_usd": float(d1["usdc"].sum()), "d10_usd": float(dn["usdc"].sum()),
         "slope": slope, "slope_se": slope_se,
         "slope_t": slope / slope_se if slope_se and slope_se > 0 else np.nan,
@@ -237,6 +374,8 @@ def compute_slice(sub: pd.DataFrame, n_bins: int = 10, min_decile_trades: int = 
         "spread_t": spread / spread_se if spread_se and spread_se > 0 else np.nan,
         "spread_dol": spread_d, "spread_se_dol": spread_se_d,
         "spread_t_dol": spread_d / spread_se_d if spread_se_d and spread_se_d > 0 else np.nan,
+        "spread_mkt": spread_m, "spread_se_mkt": spread_se_m,
+        "spread_t_mkt": spread_m / spread_se_m if spread_se_m and spread_se_m > 0 else np.nan,
     }
     return dec_rows, summary
 

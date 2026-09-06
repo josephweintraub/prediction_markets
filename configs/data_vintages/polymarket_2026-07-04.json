@@ -1,0 +1,82 @@
+{
+  "id": "polymarket-resolved-2026-07-04",
+  "description": "Canonical resolved Polymarket trade refresh used by the September 2026 rebaseline.",
+  "trade_end_date": "2026-06-23",
+  "analysis_root": "/mnt/data/embedding_difficulty",
+  "artifacts": {
+    "trades_clean": {
+      "path": "/mnt/data/pipeline_output/trades_clean.parquet",
+      "format": "parquet",
+      "rows": 2036128538,
+      "bytes": 23800759225,
+      "file_count": 44,
+      "required_columns": ["conditionId", "proxyWallet", "timestamp", "price", "usdcSize", "outcome", "side"]
+    },
+    "market_flags": {
+      "path": "/mnt/data/pipeline_output/market_flags.parquet",
+      "format": "parquet",
+      "rows": 2388005,
+      "bytes": 274615049,
+      "required_columns": ["token_id", "market_id", "winning_outcome", "is_updown"]
+    },
+    "wallet_flags": {
+      "path": "/mnt/data/learnability/cache/wallet_flags.parquet",
+      "format": "parquet",
+      "rows": 1645711,
+      "bytes": 74698571,
+      "required_columns": ["proxyWallet", "is_nonhuman"]
+    },
+    "universe_markets": {
+      "path": "/mnt/data/embedding_difficulty/universe_markets.parquet",
+      "format": "parquet",
+      "rows": 857468,
+      "bytes": 355518118,
+      "required_columns": ["market_id", "question", "n_buy_filtered", "usd_buy_filtered"]
+    },
+    "universe_tokens": {
+      "path": "/mnt/data/embedding_difficulty/universe_tokens.parquet",
+      "format": "parquet",
+      "rows": 1561257,
+      "bytes": 205796468,
+      "required_columns": ["token_id", "market_id", "winning_outcome"]
+    },
+    "code_maps": {
+      "path": "/mnt/data/embedding_difficulty/code_maps.parquet",
+      "format": "parquet",
+      "rows": 3590912,
+      "bytes": 208798830,
+      "required_columns": ["kind", "code", "value"]
+    },
+    "flb_base_mature": {
+      "path": "/mnt/data/embedding_difficulty/flb_base_mature.parquet",
+      "format": "parquet",
+      "rows": 34428235,
+      "bytes": 320231270,
+      "required_columns": ["market_code", "token_code", "wallet_code", "day", "price", "ret", "won", "usdc"]
+    },
+    "flb_base_closing": {
+      "path": "/mnt/data/embedding_difficulty/flb_base_closing.parquet",
+      "format": "parquet",
+      "rows": 54631347,
+      "bytes": 516931656,
+      "required_columns": ["market_code", "token_code", "wallet_code", "day", "price", "ret", "won", "usdc"]
+    },
+    "flb_base_full": {
+      "path": "/mnt/data/embedding_difficulty/flb_base_full.parquet",
+      "format": "parquet",
+      "rows": 99744791,
+      "bytes": 929717048,
+      "required_columns": ["market_code", "token_code", "wallet_code", "day", "price", "ret", "won", "usdc"]
+    },
+    "build_universe_coverage": {
+      "path": "/mnt/data/embedding_difficulty/build_universe_coverage.json",
+      "format": "json",
+      "sha256": "697f3a0dfdea72239f7730c072d7e0c40a46fcd76bd25ee07c2da4abdefc11c5"
+    },
+    "flb_base_meta": {
+      "path": "/mnt/data/embedding_difficulty/flb_base_meta.json",
+      "format": "json",
+      "sha256": "946c3fda9e4a694e350325d11789e0574d862a904b53cfdaccb6446486c3150e"
+    }
+  }
+}
