@@ -36,6 +36,12 @@
   exploratory test families.
 - Added a small synthetic Parquet-to-manifest integration fixture and unit coverage for
   equal-market replication invariance, multiplicity adjustment, and vintage mismatch.
+- Regenerated the aggregate, liquidity-rate, horizon, and horizon × liquidity-rate
+  full-window candidate tables in immutable run
+  `2026-09-06_calibration-heterogeneity_headline-corrected-v1`; recorded the corrected
+  spread inference and equal-market composition reversals in `docs/runs/`.
+- Added automatic result cardinality, p-value-range, and tail-to-summary reconciliation
+  checks for future runs.
 - Completed a provisional EBS retention classification without moving or deleting data.
 
 ### Workstream consolidation

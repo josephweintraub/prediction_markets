@@ -112,6 +112,7 @@ def test_small_fixture_runs_end_to_end_and_writes_immutable_manifest(tmp_path: P
 
     assert manifest["status"] == "completed"
     assert manifest["validations"]["data_vintage"]["status"] == "passed"
+    assert manifest["validations"]["result_tables"]["all"]["status"] == "passed"
     assert {item["kind"] for item in manifest["outputs"]} == {
         "deciles", "summary", "dropped_slices"
     }

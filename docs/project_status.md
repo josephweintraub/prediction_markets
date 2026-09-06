@@ -2,7 +2,7 @@
 
 **Status date:** 2026-09-06
 
-**Current stage:** repository stabilization before the next confirmatory analysis
+**Current stage:** repository stabilized; corrected candidate results regenerated
 
 **Active workstream:** `analysis/calibration_heterogeneity/`
 
@@ -52,32 +52,39 @@ toward faster-resolving markets. Any recency or horizon result must address this
 These are working findings, not finalized causal claims:
 
 1. Aggregate full-lifecycle calibration is close to flat, with a positive favorite tail.
-2. The bottom quarter of economic volume exhibits two-tail classic FLB; the top three
-   equal-dollar groups are substantially closer to calibrated.
-3. Standalone binary markets lasting at least 90 days exhibit classic FLB, while shorter
-   standalone binaries are broadly calibrated.
+2. The lowest liquidity-rate equal-dollar group exhibits two-tail classic FLB when trades
+   are weighted equally, but this is not robust to equal-market weighting: both market-
+   weighted tails are positive and the spread reverses sign. The old generic “bottom
+   quarter” claim is therefore a trade-composition result.
+3. Standalone binary markets lasting at least 90 days exhibit classic FLB under count and
+   equal-market weighting. The full-profile result survives the exploratory Bonferroni
+   correction; shorter bins are not stable across weighting schemes.
 4. Fine semantic market families show much more heterogeneity than broad categories.
 5. Markets with no close textual precedent appear to exhibit FLB, but the embedding
    artifacts predate the latest refresh and omit 7,453 newly resolved markets.
 6. Some sub-day markets change tail signs between mature and closing windows, so a
    full-lifecycle average can conceal opposing within-market phases.
 
-## Known blockers to publication-quality inference
+The regenerated values and validation record are in
+[`runs/2026-09-06_headline_corrected_v1.md`](runs/2026-09-06_headline_corrected_v1.md).
 
-- Existing saved summaries predate the 2026-09-06 correction to D10-D1 covariance and
-  thin-tail handling. Their point estimates are unchanged, but spread SEs and t-statistics
-  must be regenerated before use.
-- Exploratory grids currently use unadjusted significance markers despite the documented
-  multiplicity rule.
-- Current point estimates are trade- or dollar-weighted, not equal-market-weighted.
-- Artifact reuse is based mainly on filename existence rather than input fingerprints.
-- Pre-refresh and post-refresh artifacts coexist in the same EBS namespace.
+## Remaining publication work
+
+- Full-window headline schemes have been regenerated, but mature and closing lifecycle
+  diagnostics still use historical artifacts and must be rerun before a final report.
+- Existing renderers read the old mutable output namespace and show raw significance stars;
+  they must be changed to require an immutable run and adjusted values.
+- Pre-refresh and post-refresh reusable inputs still coexist in the EBS analysis namespace;
+  the active driver guards its declared inputs, but older scripts do not.
+- Embedding-derived novelty features remain aligned to the older 850,015-market ordering
+  and must be refreshed before novelty findings can be promoted.
 - The current liquidity measure is realized volume per day and must not be interpreted as
   exogenous or causal.
 
 ## Next research step after stabilization
 
-Run the pre-specified cross of standalone binary markets, duration of at least 90 days,
-and liquidity-rate tier, with count-, dollar-, and equal-market-weighted estimates. Do not
-begin that run until the artifact manifest, data-vintage checks, and equal-market estimand
-exist; the initial engine tests were added on 2026-09-06.
+Construct and run the pre-specified cross of standalone binary markets, duration of at
+least 90 days, and liquidity-rate tier, with count-, dollar-, and equal-market-weighted
+estimates. The manifest, vintage checks, estimand, and multiplicity machinery now exist;
+the current `hor_x_liqrate` scheme is descriptive across all market structures and is not
+a substitute for that standalone-binary cross.

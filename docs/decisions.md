@@ -4,6 +4,35 @@ This file records decisions that change the interpretation or reproducibility of
 project. Newest entries come first. Findings belong in `project_status.md` or a report;
 implementation changes also belong in `CHANGELOG.md`.
 
+## 2026-09-06: make run lineage and exploratory multiplicity executable
+
+**Decision:** Require a committed data-vintage declaration and a unique manifested run
+directory for active calibration runs. In exploratory grids, define separate within-scheme
+families for each estimand × weighting combination, retain raw, Bonferroni, and BH-FDR
+p-values, and use Bonferroni values for default displays.
+
+**Reason:** Mutable filenames and undocumented test families made it too easy to combine
+different data vintages or promote a selectively interesting cell.
+
+**Consequences:** `run_schemes.py` fails on vintage mismatch, records exact inputs and Git
+state, and never overwrites a completed run. Confirmatory families must be specified before
+viewing output; the exploratory correction is not a substitute for pre-specification.
+
+## 2026-09-06: define equal-market calibration as market VWAPs
+
+**Decision:** For each slice × price decile, dollar-weight trades within a market and then
+average markets equally. Apply the existing day × wallet × market clustered inference to
+the corresponding market-normalized trade scores.
+
+**Reason:** Equal trade and equal dollar estimates answer questions about observed market
+activity; neither estimates the calibration experience of a typical market. Preserving
+within-market dollar weights avoids treating every partial fill as an independent market
+observation.
+
+**Consequences:** Publication-level market claims must show all three weightings. A result
+that reverses under equal-market weighting is a composition result, not a generic property
+of markets.
+
 ## 2026-09-06: maintain one active empirical workstream
 
 **Decision:** Rename the current workstream to `analysis/calibration_heterogeneity/` and

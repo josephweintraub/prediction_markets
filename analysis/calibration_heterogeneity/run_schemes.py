@@ -61,6 +61,52 @@ def _write_table(frame: pd.DataFrame, path: Path, kind: str) -> dict:
     return artifact
 
 
+def validate_result_tables(
+    deciles: pd.DataFrame, summaries: pd.DataFrame, n_bins: int
+) -> dict:
+    """Reconcile tail summaries to decile cells and check result cardinality."""
+    if summaries.empty:
+        raise ValueError("No summary rows were produced")
+    duplicated = deciles.duplicated(["scheme", "slice", "decile"]).sum()
+    if duplicated:
+        raise ValueError(f"Found {duplicated} duplicate scheme/slice/decile rows")
+    expected_rows = len(summaries) * n_bins
+    if len(deciles) != expected_rows:
+        raise ValueError(
+            f"Expected {expected_rows} decile rows for {len(summaries)} slices; "
+            f"found {len(deciles)}"
+        )
+
+    tails = deciles[deciles["decile"].isin([1, n_bins])]
+    indexed = summaries.set_index(["scheme", "slice"])
+    reconciliation: dict[str, float] = {}
+    for error, spread in (
+        ("cal_error", "spread"),
+        ("cal_error_dol", "spread_dol"),
+        ("cal_error_mkt", "spread_mkt"),
+    ):
+        pivot = tails.pivot(index=["scheme", "slice"], columns="decile", values=error)
+        difference = pivot[n_bins] - pivot[1] - indexed[spread]
+        finite = difference[np.isfinite(difference)]
+        maximum = float(finite.abs().max()) if len(finite) else 0.0
+        if maximum > 1e-7:
+            raise ValueError(f"{spread} does not reconcile to tail cells; max diff={maximum}")
+        reconciliation[spread] = maximum
+
+    for frame in (deciles, summaries):
+        for column in (name for name in frame if "_p" in name):
+            source = frame[column]
+            finite = source[np.isfinite(source)]
+            if ((finite < 0) | (finite > 1)).any():
+                raise ValueError(f"Invalid p-value in {column}")
+    return {
+        "status": "passed",
+        "slices": int(len(summaries)),
+        "decile_rows": int(len(deciles)),
+        "max_tail_summary_difference": reconciliation,
+    }
+
+
 def run_analysis(args: argparse.Namespace) -> Path:
     vintage_path = Path(args.vintage).expanduser().resolve()
     vintage = load_vintage(vintage_path)
@@ -183,6 +229,9 @@ def run_analysis(args: argparse.Namespace) -> Path:
             )
             decile_frame, summary_frame = add_multiple_testing_columns(
                 decile_frame, summary_frame
+            )
+            manifest["validations"].setdefault("result_tables", {})[scheme] = (
+                validate_result_tables(decile_frame, summary_frame, args.n_bins)
             )
             manifest["outputs"].extend(
                 [

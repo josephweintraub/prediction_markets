@@ -84,16 +84,18 @@ supported workflow entry points.
 ## Generated and external material
 
 - Heavy data and artifacts live under `/mnt/data`, never in Git.
-- The current EBS analysis namespace remains `/mnt/data/embedding_difficulty` until its
-  mixed vintages are replaced by immutable run directories.
+- Reusable analysis inputs remain in the mixed-vintage `/mnt/data/embedding_difficulty`
+  namespace; new result tables belong in immutable `/mnt/data/runs` directories.
 - A local Mac artifact mirror is non-authoritative and may mix vintages.
 - Publication figures and tables may enter Git only from a documented validated run.
 
 ## Remaining migration work
 
-1. Add immutable run manifests and data-vintage validation.
-2. Add an end-to-end synthetic fixture for the active analysis and pipeline.
-3. Add equal-market weighting and explicit exploratory-grid multiplicity handling.
-4. Reproduce current headline results using the corrected engine.
-5. Build a clean `paper/` replication surface from validated runs.
-6. Review EBS retention candidates separately; delete nothing based solely on age.
+1. Add a pipeline-level integration fixture; the active analysis now has an end-to-end
+   synthetic fixture.
+2. Update renderers to consume an explicit immutable run rather than the historical mutable
+   output directory.
+3. Build a clean `paper/` replication surface from validated runs.
+4. Refresh positional embedding artifacts against the 857,468-market universe before
+   rerunning novelty analyses.
+5. Complete backup checks before acting on the reviewed EBS retention candidates.
