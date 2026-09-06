@@ -2,20 +2,35 @@
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
 .DS_Store
 # data & large outputs — live on /mnt/data, never in-repo
 *.parquet
 *.csv
 *.jsonl
 *.duckdb
+*.npy
+*.npz
 output/
 **/output/
+/artifacts/
+/runs/
 # logs & ephemera
 *.log
+*.pid
+*.tmp
 # secrets
 .env
+.env.*
+!.env.example
 *.pem
 .anthropic_api_key
+.polygon_rpc_url
 
 # pipeline-root convenience symlinks (recreated per instance)
 /pipeline/output

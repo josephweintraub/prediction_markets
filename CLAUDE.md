@@ -16,12 +16,23 @@ Why local joins are wrong, not just slow: the local trades sample and the EC2 se
 
 Research codebase studying **price calibration / favorite-longshot bias (FLB)** on Polymarket.
 
-**Current focus:** how calibration varies with market characteristics derived from **native Polymarket metadata** (recurrence/series, resolution mechanics, anchorability, feedback speed — the "learnability" dimensions, v7). Direction is measured, not presumed — do not import expected signs from earlier writeups.
+**Current focus:** how calibration varies with liquidity, market duration, semantic market
+family, and textual novelty or precedent. The active workstream is
+`analysis/embedding_difficulty/` (scheduled to be renamed once its interfaces are stable).
+Direction is measured, not presumed — do not import expected signs from earlier writeups.
 
-**Read `docs/methods_reference.md` before any analysis** — it holds the standard filters (BUY-side, price bounds, up/down + bot exclusion, slice floors, lifecycle windows), the calibration measurement rules (signed slope primary; D10−D1 secondary), the clustered-SE spec, and the **resolution-censoring caveat** that governs any end-of-sample comparison.
+**Read `docs/project_status.md` and `docs/methods_reference.md` before any analysis.** The
+full decile profile is primary; D1, D10, and D10−D1 summarize it, while the signed slope is
+auxiliary. The methods reference also records the standard filters, clustered-SE spec, and
+the **resolution-censoring caveat** governing end-of-sample comparisons.
 
 Workstreams:
-- **`analysis/`** — FLB research: DuckDB over trades, calibration engine, learnability study (`analysis/learnability/` — see its README), LLM contract classification (`analysis/stage0_v2/` — see its README; superseded by native fields for dimension work but still the category cross-check).
+- **`analysis/embedding_difficulty/`** — active calibration-heterogeneity analysis.
+- **`analysis/paper/`** — publication-facing scripts and figures pending reconciliation
+  with the current specification.
+- **`analysis/learnability/`** — mixed historical/supporting v1-v7 work; do not assume it
+  represents the active specification.
+- **`analysis/stage0_v2/`** — contract classification and cross-platform support.
 - **`pipeline/`** — rebuilds the trade dataset from Polygon logs (see its README). Rare; only for data refreshes.
 - **`scripts/`** — clean-trades build/dedup/resort one-offs.
 
@@ -37,7 +48,11 @@ Everything current lives in `docs/`; superseded material is in `docs/archive/` (
 
 | Doc | What it is |
 |---|---|
+| `project_status.md` | **Current state.** Research stage, active vintage, standing findings, blockers, and next step. |
 | `methods_reference.md` | **Start here.** Durable methods & data practices: filters, calibration measurement, SE spec, data canon + caveats, retired claims. |
+| `workflow.md` | Branch, specification, immutable-run, validation, reporting, and archival rules. |
+| `repository_map.md` | Active/supporting/historical classification and migration order. |
+| `decisions.md` | Dated methodological decisions and reversals. |
 | `native_data_sources.md` | Native Polymarket (Gamma/CLOB/Data) field inventory and field→dimension map. Status header records what has already been pulled. |
 | `data_choices.md` | Co-author-facing record of every data/screening choice (dedup, bots/makers/takers, price conventions, trims) with exact thresholds and rationale. |
 | `EC2_SETUP.md` | Thin EC2 environment notes (Jupyter tunnel, tmux, monitoring). Start/stop/mount live here in CLAUDE.md. |
@@ -47,11 +62,11 @@ Everything current lives in `docs/`; superseded material is in `docs/archive/` (
 
 | Path | What |
 |---|---|
-| `/mnt/data/pipeline_output/trades_clean.parquet/**/*.parquet` (EC2) | **CANONICAL** clean trades — 2,018,709,888 rows through 2026-06-23. Subject to the resolution-censoring caveat (`docs/methods_reference.md`). |
+| `/mnt/data/pipeline_output/trades_clean.parquet/**/*.parquet` (EC2) | **CANONICAL** clean trades — 2,036,128,538 rows through 2026-06-23. Subject to the resolution-censoring caveat (`docs/methods_reference.md`). |
 | `/mnt/data/pipeline_root_output/trades.parquet` (EC2) | Raw trades, kept for diffing. |
 | `/mnt/data/learnability/` (EC2) | Study outputs (`output/`), native metadata (`native/`: `native_market_meta.parquet` — closed-only, `market_native_categories.parquet`, tag map). |
 | `/Users/josephweintraub/polymarket_historical_data/trades/ingest_date=2026-01-23/**/*.parquet` | Local sample (~136M rows) for tiny metadata checks only; both `bucket=000000/` and `bucket=000001/`. `analysis/config.py` builds the glob. |
-| `analysis/output/` (local) | Per-analysis caches/plots. Big subprocess caches are rebuildable — safe to delete. |
+| `analysis/output/` (local) | Mixed legacy caches, plots, and external data. Do not delete until classified in a reviewed retention inventory. |
 
 ## Core architecture
 
@@ -59,7 +74,9 @@ Everything current lives in `docs/`; superseded material is in `docs/archive/` (
 
 **Heavy queries run in subprocesses.** `analysis/subprocess_runner.py:sp_run(fn, *args)` — worker computes, writes parquet, exits; parent re-registers it as a lazy VIEW. `sp_run` skips work if the output exists (delete the file to force rebuild). **Clear these with `DROP VIEW IF EXISTS`, never `DROP TABLE`.**
 
-**Calibration engine:** `analysis/learnability/flb_per_slice.py` (per-slice deciles, spreads, CGM 3-way clustered SEs); drivers `run_phase1.py` (v6 dims) / `run_v7.py` (native dims). Legacy broad-FLB modules: `favorite_longshot.py`, `trader_flb.py`, `trader_characteristics.py`, `pnl_analysis.py`; legacy notebook `analysis/exploration.ipynb`.
+**Active calibration engine:** `analysis/embedding_difficulty/flb_engine.py`, called by
+`run_schemes.py`. `analysis/learnability/flb_per_slice.py`, `run_phase1.py`, and `run_v7.py`
+belong to the earlier learnability path. Root-level broad-FLB modules are legacy.
 
 ## EC2 for heavy lifting
 
@@ -107,11 +124,16 @@ Local sync: `/Users/josephweintraub/Library/CloudStorage/Dropbox/Polymarket Data
 
 ## Conventions & practices
 
-- **Version control.** GitHub is canonical. Commit logical units, imperative subject, body explains *why*. Push after meaningful changes. Work on `main`; branch for risky/experimental work and merge back promptly once it becomes the direction.
+- **Version control.** GitHub is canonical. Keep `main` documented and usable. Use
+  short-lived purpose-named branches for refactors, pipeline changes, and new analyses;
+  commit logical units with a body explaining *why*, then merge promptly after validation.
 - **CHANGELOG.md.** Record notable analysis/data/infrastructure changes (newest first, absolute `YYYY-MM-DD` dates) **in the same session as the change**. Findings live in docs, not the changelog.
 - **Docs.** New docs → `docs/` + a line in the Documents map. Superseded docs → `docs/archive/` with a status header, and prune stale claims from live docs at the same time. Convert relative dates to absolute.
 - **Data & secrets never in git** — enforced by `.gitignore` (`*.parquet`, `*.pem`, `.anthropic_api_key`, …).
-- **Where things go.** Analysis code → `analysis/` (learnability → `analysis/learnability/`); one-off scripts → `scripts/` in the repo, not `/home/ubuntu`; finished deliverables → Dropbox; working files stay in the repo.
+- **Where things go.** Current heterogeneity analysis →
+  `analysis/embedding_difficulty/` until its planned rename; operational utilities →
+  `scripts/`; immutable generated runs → `/mnt/data/runs/`; finished shared deliverables
+  → Dropbox; superseded source and documents → indexed archives.
 - **Findings reports.** Delivered as self-contained HTML opened in the browser. Reproducibility rule: a finalized report's headline numbers come from a committed script's summary artifact (parquet/JSON), and the report names that script + artifact near the top — no hand-transcribed ad-hoc query results. See `docs/methods_reference.md` ("Reporting reproducibility").
 
 ## Patterns to avoid
@@ -121,6 +143,7 @@ Local sync: `/Users/josephweintraub/Library/CloudStorage/Dropbox/Polymarket Data
 - Don't commit data into git — it lives on `/mnt/data` (gitignored).
 - Don't do real analysis locally — joins mis-key and the Mac can't hold the data.
 - Don't interpret end-of-sample or across-time calibration without the resolution-censoring caveat (`docs/methods_reference.md`).
-- Don't headline a D10−D1 sign flip without checking the signed slope — see retired claims in `docs/methods_reference.md`.
+- Don't headline D10−D1 alone. Inspect D1, D10, their cell counts, and the full decile
+  profile; the signed slope is auxiliary.
 - Don't treat `docs/archive/` claims as current — several were later corrected; the headers say which.
 - `paper_replication/` (local) holds an in-progress paper draft — don't touch unless explicitly working on it.

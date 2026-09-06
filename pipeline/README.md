@@ -1,116 +1,66 @@
-> **Update 2026-06-24:** Polymarket redeployed its exchange contracts ~2026-04-28; `extraction/extract_orderfilled_v2.py` captures the new `OrderFilled` events (same raw_events schema) and `refresh.py` is the live entry point. The canonical product is now the CLEAN set `/mnt/data/pipeline_output/trades_clean.parquet` (2,018,709,888 rows through 2026-06-23; see `docs/methods_reference.md` for the censoring caveat). Row counts and the `analysis/` subtree described below predate the repo consolidation — that subtree now lives at the repo root `analysis/`.
+# Polymarket on-chain pipeline
 
-# Polymarket Pipeline (EC2)
+This pipeline reconstructs Polymarket `OrderFilled` events from Polygon and produces the
+canonical trade dataset used by the calibration analyses. It is an infrequent data-refresh
+workflow, not the ordinary analysis entry point.
 
-End-to-end extraction and analysis of Polymarket OrderFilled events from
-Polygon mainnet. Outputs a 1.01-billion-row `trades.parquet` used in the
-favorite-longshot-bias paper.
+## Canonical outputs
 
-## Layout
+| Path | Purpose |
+|---|---|
+| `/mnt/data/pipeline_output/trades_clean.parquet` | Deduplicated canonical analysis trades |
+| `/mnt/data/pipeline_root_output/trades.parquet` | Raw transformed trades retained for comparison |
+| `/mnt/data/pipeline_output/market_flags.parquet` | Token-to-market spine, outcomes, and market-level up/down flag |
+| `/mnt/data/pipeline_data/` | Expensive refresh intermediates and source caches |
 
-```
-pipeline/
-├── config.py                          # paths, RPC, DuckDB settings
-├── extraction/                        # raw chain → events  (slow, run-once)
-│   ├── extract_orderfilled.py        #   Polygon RPC → raw_events.parquet
-│   ├── dedup.py                      #   dedup paired emit events
-│   └── fetch_block_timestamps.py     #   block_number → unix_ts (RPC)
-├── transform/                         # events → trades  (~5 min)
-│   └── build_trades.py               #   token-map → resolve → maker/taker rows
-├── goldsky/                           # alternative event source
-│   └── pull_orderfilled.py           #   Goldsky GraphQL → JSON.gz chunks
-├── analysis/                          # paper-relevant analysis
-│   ├── results.ipynb                 #   primary paper notebook (39 cells)
-│   ├── exploration.ipynb             #   exploratory (kept for context)
-│   ├── data_loader.py / config.py
-│   ├── bot_filter.py
-│   ├── favorite_longshot.py          #   FLB compute + plots
-│   ├── trader_flb.py                 #   trader-typology FLB
-│   ├── trader_characteristics.py
-│   ├── pnl_analysis.py
-│   ├── market_accuracy.py
-│   ├── closing_prices.py
-│   ├── fetch_manifold.py
-│   └── output/                        #   figures, intermediate parquets
-├── output/                            # final products (used by analysis)
-│   ├── trades.parquet                 #   1.01B rows, partitioned by year_month
-│   ├── trades_v1_no_maker_flag.parquet  # backup before maker/taker patch
-│   ├── market_resolutions.parquet
-│   └── market_resolutions_enriched.parquet
-├── data → /mnt/data/pipeline_data     # symlink to large data volume
-└── _legacy/                           # superseded scripts kept for reference
+The current cleaned build has 2,036,128,538 rows through 2026-06-23. It contains resolved
+markets only; see `../docs/methods_reference.md` for the resolution-censoring caveat.
+
+## Active implementation
+
+```text
+refresh.py
+  extraction/extract_orderfilled_v2.py   Polygon OrderFilled extraction
+  extraction/dedup.py                    event deduplication
+  extraction/fetch_block_timestamps.py   block timestamps
+  transform/build_trades.py              token mapping, resolution, and trade transform
+  goldsky/                                alternate event-source utilities
 ```
 
-## Data flow
+`_legacy/` contains superseded pipeline stages retained temporarily for provenance. Do not
+use them for a refresh. The pre-cleanup version is preserved by Git tag
+`pre-cleanup-2026-09-06`.
 
-```
-Polygon RPC ──┐
-              ▼
-       extract_orderfilled.py ──► raw_events.parquet           (~519M rows, 47GB)
-              │
-              ▼
-            dedup.py ──────────► deduped_events.parquet         (~519M, 31GB)
-              │
-              ▼
-       build_trades.py ────────► resolved_trades.parquet        (~505M, 32GB)
-              │                       │
-              │                       ▼ (maker + taker expansion)
-              ▼                  trades.parquet                 (1.01B, 15GB)
-       market_resolutions.parquet
-```
+## Authentication
 
-Goldsky alternative path: `goldsky/pull_orderfilled.py` pulls the same
-OrderFilledEvent stream from Goldsky's hosted subgraph; output is comparable
-to `raw_events.parquet` and includes maker/taker plus real block timestamps
-(our on-chain pipeline approximates timestamps).
+Extraction requires a Polygon archive-node URL. Supply it through `POLYGON_RPC_URL` or a
+mode-600 file at `~/.polygon_rpc_url`. Never put the endpoint or key in Git.
 
-## trades.parquet schema
+## Running a refresh
 
-| column        | type    | notes                                        |
-|---------------|---------|----------------------------------------------|
-| proxyWallet   | VARCHAR | trader address                               |
-| timestamp     | BIGINT  | unix epoch seconds (approximated from block) |
-| conditionId   | VARCHAR | per-outcome token id                         |
-| usdcSize      | DOUBLE  | dollar size                                  |
-| price         | DOUBLE  | 0..1                                         |
-| side          | VARCHAR | BUY or SELL                                  |
-| outcome       | VARCHAR | "Yes", "No", etc.                            |
-| eventSlug     | VARCHAR | parent event slug                            |
-| is_maker      | BOOLEAN | true for limit-order rows, false for market  |
-| counterparty  | VARCHAR | the other side's wallet                      |
-| year_month    | VARCHAR | partition key                                |
-
-Each on-chain fill produces TWO rows: one maker (`is_maker=true`) and one
-taker (`is_maker=false`). 505M fills → 1.01B trade rows.
-
-## Reproduction
-
-All scripts assume `cwd=/home/ubuntu/pipeline` and use `/home/ubuntu/venv/bin/python`.
+Run from `/home/ubuntu/prediction_markets/pipeline` on EC2 after mounting `/mnt/data`:
 
 ```bash
-# 1. Extract OrderFilledEvent logs from Polygon mainnet (slow: hours)
-python extraction/extract_orderfilled.py
-python extraction/dedup.py
-python extraction/fetch_block_timestamps.py    # optional, for real timestamps
-
-# 2. Transform to trades.parquet (~5 min)
-python transform/build_trades.py --stages 3 4 6
-
-# Alternative: pull from Goldsky (faster, real timestamps, with maker/taker)
-python goldsky/pull_orderfilled.py
+/home/ubuntu/venv/bin/python refresh.py --help
 ```
 
-## Analysis
+`refresh.py` has explicit skip flags for resuming stages. Before running it:
 
-```bash
-jupyter notebook analysis/results.ipynb
-```
+1. Record the current input and output row counts and checksums.
+2. Confirm at least 100 GB of temporary free space or calculate the actual requirement.
+3. Preserve the current canonical output until the replacement validates.
+4. Rebuild `market_flags.parquet` and wallet flags when their upstream inputs change.
+5. Validate coverage, resolution agreement, schema, timestamps, and duplicate rates.
+6. Assign a new data-vintage identifier and update project documentation.
 
-The notebook reads `output/trades.parquet` and produces the paper figures
-under `analysis/output/figures/`.
+The attached EBS volume was 89% full on 2026-09-06, so a refresh must not begin until its
+temporary-space requirement has been reviewed.
 
-## Hardware
+## Data conventions
 
-- Instance: `m5.4xlarge` or larger (16 cores, 64GB RAM minimum for DuckDB)
-- Storage: 100GB root + 500GB attached volume mounted at `/mnt/data`
-- Memory limit set in `config.py` (`DUCKDB_MEMORY_LIMIT`)
+- One fill expands to maker and taker rows.
+- In the canonical EC2 trades, `conditionId` is the per-outcome token ID, not the hex
+  market condition ID.
+- Do not exclude up/down markets using the trade `eventSlug`; it is empty on many newer
+  rows. Join `market_flags.parquet` on token ID and use its market-level flag.
+- Never load the full trade dataset into pandas; use DuckDB over Parquet.

@@ -19,7 +19,8 @@ are built and run without encoding an expected sign.
 ## Data canon
 
 - **Canonical trade set:** `/mnt/data/pipeline_output/trades_clean.parquet` (EC2) —
-  **2,018,709,888 rows through 2026-06-23**. Cleaning removed only full-row (all-11-column)
+  **2,036,128,538 rows through 2026-06-23** (resolution refresh completed 2026-07-04).
+  Cleaning removed only full-row (all-11-column)
   exact duplicates (~4%, ingestion replays); multi-counterparty partial fills are real and
   retained. Raw set kept for diffing at `/mnt/data/pipeline_root_output/trades.parquet`.
 - **Resolution-censoring caveat (read before any recency analysis):** `trades_clean` contains
@@ -84,13 +85,18 @@ are built and run without encoding an expected sign.
   reversals under composition shifts — always report d1/d10 trade counts next to tail
   errors, and never headline a sign claim from the D10−D1 spread alone; the full decile
   profile must support it.
-- **Weighting:** report both count-weighted and dollar-weighted versions.
+- **Weighting:** report both count-weighted and dollar-weighted versions. Equal-market
+  weighting is required as a robustness check before publication-level claims about
+  markets; it is not yet implemented in the active engine.
 - **Standard errors:** Cameron–Gelbach–Miller **3-way clustered** (day × wallet × market).
   Across many slices, use Bonferroni-adjusted significance stars.
 - **Grain:** trade-level calibration is the default; contract-level (equal-weighted VWAP)
   is the robustness variant.
-- **Engine:** `analysis/learnability/flb_per_slice.py`; drivers `run_phase1.py` (v6 dims)
-  and `run_v7.py` (native dims). Outputs land in `/mnt/data/learnability/output/`.
+- **Active engine:** `analysis/embedding_difficulty/flb_engine.py`; driver
+  `analysis/embedding_difficulty/run_schemes.py`. The older
+  `analysis/learnability/flb_per_slice.py` engine and its v6/v7 drivers are retained for
+  historical reproduction. Active artifacts currently live in
+  `/mnt/data/embedding_difficulty/` pending migration to immutable run directories.
 
 ## Compute practices
 

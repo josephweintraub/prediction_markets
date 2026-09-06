@@ -2,9 +2,10 @@
 Pipeline configuration for Polymarket on-chain dataset replication.
 
 Before running, set your RPC endpoint:
-    export POLYGON_RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/<YOUR_ALCHEMY_KEY>"
+    export POLYGON_RPC_URL="https://polygon-mainnet.g.alchemy.com/v2/<key>"
 
-Or edit RPC_URL below directly.
+Alternatively, store it in ~/.polygon_rpc_url with mode 600. Never put a live endpoint
+or API key in source code, documentation, logs, or committed configuration.
 
 Test mode (small slice):
     export PIPELINE_TEST_MODE=1

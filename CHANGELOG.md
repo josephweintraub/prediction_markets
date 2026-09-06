@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-06 — Repository stabilization begins
+
+- Created safety tag `pre-cleanup-2026-09-06` and branch
+  `codex/repository-cleanup` before restructuring.
+- Added current project status, workflow, repository classification, decision log, EBS
+  inventory, and active-workstream documentation.
+- Declared a consolidated Python environment in `pyproject.toml` and strengthened ignores
+  for generated data, environments, caches, run directories, and secrets.
+- Updated root and pipeline entry documentation to reflect the active
+  calibration-heterogeneity workstream and the 2,036,128,538-row data vintage.
+- Removed a superseded legacy pipeline orchestrator whose docstring contained a live RPC
+  endpoint. Replaced the endpoint example in active configuration with a placeholder.
+- No analysis code, data, or EBS artifact was moved or deleted.
+
 Notable changes to the **prediction_markets** project — infrastructure, data/dataset, tooling, and docs.
 Newest first; dates are absolute (`YYYY-MM-DD`). Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
