@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "method": "polygon_rpc_block_timestamp",
+  "timestamp_unit": "unix_seconds",
+  "scope": "Trust root for a new raw-source MLB extract with mandatory row-level timestamp verification; this declaration is not retrospective proof that trades_clean used exact timestamps.",
+  "cache": {
+    "path": "/mnt/data/pipeline_data/block_timestamps.parquet",
+    "format": "parquet",
+    "rows": 27117476,
+    "bytes": 55466179,
+    "sha256": "fec60fed5c1a36664f164457447b120cddae057aebb6ca43592e48d68ae28002",
+    "required_columns": [
+      "block_number",
+      "timestamp"
+    ]
+  },
+  "build_metadata": {
+    "used_exact_cache": true,
+    "source_distinct_blocks": 27117476,
+    "cache_distinct_blocks": 27117476,
+    "missing_blocks": 0,
+    "fallback_rows": 0
+  },
+  "evidence": [
+    {
+      "path": "pipeline/fetch_timestamps.log",
+      "observation": "Final timestamp-cache coverage reported missing=0."
+    },
+    {
+      "path": "pipeline/stages_3_4_6.log",
+      "observation": "Stage 6 reported use of the real block-timestamp cache."
+    }
+  ],
+  "verification_requirement": "Every new MLB raw-source analysis extract must retain block_number and timestamp and pass row-level equality verification against this exact cache."
+}

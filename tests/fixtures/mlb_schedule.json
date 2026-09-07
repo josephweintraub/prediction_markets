@@ -1,0 +1,138 @@
+{
+  "dates": [
+    {
+      "date": "2025-07-04",
+      "games": [
+        {
+          "gamePk": 1001,
+          "gameType": "R",
+          "season": "2025",
+          "gameDate": "2025-07-04T17:05:00Z",
+          "officialDate": "2025-07-04",
+          "status": {
+            "abstractGameState": "Final",
+            "detailedState": "Final",
+            "statusCode": "F"
+          },
+          "teams": {
+            "away": {
+              "team": {"id": 147, "name": "New York Yankees"},
+              "score": 3,
+              "isWinner": false
+            },
+            "home": {
+              "team": {"id": 121, "name": "New York Mets"},
+              "score": 5,
+              "isWinner": true
+            }
+          },
+          "doubleHeader": "N",
+          "gameNumber": 1,
+          "seriesGameNumber": 1
+        },
+        {
+          "gamePk": 1002,
+          "gameType": "R",
+          "season": "2025",
+          "gameDate": "2025-07-04T20:10:00Z",
+          "officialDate": "2025-07-04",
+          "status": {
+            "abstractGameState": "Preview",
+            "detailedState": "Postponed",
+            "statusCode": "DR"
+          },
+          "teams": {
+            "away": {
+              "team": {"id": 111, "name": "Boston Red Sox"},
+              "score": 6,
+              "isWinner": true
+            },
+            "home": {
+              "team": {"id": 110, "name": "Baltimore Orioles"},
+              "score": 2,
+              "isWinner": false
+            }
+          },
+          "doubleHeader": "S",
+          "gameNumber": 1,
+          "seriesGameNumber": 1,
+          "rescheduleDate": "2025-07-05T17:05:00Z",
+          "rescheduledFromDate": "2025-07-04"
+        },
+        {
+          "gamePk": 1003,
+          "gameType": "R",
+          "season": "2025",
+          "gameDate": "2025-07-04T22:40:00Z",
+          "officialDate": "2025-07-04",
+          "status": {
+            "abstractGameState": "Live",
+            "detailedState": "Suspended",
+            "statusCode": "U"
+          },
+          "teams": {
+            "away": {"team": {"id": 133, "name": "Oakland Athletics"}},
+            "home": {"team": {"id": 136, "name": "Seattle Mariners"}}
+          },
+          "doubleHeader": "N",
+          "gameNumber": 1,
+          "seriesGameNumber": 2,
+          "resumeDate": "2025-07-05T19:10:00Z",
+          "resumedFromDate": "2025-07-04"
+        }
+      ]
+    },
+    {
+      "date": "2025-07-05",
+      "games": [
+        {
+          "gamePk": 1004,
+          "gameType": "R",
+          "season": "2025",
+          "gameDate": "2025-07-05T17:05:00Z",
+          "officialDate": "2025-07-05",
+          "status": {
+            "abstractGameState": "Final",
+            "detailedState": "Final",
+            "statusCode": "F"
+          },
+          "teams": {
+            "away": {
+              "team": {"id": 111, "name": "Boston Red Sox"},
+              "score": 4,
+              "isWinner": true
+            },
+            "home": {
+              "team": {"id": 110, "name": "Baltimore Orioles"},
+              "score": 2,
+              "isWinner": false
+            }
+          },
+          "doubleHeader": "Y",
+          "gameNumber": 1,
+          "seriesGameNumber": 1,
+          "rescheduledFromDate": "2025-07-04"
+        },
+        {
+          "gamePk": 1005,
+          "gameType": "R",
+          "season": "2025",
+          "gameDate": "2025-07-05T23:05:00Z",
+          "officialDate": "2025-07-05",
+          "status": {
+            "abstractGameState": "Final",
+            "detailedState": "Completed Early: Rain",
+            "statusCode": "F"
+          },
+          "teams": {
+            "away": {"team": {"id": 111, "name": "Boston Red Sox"}},
+            "home": {"team": {"id": 110, "name": "Baltimore Orioles"}}
+          },
+          "doubleHeader": "Y",
+          "gameNumber": 2,
+          "seriesGameNumber": 2
+        }
+      ]
+    }
+  ]
+}

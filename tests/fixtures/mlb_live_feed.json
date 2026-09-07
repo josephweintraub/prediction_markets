@@ -1,0 +1,100 @@
+{
+  "gameData": {
+    "game": {"pk": 1001},
+    "status": {
+      "abstractGameState": "Final",
+      "detailedState": "Final"
+    }
+  },
+  "liveData": {
+    "linescore": {"currentInning": 10},
+    "plays": {
+      "allPlays": [
+        {
+          "about": {
+            "atBatIndex": 0,
+            "inning": 1,
+            "halfInning": "top",
+            "startTime": "2025-07-04T17:08:12.100Z",
+            "endTime": "2025-07-04T17:10:01.000Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 1,
+            "inning": 1,
+            "halfInning": "top",
+            "startTime": "2025-07-04T17:10:20Z",
+            "endTime": "2025-07-04T17:12:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 2,
+            "inning": 1,
+            "halfInning": "bottom",
+            "startTime": "2025-07-04T17:15:00Z",
+            "endTime": "2025-07-04T17:20:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 3,
+            "inning": 3,
+            "halfInning": "bottom",
+            "startTime": "2025-07-04T18:00:00Z",
+            "endTime": "2025-07-04T18:10:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 4,
+            "inning": 4,
+            "halfInning": "top",
+            "startTime": "2025-07-04T18:13:00Z",
+            "endTime": "2025-07-04T18:18:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 5,
+            "inning": 6,
+            "halfInning": "bottom",
+            "startTime": "2025-07-04T19:00:00Z",
+            "endTime": "2025-07-04T19:07:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 6,
+            "inning": 7,
+            "halfInning": "top",
+            "startTime": "2025-07-04T19:10:00Z",
+            "endTime": "2025-07-04T19:15:00Z"
+          },
+          "playEvents": []
+        },
+        {
+          "about": {
+            "atBatIndex": 7,
+            "inning": 10,
+            "halfInning": "bottom",
+            "startTime": "2025-07-04T20:05:00Z"
+          },
+          "playEvents": [
+            {
+              "startTime": "2025-07-04T20:05:00Z",
+              "endTime": "2025-07-04T20:08:44.500Z"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
