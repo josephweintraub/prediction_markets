@@ -1,9 +1,10 @@
 # MLB game-dynamics research log
 
-This is a decision and audit trail, not a results document. Entries are ordered
+This is a chronological decision, audit, and concise results trail. Entries are ordered
 by the sequence of the work; the implementation review occurred in the same
-September 2026 work session. Final production-sample coverage remains
-provisional until a corrected complete real-data run is published and audited.
+September 2026 work session. Production-v3 pre-estimation sample coverage is
+complete and audited. The immutable dual-close and calibration production runs are also
+complete and independently approved.
 
 ## 1. Pilot question and simplest scope
 
@@ -161,19 +162,19 @@ flags. A boundary audit reports trade count and dollars within 5, 10, and 30
 seconds of each official boundary. All input rows and dollars must reconcile to
 ineligible-market rows plus the five eligible phases.
 
-## 10. Current stopping point
+## 10. Pre-estimation stopping point at that stage
 
-The code now reaches an audited, pre-estimation phase dataset. Synthetic tests
+At that stage, the code reached an audited, pre-estimation phase dataset. Synthetic tests
 cover the happy path, strict schema/grain/coverage failures, timestamp attacks,
 matching ambiguity, label conventions, irregular timing, reconciliation,
 atomic cleanup, and deterministic publication.
 
 No calibration estimate, price-decile profile, phase comparison, or variance
-result has been viewed. This preserves a clean opportunity to freeze the first
+result had been viewed. This preserved a clean opportunity to freeze the first
 estimator and its reporting table before looking at results. The proposed next
-step is the simplest descriptive decile calibration profile by pregame and live
-third. Implied-probability path variance remains a later exploratory proxy; it
-should not yet be labeled inherent complexity.
+step was the simplest descriptive decile calibration profile by pregame and live
+third. Implied-probability path variance remained a later exploratory proxy; it
+was not yet labeled inherent complexity.
 
 ## 11. Production audit v1 preserved and quarantined
 
@@ -431,12 +432,164 @@ $6,558,319.13, or 1.351% of eligible-market rows.
 
 The phase-v3 artifacts are technically approved: their schemas, source split,
 phase reconciliation, close coverage, and boundary audit passed review. No
-estimator has been run. The remaining pre-estimation gates are research choices
-and are pending user decision.
+estimator had been run. At this audit point, the remaining pre-estimation gates
+were the literal-boundary and closing-line choices. They were subsequently
+resolved and frozen as recorded below.
 
-The simplest proposed specification is a recommendation only, not a frozen or
-approved analysis choice: use literal MLB timing boundaries and every available
-last-prestart close in the primary estimate; then report a sensitivity that
-excludes trades within plus or minus 30 seconds of a phase boundary and
-stratifies closes by age (`<=5m`, `5–30m`, and `>30m`). Estimation must wait
-until the user accepts or revises that primary/sensitivity treatment.
+## 18. User-approved first-estimator decisions
+
+The close-recency audit reconstructed three definitions from exact raw fills.
+Definition A—the last valid exact-timestamp prestart fill with `0 < price < 1`
+and no wallet filter—covered all 3,697 eligible games. It had 443 closes older
+than five minutes (11.98%). Definition C—the existing
+`0.01 < price < 0.99` buyer-filtered view—covered 3,690 games and reproduced
+the published filtered closes exactly. Of its 792 closes older than five
+minutes, 436 were already stale under A and 356 became stale after buyer-bot
+filtering; the seven games with every C-eligible pregame fill removed were also
+already stale under A. The intervening strict price band alone changed only one
+close and did not change the five-minute stale count.
+
+The user approved the following before any calibration estimate was run:
+
+- The primary closing line is A: the last exact valid fill strictly before
+  official first play, with bot participants included.
+- The closing sensitivity is C: retain the existing strict price band and
+  exclude fills whose outcome-token buyer carries the existing `is_nonhuman`
+  flag. This remains a buyer-centered sensitivity, not an either-participant or
+  human-to-human market series. `A - C` measures filter sensitivity and is not
+  CLV.
+- Primary phase membership uses the literal official MLB boundaries. The fixed
+  sensitivity excludes, without reassignment, trades within 30 seconds
+  inclusive of first play, the starts of innings 4 and 7, or final play.
+- Closing-line calibration gives every game equal weight. Trade notional is an
+  audit field, not a closing-line weight.
+- Calibration remains realized purchased-outcome indicator minus price,
+  `y - p`.
+- Calibration uses fixed-width probability bins `[0, 0.1)`, `[0.1, 0.2)`,
+  through `[0.8, 0.9)`, and `[0.9, 1]`. A bin with effective `n < 50` remains
+  visible for accounting but has its estimate suppressed and is labeled
+  exploratory.
+- The first estimator contains no complexity proxy, price-variance analysis,
+  or regression. Those require a later, separately approved specification.
+
+The initial 260-row, three-weighting table proposal was not implemented. It was
+superseded by the simpler approved equal-trade phase estimator documented
+below.
+
+## 19. Dual-close builder and first estimator implemented
+
+The dedicated dual-close builder is now implemented. It writes exactly one
+`game_closes.parquet` row per eligible market/game plus `reconciliation.json`.
+The Parquet uses authoritative parallel `primary_*` and `sensitivity_*` fields
+for close availability, missing reasons, normalized home probability, price,
+time and age, participant bot labels, and immutable event identity. The
+reconciliation records input fingerprints, source/dedup counts, exact-cache
+coverage, both close-coverage partitions, missing reasons, same/different
+close identities, flagged-counterparty diagnostics, and hard subset and
+partition gates.
+
+The descriptive estimator is also implemented with four immutable outputs:
+
+- `closing_calibration.parquet`: 22 rows, comprising two close definitions x
+  one overall plus ten fixed-bin profiles;
+- `closing_paired_sensitivity.parquet`: 11 rows, comprising one paired overall
+  plus ten primary-price-bin profiles;
+- `trade_phase_calibration.parquet`: 80 rows, comprising two boundary samples
+  x four phases x ten fixed bins; and
+- `estimator_summary.json`: input fingerprints, definitions, coverage,
+  per-sample trade counts and dollars, fixed output counts, output names, and
+  exploratory status.
+
+The phase estimator gives each eligible BUY fill equal weight. Dollar volume
+and game count are descriptive audit fields, not alternative phase weights.
+Closing calibration gives each game equal weight. Cells below the frozen
+effective `n = 50` threshold remain present with counts but have estimate and
+uncertainty fields suppressed. The paired price difference is primary A minus
+sensitivity C and is filter attribution, not CLV.
+
+Independent implementation cross-review passed. At that point production execution still
+required separate authorization; the authorized run and its audit are recorded next.
+
+## 20. Production dual-close and calibration audit completed
+
+The authorized run published immutable stages `07_dual_closes_v1` and
+`08_calibration_v1`. Independent read-only review approved both stages.
+
+### Dual-close coverage and lineage
+
+`07_dual_closes_v1/game_closes.parquet` contains one row for each of 3,697 eligible
+market/game pairs. Its source reconciles to 6,794,341 raw candidate rows, 6,794,341
+distinct fills, zero duplicate ingestion replays, and 2,148,528 distinct source blocks.
+Primary A has 3,697 closes. Sensitivity C has 3,690; the seven missing C closes all have
+the reason `all_strict_price_pregame_fills_have_flagged_bot_buyer`. Among the 3,690
+paired games, 1,990 definitions select the same EVM event and 1,700 select different
+events.
+
+The C projection reproduces the historical `closing_lines.parquet` exactly. After mapping
+the historical timestamp, buyer wallet, token, side, outcome, price, normalized home
+probability, age, USDC, block, EVM identity, and stale flags to their `sensitivity_*`
+counterparts, both 3,690-row spines match, both `EXCEPT ALL` directions are empty, and
+every comparable numeric difference is zero.
+
+The label “bot excluded” is shorthand only. C excludes a fill when its outcome-token
+buyer is flagged `is_nonhuman`; it does not filter on the seller/counterparty. Exactly
+1,206 C closes have a flagged counterparty, so C is neither bot-free nor a
+human-to-human series.
+
+The nested provenance field `analysis_extract_verified = false` belongs to the generic
+cache-declaration validator, whose scope is `cache_declaration_only`; it does not claim
+that the production builder failed verification. The builder separately passed its
+data-level exact-cache coverage gate across all source blocks, used zero fallback rows,
+and recorded `all_close_timestamps_from_exact_cache = true`. Internal block/time,
+prestart, age, close-order, token, winner, and home-normalization checks had zero
+failures.
+
+### Estimator coverage and boundary sensitivity
+
+`08_calibration_v1` consumes 2,509,553 phase-input rows across 3,696 games and
+$436,914,818.50. Of these, 2,502,803 are in the four analysis phases and 6,750 are
+post-final audit rows. The dual-close spine has one additional close-only game, MLB game
+831532: it remains in the primary closing profile but has no filtered phase row and no C
+close. The estimator records this explicitly rather than dropping the game or requiring
+false equality between the phase and close spines.
+
+The inclusive 30-second sensitivity removes the following analysis-phase observations:
+
+| Phase | Rows removed | Dollars removed |
+| --- | ---: | ---: |
+| Pregame | 4,135 | $2,781,720.45 |
+| Innings 1–3 | 7,888 | $1,524,793.98 |
+| Innings 4–6 | 5,628 | $615,957.76 |
+| Innings 7+ | 11,620 | $1,180,092.60 |
+| **Total** | **29,271** | **$6,102,564.79** |
+
+This estimator count excludes post-final rows; the earlier 33,900-row boundary audit
+covered the broader eligible-market source and therefore is not contradictory.
+
+The fixed outputs reconcile exactly: `closing_calibration.parquet` has 22 rows,
+`closing_paired_sensitivity.parquet` has 11, and
+`trade_phase_calibration.parquet` has 80.
+
+### Exploratory results
+
+The equal-game primary closing profile has mean home probability 0.531444, home win rate
+0.542602, mean calibration `y - p` of +0.011158 (95% interval -0.004154 to +0.026471),
+and Brier score 0.244415 across 3,697 games. C has mean home probability 0.532275, home
+win rate 0.542005, mean calibration +0.009731 (95% interval -0.005515 to +0.024976), and
+Brier score 0.243560 across 3,690 games. On the 3,690 common games, A minus C is
+-0.000568 in probability, +0.000568 in calibration, and +0.000746 in Brier score. These
+are filter-sensitivity comparisons, not CLV.
+
+The descriptive equal-trade phase-wide mean `y - p` values are +0.000047 pregame,
++0.000787 in innings 1–3, -0.000882 in innings 4–6, and -0.003048 in innings 7+.
+After the 30-second exclusion they are +0.000039, +0.000933, -0.001028, and -0.003037,
+respectively. The sign pattern is mixed and stable to the boundary sensitivity; no broad
+monotone or phase-wide calibration bias was found.
+
+At the bin level, only the first two pregame bins and the `[0.8, 0.9)` innings 1–3 bin
+have nominal 95% intervals excluding zero under both boundary definitions. The
+`[0.4, 0.5)` closing bin is the only reported closing bin with an interval above zero
+under both A and C. These are isolated exploratory cells, not a smooth cross-bin pattern.
+The ten fixed-width bins use the frozen `n < 50` suppression rule, and this first output
+contains no multiplicity-adjusted inference. No broader complexity proxy, regression, or
+causal interpretation has been authorized.

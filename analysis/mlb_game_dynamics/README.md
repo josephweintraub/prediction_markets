@@ -25,8 +25,10 @@ The deliberately minimal v1 scope is:
   proximity, or guessing among multiple games within the selected orientation.
 - Official MLB schedule and live-feed data only. There is no ESPN fallback in
   v1.
-- BUY fills with `0.01 < price < 0.99`, ingestion replays removed by immutable
-  EVM event identity, and known nonhuman buyer wallets excluded.
+- Ingestion replays removed by immutable EVM event identity. Buyer-level trade
+  calibration uses BUY fills with `0.01 < price < 0.99` and excludes buyers
+  carrying the existing `is_nonhuman` flag. The primary market close instead
+  uses all valid exact prestart fills with bot participants included.
 - A conservative **standard-timing core**: rescheduled, resumed, suspended,
   doubleheader-coded, shortened, or boundary-incomplete games remain in the
   audit but do not enter the core phase dataset. Competition stage is not a
@@ -40,11 +42,17 @@ Calibration and the market close are different objects.
 - For a trade in the purchased outcome, let `p` be its trade price and let
   `y = 1` if that outcome eventually won and `0` otherwise. The trade-level
   calibration error is `y - p`.
-- The v1 **pregame closing line** is the last eligible fill strictly before the
-  observed first play, ordered by block number, log index, and transaction
-  hash. The phase builder records both that fill's own-outcome price and a
-  side-normalized home-win probability (`p` for a home token, `1 - p` for an
+- The primary v1 **pregame closing line** is the last exact valid fill strictly
+  before observed first play, ordered by block number, log index, and
+  transaction hash. It requires the expected moneyline token, positive finite
+  amounts, and `0 < p < 1`, but it includes bot participants. Its price is
+  normalized to home-win probability (`p` for a home token, `1 - p` for an
   away token).
+- The fixed closing sensitivity retains the existing trader-view rules:
+  `0.01 < p < 0.99` and exclusion when the outcome-token buyer has
+  `is_nonhuman = true`. It is buyer-centered, not an either-participant or
+  human-to-human filter. `A - C`, the primary-versus-filtered close difference,
+  is filter sensitivity and is not CLV.
 - The close is an observed market price, not an eventual outcome or a latent
   “closing probability.” No quote midpoint is available in this v1 trade-only
   pipeline. To avoid ambiguity, no variable named CLV is estimated here. If a
@@ -85,7 +93,11 @@ remains in `innings_7_plus`. Trades after the final play are retained as
 kept in a separate read-through cache so the published analysis run remains
 immutable.
 
-## Five-stage build
+The primary phase view uses these literal boundaries. Its fixed sensitivity
+drops, without reassigning, every trade within 30 seconds inclusive of first
+play, the starts of innings 4 and 7, or final play.
+
+## Seven-stage build
 
 Run these commands from the repository root. Choose a new run ID and do not
 reuse an output directory. The paths below are concrete templates for the
@@ -150,7 +162,7 @@ the official score and winner flags. Moneyline validity and timing suitability
 are separate columns. Only their intersection enters
 `eligible_moneylines.parquet`; every candidate remains in the audit.
 
-### 4. Build the exact-timestamp BUY-fill extract
+### 4. Build the exact-timestamp filtered trader extract
 
 ```sh
 python analysis/mlb_game_dynamics/build_exact_trades.py \
@@ -166,7 +178,12 @@ candidate must have raw source coverage. Event-identity deduplication,
 timestamp coverage, price attrition, bot attrition, output rows, and dollars
 must reconcile before atomic publication.
 
-### 5. Assign phases and construct the close
+This builder supplies the buyer-filtered trade-calibration view. Because that
+view has already removed extreme-price and flagged-buyer fills, it is not the
+source for the primary closing line. Stage 6 constructs both close definitions
+directly from the exact deduplicated raw-fill projection.
+
+### 5. Assign phases and retain the filtered close audit
 
 ```sh
 python analysis/mlb_game_dynamics/build_phase_dataset.py \
@@ -179,6 +196,54 @@ python analysis/mlb_game_dynamics/build_phase_dataset.py \
 The five exhaustive phases are `pregame`, `innings_1_3`, `innings_4_6`,
 `innings_7_plus`, and `post_final`. The reconciliation report must show that
 eligible rows and dollars partition exactly across all five.
+
+The existing `closing_lines.parquet` is definition C, the buyer-filtered
+sensitivity, not the all-valid-fill primary definition A. Estimator inputs must
+keep those labels explicit and must not silently substitute C for A. The
+estimator uses Stage 6's dual-close artifact; this Stage 5 close remains an
+independent reconciliation target.
+
+### 6. Build the primary and sensitivity closing lines
+
+```sh
+python analysis/mlb_game_dynamics/build_dual_closes.py \
+  --raw /mnt/data/pipeline_data/resolved_trades.parquet \
+  --eligible-moneylines "$MLB_RUN_ROOT/03_validated/eligible_moneylines.parquet" \
+  --timestamp-provenance "$MLB_TIMESTAMP_DECL" \
+  --wallet-flags /mnt/data/learnability/cache/wallet_flags.parquet \
+  --run-dir "$MLB_RUN_ROOT/07_dual_closes_v1"
+```
+
+This implemented builder returns `game_closes.parquet`, exactly one row per
+eligible market/game, and `reconciliation.json`. The row carries shared game,
+team, token, winner, and start-time dimensions; source-fill counts; and
+parallel `primary_*` and `sensitivity_*` availability, missing-reason, price,
+home-probability, wallet, bot-label, timestamp, block, and immutable-event
+identity fields. Primary uses `0 < price < 1` with bots included. Sensitivity
+uses `0.01 < price < 0.99` and excludes only flagged outcome-token buyers.
+
+The reconciliation records input fingerprints, raw/distinct/replay counts,
+exact-cache coverage, primary and sensitivity coverage, missing reasons,
+same-versus-different close identities, counterparty-bot diagnostics, and
+hard Boolean partition/subset gates. Publication uses a fresh staging sibling
+and atomic rename.
+
+### 7. Estimate the fixed-bin calibration profiles
+
+```sh
+python analysis/mlb_game_dynamics/estimate_calibration.py \
+  --phase-trades "$MLB_RUN_ROOT/05_phases/phase_trades.parquet" \
+  --dual-closes "$MLB_RUN_ROOT/07_dual_closes_v1/game_closes.parquet" \
+  --run-dir "$MLB_RUN_ROOT/08_calibration_v1"
+```
+
+The estimator consumes the authoritative `primary_*` and `sensitivity_*`
+dual-close fields directly. It validates one-to-one game coverage, close-event
+identity, prestart timing, exact phase membership, and the phase/close game
+relationship before publishing a fresh immutable run. Phase games must be a
+dimension-consistent subset of the dual-close universe; close-only games remain
+in closing estimates. The builder has already
+validated the underlying token-to-home-probability normalization.
 
 ## Published run layout
 
@@ -199,15 +264,23 @@ eligible rows and dollars partition exactly across all five.
 ├── 04_exact_trades/
 │   ├── exact_trades.parquet
 │   └── build_audit.json
-└── 05_phases/
-    ├── phase_trades.parquet
-    ├── closing_lines.parquet
-    ├── closing_audit.parquet
-    ├── boundary_audit.parquet
-    └── reconciliation.json
+├── 05_phases/
+│   ├── phase_trades.parquet
+│   ├── closing_lines.parquet
+│   ├── closing_audit.parquet
+│   ├── boundary_audit.parquet
+│   └── reconciliation.json
+├── 07_dual_closes_v1/
+│   ├── game_closes.parquet
+│   └── reconciliation.json
+└── 08_calibration_v1/
+    ├── closing_calibration.parquet
+    ├── closing_paired_sensitivity.parquet
+    ├── trade_phase_calibration.parquet
+    └── estimator_summary.json
 ```
 
-Stages 2–5 publish through fresh sibling staging directories and atomic rename;
+Stages 2–7 publish through fresh sibling staging directories and atomic rename;
 an existing destination is an error. Stage 1 writes two explicit files, so the
 operator must also place them only in a fresh run root. Never “repair” an old
 run in place. A rerun receives a new ID, and the raw MLB API cache remains
@@ -234,25 +307,84 @@ Do not run or inspect an estimator until all of the following are reviewed:
   distinct EVM events.
 - Phase rows and dollars reconcile; missing or stale pregame closes and trade
   mass near each timing boundary are explicitly audited.
+- The primary all-valid-fill close covers the eligible game dimension and the
+  buyer-filtered sensitivity reproduces the published filtered close exactly.
+- Literal phase membership and the inclusive 30-second boundary exclusion
+  reconcile independently to their source rows.
+- Dual-close source, replay, per-game, availability, identity, and subset
+  reconciliation gates all pass.
+- Each estimator artifact has its fixed row count; phase outputs reconcile to
+  the filtered phase sample while closing outputs retain the full dual-close
+  universe.
 
-Production coverage figures are provisional until the complete real-data run
-finishes and these artifacts are reviewed.
+The production v3 matching, timing, validation, phase, and close-recency audits
+are complete. The dual-close builder and estimator are implemented and have
+passed independent cross-review. Their immutable `07_dual_closes_v1` and
+`08_calibration_v1` production runs are complete and independently approved.
 
 ## Next research step
 
-The current pipeline stops before estimation. The simplest next step is a
-descriptive price-decile calibration profile—mean `y - p`, with clearly stated
-trade and dollar weighting—for pregame and each live third, accompanied by
-market/game counts and uncertainty appropriate to the existing FLB framework.
-Closing-line age and the boundary audits should be reported before interpreting
-phase differences.
+The implemented first estimator is a descriptive calibration profile using
+fixed bins `[0, 0.1)`, `[0.1, 0.2)`,
+through `[0.8, 0.9)`, and `[0.9, 1]`. It reports mean `y - p` separately for
+pregame and each live third under the literal-boundary primary and the inclusive
+30-second exclusion sensitivity. The phase profile is equal-trade/count-weighted
+only; dollars are descriptive exposure. Closing calibration uses one
+equal-weight observation per game for both the all-valid-fill primary and the
+buyer-filtered sensitivity. A bin whose effective `n` is below 50 remains in
+the audit but has its estimate suppressed and is labeled exploratory.
 
-Only after that baseline is stable should the analysis add complexity proxies.
-A natural candidate is within-game variation in the side-normalized implied
-probability, measured separately by phase. Because realized price variance is
-endogenous to news and trading activity, it should initially be described as
-path variability rather than inherent market complexity, with its definition
-frozen before estimates are viewed.
+No complexity proxy, price-path variance, heterogeneity regression, or broader
+structural model belongs in this first estimator.
+
+### Implemented estimator artifact contract
+
+The estimator emits four files:
+
+- `closing_calibration.parquet` has exactly **22 rows**: for each of the
+  `primary` and `sensitivity` close definitions, one overall row plus ten
+  fixed-bin rows. It reports game count, suppression
+  status, mean home probability, home win rate, mean calibration, official-date
+  clustered standard error and 95% interval, and Brier score.
+  Its columns are `close_definition`, `profile_scope`, `price_decile`,
+  `price_bin`, `game_count`, `suppressed`, `status`, `mean_probability`,
+  `win_rate`, `mean_calibration`, `calibration_se`, `calibration_ci95_low`,
+  `calibration_ci95_high`, and `brier_score`.
+- `closing_paired_sensitivity.parquet` has exactly **11 rows**: one overall row
+  plus ten bins defined by the primary closing probability. It reports common
+  games, same/different close-event and timestamp counts, paired primary and
+  sensitivity probabilities, calibration and Brier summaries, and their
+  paired differences. The price comparison is defined as primary A minus
+  sensitivity C; it is filter attribution, not CLV.
+  Its columns are `profile_scope`, `primary_price_decile`,
+  `primary_price_bin`, `common_games`, `suppressed`, `status`,
+  `same_close_event_games`, `different_close_event_games`,
+  `same_close_timestamp_games`, `different_close_timestamp_games`,
+  `primary_mean_probability`, `sensitivity_mean_probability`,
+  `mean_probability_difference`, `mean_absolute_probability_difference`,
+  `primary_mean_calibration`, `sensitivity_mean_calibration`,
+  `mean_calibration_difference`, `primary_brier_score`,
+  `sensitivity_brier_score`, and `mean_brier_difference`.
+- `trade_phase_calibration.parquet` has exactly **80 rows**: literal and
+  `exclude_within_30s` samples x four ordered phases x ten fixed bins. The sole
+  estimator is equal-trade/count weighted. Trade count, game count, and dollars
+  are retained as audit denominators; dollars are not weights. Reported fields
+  are mean price, win rate, mean calibration, CGM day x wallet x game clustered
+  standard error, and 95% interval.
+  Its columns are `boundary_sample`, `phase`, `phase_order`, `price_decile`,
+  `price_bin`, `trade_count`, `game_count`, `dollars`, `suppressed`, `status`,
+  `mean_price`, `win_rate`, `mean_calibration`, `calibration_se`,
+  `calibration_ci95_low`, and `calibration_ci95_high`.
+- `estimator_summary.json` fingerprints both inputs and records the calibration,
+  bin, close, boundary, weighting, suppression, and uncertainty definitions;
+  phase and close coverage; per-sample phase counts and dollars; the fixed
+  output row counts; output names; and `exploratory_descriptive` status.
+
+Every fixed-bin grid row is retained. When the relevant count is below 50,
+counts remain visible while estimate and uncertainty fields are null and the
+row status is `suppressed_n_lt_50`. Code implementation and independent cross-review are
+complete; the immutable production artifacts have also passed independent count, schema,
+lineage, and result audits. Interpretation remains exploratory rather than confirmatory.
 
 ## Team workflow
 
