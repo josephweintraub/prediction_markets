@@ -8,6 +8,13 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 Workflow every session: **start EC2 → mount EBS → run on EC2 → pull only small summary parquets/JSON back → stop EC2.** The instance is ~$2/hr — **always stop it when done.** Exact commands in [EC2 for heavy lifting](#ec2-for-heavy-lifting).
 
+Only the main orchestrator may start, stop, mount, unmount, reboot, or otherwise manage
+EC2 lifecycle; worker agents and subagents must never perform those actions. After any
+orchestrated EC2 work ends—successfully, through failure, or by interruption—the main
+orchestrator must verify that no relevant jobs are still running, safely unmount
+`/mnt/data`, stop the instance, and wait for and verify the `stopped` state before
+finishing.
+
 Why local joins are wrong, not just slow: the local trades sample and the EC2 set key markets differently (`conditionId` semantics differ) — local joins silently mis-key. See the join-key note in `docs/methods_reference.md`.
 
 > The **local** `~/prediction_markets` is **deliberately not a git clone** (viewer only, no local git auth — user decision, confirmed 2026-07-02). It sits untracked inside a home-rooted repo, so **local deletes are irreversible; confirm before removing local files.** The GitHub/EC2 copy is canonical; sync deliberately.
