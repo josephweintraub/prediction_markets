@@ -580,11 +580,12 @@ Brier score 0.243560 across 3,690 games. On the 3,690 common games, A minus C is
 -0.000568 in probability, +0.000568 in calibration, and +0.000746 in Brier score. These
 are filter-sensitivity comparisons, not CLV.
 
-The descriptive equal-trade phase-wide mean `y - p` values are +0.000047 pregame,
+The descriptive equal-trade phase-wide mean `y - p` values are +0.000055 pregame,
 +0.000787 in innings 1–3, -0.000882 in innings 4–6, and -0.003048 in innings 7+.
-After the 30-second exclusion they are +0.000039, +0.000933, -0.001028, and -0.003037,
+After the 30-second exclusion they are +0.000047, +0.000933, -0.001028, and -0.003037,
 respectively. The sign pattern is mixed and stable to the boundary sensitivity; no broad
-monotone or phase-wide calibration bias was found.
+monotone pattern appears in these descriptive aggregates. No phase-wide hypothesis test
+is reported.
 
 At the bin level, only the first two pregame bins and the `[0.8, 0.9)` innings 1–3 bin
 have nominal 95% intervals excluding zero under both boundary definitions. The
@@ -593,3 +594,59 @@ under both A and C. These are isolated exploratory cells, not a smooth cross-bin
 The ten fixed-width bins use the frozen `n < 50` suppression rule, and this first output
 contains no multiplicity-adjusted inference. No broader complexity proxy, regression, or
 causal interpretation has been authorized.
+
+## 21. Fixed-bin FLB tail summary completed
+
+The immutable production stage `09_flb_tail_v1` derives a deliberately minimal
+tail summary from the complete Stage 8 profiles. It defines D1 as `[0, 0.1)`, D10 as
+`[0.9, 1]`, classic FLB point signs as `D1 < 0` and `D10 > 0`, and the spread as
+`D10 mean(y - p) - D1 mean(y - p)`. The complete ten-bin profile remains primary.
+No slope, regression, p-value, or multiplicity adjustment was added.
+
+Closing rows use official-home probability and equal game weights. Phase rows use the
+bought-token probability and the existing buyer-filtered eligible BUY sample. `A - C`
+is still filter attribution, not CLV. The spread standard error is estimated jointly
+from D1 and D10 cluster scores under the same uncertainty scheme as the source profile,
+so the tail covariance is retained.
+
+The output has exactly ten rows: six reported and four suppressed. Supported phase rows
+are:
+
+| Boundary sample | Phase | D1 n; y - p [95% CI] | D10 n; y - p [95% CI] | D10 - D1 [95% CI] | Pattern |
+| --- | --- | --- | --- | --- | --- |
+| Literal | Innings 1–3 | 8,793; +0.001908 [-0.027616, +0.031433] | 10,971; +0.012973 [-0.016128, +0.042074] | +0.011065 [-0.041781, +0.063911] | both positive |
+| Literal | Innings 4–6 | 36,864; -0.002318 [-0.017178, +0.012542] | 48,760; +0.001861 [-0.015652, +0.019374] | +0.004179 [-0.026329, +0.034687] | classic FLB |
+| Literal | Innings 7+ | 71,537; +0.002395 [-0.010141, +0.014930] | 95,161; -0.003795 [-0.018522, +0.010932] | -0.006189 [-0.032146, +0.019767] | reverse FLB |
+| Exclude within 30s | Innings 1–3 | 8,676; +0.002258 [-0.027617, +0.032134] | 10,812; +0.012490 [-0.017001, +0.041980] | +0.010231 [-0.043265, +0.063728] | both positive |
+| Exclude within 30s | Innings 4–6 | 36,434; -0.002388 [-0.017347, +0.012571] | 48,125; +0.001711 [-0.015875, +0.019296] | +0.004099 [-0.026484, +0.034681] | classic FLB |
+| Exclude within 30s | Innings 7+ | 69,042; +0.003117 [-0.009734, +0.015967] | 92,022; -0.004934 [-0.020185, +0.010316] | -0.008051 [-0.034818, +0.018716] | reverse FLB |
+
+The four suppressed rows retain support but withhold every estimate and interval:
+primary closing has D1/D10 counts 11/5, sensitivity closing 5/2, literal pregame
+245/20, and 30-second-exclusion pregame 238/20. This is the frozen fail-closed rule
+when either tail has `n < 50`.
+
+Innings 4–6 shows classic point signs under both boundary definitions, but both joint
+intervals include zero. Early live trading is both-positive and late live trading has
+the reverse sign pattern under both definitions. The full profiles and tail summary
+therefore provide no robust classic FLB result.
+
+## 22. Standalone FLB report approved
+
+The deterministic offline renderer validated and fingerprinted the immutable Stage 7–9
+artifacts, recomputed no headline estimate, and published a self-contained report with
+no external resources. The approved artifact is
+`10_flb_report_v3/mlb_flb_report.html`, exactly 104,878 bytes with SHA-256
+`1407f6d7f8229c625c7ee5b8a2f639652d1d5e0f3e61fb7883c126ed1e6ffaf4`.
+Its manifest records a matching deterministic second render, complete schemas and fixed
+grains, source-fingerprint reconciliation, fail-closed suppression, semantic tables and
+labelled SVGs, and atomic fresh publication.
+
+The manifest records responsive targets of 320, 375, 768, and 1,440 pixels. Independent
+runtime QA found no page overflow at 1,024, 736, and 360 pixels; content and print review
+approved chart whiskers and zero lines, suppression rendering, table and mobile overflow
+handling, filter/orientation/CLV caveats, numerical fidelity, and the absence of external
+dependencies or overclaim.
+The retained `10_flb_report_v1` and `10_flb_report_v2` directories are superseded QA
+renders retained as immutable QA iterations, not approved publications; they were not
+deleted or treated as research results.

@@ -97,7 +97,7 @@ The primary phase view uses these literal boundaries. Its fixed sensitivity
 drops, without reassigning, every trade within 30 seconds inclusive of first
 play, the starts of innings 4 and 7, or final play.
 
-## Seven-stage build
+## Nine-stage build
 
 Run these commands from the repository root. Choose a new run ID and do not
 reuse an output directory. The paths below are concrete templates for the
@@ -245,6 +245,47 @@ dimension-consistent subset of the dual-close universe; close-only games remain
 in closing estimates. The builder has already
 validated the underlying token-to-home-probability normalization.
 
+### 8. Summarize the fixed FLB tails
+
+```sh
+python analysis/mlb_game_dynamics/estimate_flb_tails.py \
+  --closing-calibration "$MLB_RUN_ROOT/08_calibration_v1/closing_calibration.parquet" \
+  --trade-phase-calibration "$MLB_RUN_ROOT/08_calibration_v1/trade_phase_calibration.parquet" \
+  --estimator-summary "$MLB_RUN_ROOT/08_calibration_v1/estimator_summary.json" \
+  --game-closes "$MLB_RUN_ROOT/07_dual_closes_v1/game_closes.parquet" \
+  --phase-trades "$MLB_RUN_ROOT/05_phases/phase_trades.parquet" \
+  --run-dir "$MLB_RUN_ROOT/09_flb_tail_v1"
+```
+
+This stage derives a deliberately narrow tail summary from the primary ten-bin
+profiles. `D1` is `[0, 0.1)`, `D10` is `[0.9, 1]`, and the reported spread is
+`D10 mean(y - p) - D1 mean(y - p)`. A classic point-sign pattern requires
+`D1 < 0` and `D10 > 0`; it is descriptive, not a discovery label. If either
+tail has fewer than 50 observations, all estimates for that row are withheld
+while support counts and dollars remain visible. Spread uncertainty is computed
+jointly from the D1 and D10 cluster scores, preserving their covariance.
+
+Closing rows retain the official-home-probability orientation. Phase rows retain
+the bought-token orientation and the Stage 4 buyer-filtered sample. The stage
+does not fit a slope or regression and emits no p-values or multiplicity
+adjustments. The complete ten-bin profiles remain the primary analysis.
+
+### 9. Render the standalone report
+
+```sh
+python analysis/mlb_game_dynamics/render_flb_report.py \
+  --stage07-dir "$MLB_RUN_ROOT/07_dual_closes_v1" \
+  --stage08-dir "$MLB_RUN_ROOT/08_calibration_v1" \
+  --stage09-dir "$MLB_RUN_ROOT/09_flb_tail_v1" \
+  --output-dir "$MLB_RUN_ROOT/10_flb_report_v3"
+```
+
+The renderer validates and fingerprints the published Stage 7–9 artifacts and
+formats them without re-estimating any result. It emits a self-contained HTML
+file with no external resources plus `report_manifest.json`, verifies a second
+deterministic render, and publishes through a fresh staging sibling and atomic
+rename.
+
 ## Published run layout
 
 ```text
@@ -273,14 +314,20 @@ validated the underlying token-to-home-probability normalization.
 ├── 07_dual_closes_v1/
 │   ├── game_closes.parquet
 │   └── reconciliation.json
-└── 08_calibration_v1/
-    ├── closing_calibration.parquet
-    ├── closing_paired_sensitivity.parquet
-    ├── trade_phase_calibration.parquet
-    └── estimator_summary.json
+├── 08_calibration_v1/
+│   ├── closing_calibration.parquet
+│   ├── closing_paired_sensitivity.parquet
+│   ├── trade_phase_calibration.parquet
+│   └── estimator_summary.json
+├── 09_flb_tail_v1/
+│   ├── flb_tail_summary.parquet
+│   └── flb_summary.json
+└── 10_flb_report_v3/
+    ├── mlb_flb_report.html
+    └── report_manifest.json
 ```
 
-Stages 2–7 publish through fresh sibling staging directories and atomic rename;
+Stages 2–9 publish through fresh sibling staging directories and atomic rename;
 an existing destination is an error. Stage 1 writes two explicit files, so the
 operator must also place them only in a fresh run root. Never “repair” an old
 run in place. A rerun receives a new ID, and the raw MLB API cache remains
@@ -316,13 +363,19 @@ Do not run or inspect an estimator until all of the following are reviewed:
 - Each estimator artifact has its fixed row count; phase outputs reconcile to
   the filtered phase sample while closing outputs retain the full dual-close
   universe.
+- The tail summary reconciles every D1/D10 support and estimate to Stage 8,
+  retains exactly ten rows, fails closed on thin tails, and uses joint spread
+  uncertainty rather than treating D1 and D10 as independent.
+- The standalone report fingerprints every input, contains no external
+  resources or new estimation, renders deterministically, and passes semantic,
+  responsive, and print review before it is treated as publishable.
 
 The production v3 matching, timing, validation, phase, and close-recency audits
 are complete. The dual-close builder and estimator are implemented and have
 passed independent cross-review. Their immutable `07_dual_closes_v1` and
 `08_calibration_v1` production runs are complete and independently approved.
 
-## Next research step
+## Published calibration and FLB analysis
 
 The implemented first estimator is a descriptive calibration profile using
 fixed bins `[0, 0.1)`, `[0.1, 0.2)`,
@@ -332,7 +385,8 @@ pregame and each live third under the literal-boundary primary and the inclusive
 only; dollars are descriptive exposure. Closing calibration uses one
 equal-weight observation per game for both the all-valid-fill primary and the
 buyer-filtered sensitivity. A bin whose effective `n` is below 50 remains in
-the audit but has its estimate suppressed and is labeled exploratory.
+the audit but has its estimate suppressed with status `suppressed_n_lt_50`;
+the analysis as a whole remains exploratory.
 
 No complexity proxy, price-path variance, heterogeneity regression, or broader
 structural model belongs in this first estimator.
@@ -385,6 +439,50 @@ counts remain visible while estimate and uncertainty fields are null and the
 row status is `suppressed_n_lt_50`. Code implementation and independent cross-review are
 complete; the immutable production artifacts have also passed independent count, schema,
 lineage, and result audits. Interpretation remains exploratory rather than confirmatory.
+
+### Implemented FLB tail and report contract
+
+`09_flb_tail_v1/flb_tail_summary.parquet` has exactly ten rows: two closing
+definitions and two boundary samples by four phase rows. Its exact columns are
+`analysis_scope`, `close_definition`, `boundary_sample`, `phase`, `d1_n`,
+`d1_games`, `d1_dollars`, `d10_n`, `d10_games`, `d10_dollars`, `suppressed`,
+`status`, `point_pattern`, `d1_mean_probability`, `d1_win_rate`,
+`d1_mean_calibration`, `d1_calibration_se`, `d1_calibration_ci95_low`,
+`d1_calibration_ci95_high`, `d10_mean_probability`, `d10_win_rate`,
+`d10_mean_calibration`, `d10_calibration_se`, `d10_calibration_ci95_low`,
+`d10_calibration_ci95_high`, `spread_d10_minus_d1`, `spread_se`,
+`spread_ci95_low`, and `spread_ci95_high`.
+`flb_summary.json` fingerprints the five source artifacts and records the
+definitions, fixed counts, and reconciliation gates. Production contains ten
+rows: six reported and four suppressed.
+
+The supported production phase spreads are:
+
+| Boundary sample | Phase | D1 n; y - p [95% CI] | D10 n; y - p [95% CI] | D10 - D1 [95% CI] | Point signs |
+| --- | --- | --- | --- | --- | --- |
+| Literal | Innings 1–3 | 8,793; +0.001908 [-0.027616, +0.031433] | 10,971; +0.012973 [-0.016128, +0.042074] | +0.011065 [-0.041781, +0.063911] | both positive |
+| Literal | Innings 4–6 | 36,864; -0.002318 [-0.017178, +0.012542] | 48,760; +0.001861 [-0.015652, +0.019374] | +0.004179 [-0.026329, +0.034687] | classic FLB |
+| Literal | Innings 7+ | 71,537; +0.002395 [-0.010141, +0.014930] | 95,161; -0.003795 [-0.018522, +0.010932] | -0.006189 [-0.032146, +0.019767] | reverse FLB |
+| Exclude within 30s | Innings 1–3 | 8,676; +0.002258 [-0.027617, +0.032134] | 10,812; +0.012490 [-0.017001, +0.041980] | +0.010231 [-0.043265, +0.063728] | both positive |
+| Exclude within 30s | Innings 4–6 | 36,434; -0.002388 [-0.017347, +0.012571] | 48,125; +0.001711 [-0.015875, +0.019296] | +0.004099 [-0.026484, +0.034681] | classic FLB |
+| Exclude within 30s | Innings 7+ | 69,042; +0.003117 [-0.009734, +0.015967] | 92,022; -0.004934 [-0.020185, +0.010316] | -0.008051 [-0.034818, +0.018716] | reverse FLB |
+
+The four suppressed rows retain D1/D10 support of 11/5 for primary closing,
+5/2 for sensitivity closing, 245/20 for literal pregame, and 238/20 for the
+30-second-exclusion pregame sample. Thus innings 4–6 has classic point signs
+under both boundary definitions, but both joint intervals include zero. Early
+live trading is both-positive and late live trading has reverse signs. The
+full profiles supply no robust classic FLB pattern.
+
+The approved publication is the standalone
+`10_flb_report_v3/mlb_flb_report.html`: 104,878 bytes with SHA-256
+`1407f6d7f8229c625c7ee5b8a2f639652d1d5e0f3e61fb7883c126ed1e6ffaf4`.
+Its manifest records responsive targets of 320, 375, 768, and 1,440 pixels.
+Independent runtime QA at 1,024, 736, and 360 pixels found no page overflow;
+content and print review also approved its tables, charts, uncertainty whiskers,
+zero lines, suppression display, mobile wrapping, and methodological caveats.
+The retained `10_flb_report_v1` and `10_flb_report_v2` directories are
+immutable QA iterations superseded for presentation, not approved publications.
 
 ## Team workflow
 

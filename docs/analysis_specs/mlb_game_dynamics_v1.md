@@ -76,7 +76,7 @@ of innings 4 and 7, or final play; no observation is reassigned to another phase
 - Report each bin's equal-trade mean implied probability, win rate, mean
   `outcome - price`, standard error, trade count, descriptive dollar volume, and game
   count. Dollar volume is not an estimator weight. Retain the audit row but suppress its
-  estimate and label it exploratory when its trade count is below 50.
+  estimate with status `suppressed_n_lt_50` when its trade count is below 50.
 - The first estimator is the binned descriptive profile only. It does not estimate a
   calibration slope, regression, or relationship to a complexity proxy.
 - Each eligible trade receives equal weight in the single v1 phase estimator. There is no
@@ -114,6 +114,26 @@ reconciliation audit; close age is not a calibration-profile column.
 - Report normal standard errors and 95% intervals for nonsuppressed rows. This descriptive
   first pass does not emit hypothesis-test or multiplicity-adjustment columns.
 
+### Fixed FLB tail summary
+
+The full ten-bin calibration profile remains primary. A secondary ten-row summary reports
+only `D1 = [0, 0.1)`, `D10 = [0.9, 1]`, and
+`D10 mean(outcome - price) - D1 mean(outcome - price)` for the two closing definitions
+and for each of four phases under the literal and 30-second-exclusion samples. A classic
+point-sign pattern means only `D1 < 0` and `D10 > 0`; it is not a discovery claim.
+
+Suppress the entire tail assessment when either D1 or D10 has fewer than 50 observations.
+Retain the two support counts, game counts, and dollars, but emit no tail estimates,
+spread, or intervals for that row. For supported rows, compute spread uncertainty jointly
+from the two tails under the applicable official-date or CGM day x wallet x game cluster
+scheme, including D1/D10 covariance rather than summing marginal variances as if the tails
+were independent.
+
+Closing tails use official-home win probability and one equal-weight observation per
+game. Phase tails use the bought outcome's probability and the buyer-filtered eligible
+BUY observations. `A - C` remains a closing-filter attribution and is not CLV. The tail
+stage fits no slope or regression and reports no p-values or multiplicity adjustment.
+
 ### Deferred work
 
 No price-path variance, complexity proxy, heterogeneity regression, or other structural
@@ -130,7 +150,8 @@ primary and sensitivity calibration tables are inspected and validated.
 - Phase calibration is equal-trade/count-weighted only; dollars are descriptive.
 - Closing calibration gives every game equal weight.
 - Calibration uses the ten fixed-width bins above. Rows whose effective `n` is below 50
-  remain auditable but have their estimates suppressed and are labeled exploratory.
+  remain auditable but have their estimates suppressed with status
+  `suppressed_n_lt_50`; the analysis as a whole remains exploratory.
 
 ## Validation gates before estimating calibration
 
@@ -170,8 +191,46 @@ primary and sensitivity calibration tables are inspected and validated.
   close bins; this filter-attribution difference is not CLV
 - `estimator_summary.json` with input fingerprints, definitions, coverage,
   reconciliation counts, fixed output-row counts, and exploratory status
+- `09_flb_tail_v1/flb_tail_summary.parquet`: ten rows, with two closing rows and eight
+  boundary-by-phase rows; D1/D10 support, suppression state, descriptive point pattern,
+  tail estimates, and the jointly estimated D10-minus-D1 spread
+- `09_flb_tail_v1/flb_summary.json`: source fingerprints, frozen definitions, row counts,
+  and profile/support/serialization reconciliation gates
+- `10_flb_report_v3/mlb_flb_report.html` and `report_manifest.json`: a deterministic,
+  offline, standalone presentation that validates and formats Stages 7–9 without new
+  estimation
 
 The dual-close builder and descriptive estimator are implemented in code, passed
 independent cross-review, and completed an independently audited production run in the
 immutable `07_dual_closes_v1` and `08_calibration_v1` stage directories. The resulting
 tables remain exploratory under the fixed-bin and no-multiplicity-inference rules above.
+
+The immutable `09_flb_tail_v1` production stage also passed independent review. It has
+ten rows: six reported and four suppressed. Exact supported estimates are:
+
+| Boundary sample | Phase | D1 n; y - p [95% CI] | D10 n; y - p [95% CI] | D10 - D1 [95% CI] |
+| --- | --- | --- | --- | --- |
+| Literal | Innings 1–3 | 8,793; +0.001908 [-0.027616, +0.031433] | 10,971; +0.012973 [-0.016128, +0.042074] | +0.011065 [-0.041781, +0.063911] |
+| Literal | Innings 4–6 | 36,864; -0.002318 [-0.017178, +0.012542] | 48,760; +0.001861 [-0.015652, +0.019374] | +0.004179 [-0.026329, +0.034687] |
+| Literal | Innings 7+ | 71,537; +0.002395 [-0.010141, +0.014930] | 95,161; -0.003795 [-0.018522, +0.010932] | -0.006189 [-0.032146, +0.019767] |
+| Exclude within 30s | Innings 1–3 | 8,676; +0.002258 [-0.027617, +0.032134] | 10,812; +0.012490 [-0.017001, +0.041980] | +0.010231 [-0.043265, +0.063728] |
+| Exclude within 30s | Innings 4–6 | 36,434; -0.002388 [-0.017347, +0.012571] | 48,125; +0.001711 [-0.015875, +0.019296] | +0.004099 [-0.026484, +0.034681] |
+| Exclude within 30s | Innings 7+ | 69,042; +0.003117 [-0.009734, +0.015967] | 92,022; -0.004934 [-0.020185, +0.010316] | -0.008051 [-0.034818, +0.018716] |
+
+Primary closing, sensitivity closing, literal pregame, and 30-second-exclusion pregame
+are suppressed with D1/D10 support of 11/5, 5/2, 245/20, and 238/20, respectively.
+
+Innings 4–6 has classic D1-negative/D10-positive point signs under both boundary
+definitions, but both joint intervals include zero. Innings 1–3 is both-positive and
+innings 7+ has reverse signs under both definitions. Therefore this first pass finds no
+robust classic FLB pattern; the complete profile remains the primary interpretation.
+
+The approved standalone publication is `10_flb_report_v3/mlb_flb_report.html`, 104,878
+bytes with SHA-256
+`1407f6d7f8229c625c7ee5b8a2f639652d1d5e0f3e61fb7883c126ed1e6ffaf4`. Its manifest
+records deterministic second-render equality, no external resources, schema/fingerprint
+reconciliation, semantic tables and labelled SVGs, and responsive targets of 320, 375,
+768, and 1,440 pixels. Independent runtime QA found no page overflow at 1,024, 736, and
+360 pixels; content, mobile, and print QA also approved v3. The retained
+`10_flb_report_v1` and `10_flb_report_v2` directories are immutable QA iterations
+superseded for presentation and are not approved publications.
