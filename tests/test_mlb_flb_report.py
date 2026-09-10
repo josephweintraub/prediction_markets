@@ -233,7 +233,11 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
         )
         for decile in range(1, 11):
             n = 60
-            if definition == "sensitivity" and decile == 1:
+            if definition == "primary" and decile == 1:
+                n = 49
+            elif definition == "primary" and decile == 2:
+                n = 71
+            elif definition == "sensitivity" and decile == 1:
                 n = 49
             elif definition == "sensitivity" and decile == 2:
                 n = 61
@@ -304,12 +308,23 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
             total_dollars = 0.0
             for decile in range(1, 11):
                 n = (70 if sample == "literal" else 60) + decile
+                if phase == "pregame" and decile == 10:
+                    n = 20
                 games = n - 10
                 dollars = n * 100.0
                 total_rows += n
                 total_dollars += dollars
-                values = _estimate_values(
-                    (decile - 0.5) / 10, _calibration_for_decile(decile)
+                suppressed = n < 50
+                multiplier = 0.5 + phase_order * 0.1 + (
+                    0.05 if sample == "exclude_within_30s" else 0.0
+                )
+                values: tuple[Any, ...] = (
+                    (None,) * 6
+                    if suppressed
+                    else _estimate_values(
+                        (decile - 0.5) / 10,
+                        _calibration_for_decile(decile) * multiplier,
+                    )
                 )
                 trade_rows.append(
                     (
@@ -321,8 +336,8 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
                         n,
                         games,
                         dollars,
-                        False,
-                        "reported",
+                        suppressed,
+                        "suppressed_n_lt_50" if suppressed else "reported",
                         *values,
                     )
                 )
@@ -347,7 +362,7 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
         },
         "definitions": _stage08_definitions(),
         "counts": {
-            "phase_input": {"rows": 3020, "games": 599, "dollars": 302000.0},
+            "phase_input": {"rows": 2960, "games": 599, "dollars": 296000.0},
             "closing_coverage": {
                 "games": 600,
                 "primary_coverage": 600,
@@ -447,31 +462,44 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
         for phase, _, _ in PHASES:
             d1 = trade_by_key[(sample, phase, 1)]
             d10 = trade_by_key[(sample, phase, 10)]
-            d1_values = tail_estimates(d1, trade_index, "mean_price")
-            d10_values = tail_estimates(d10, trade_index, "mean_price")
-            spread = d10_values[2] - d1_values[2]
-            spread_se = 0.015
-            tail_rows.append(
-                (
-                    "trade_phase",
-                    None,
-                    sample,
-                    phase,
-                    d1[trade_index["trade_count"]],
-                    d1[trade_index["game_count"]],
-                    d1[trade_index["dollars"]],
-                    d10[trade_index["trade_count"]],
-                    d10[trade_index["game_count"]],
-                    d10[trade_index["dollars"]],
-                    False,
-                    "reported",
-                    "classic_flb_signs",
+            d1_n = d1[trade_index["trade_count"]]
+            d10_n = d10[trade_index["trade_count"]]
+            suppressed = d1_n < 50 or d10_n < 50
+            if suppressed:
+                estimate_fields = (None,) * 16
+                status = "suppressed_tail_n_lt_50"
+                pattern = "suppressed"
+            else:
+                d1_values = tail_estimates(d1, trade_index, "mean_price")
+                d10_values = tail_estimates(d10, trade_index, "mean_price")
+                spread = d10_values[2] - d1_values[2]
+                spread_se = 0.015
+                estimate_fields = (
                     *d1_values,
                     *d10_values,
                     spread,
                     spread_se,
                     spread - 1.96 * spread_se,
                     spread + 1.96 * spread_se,
+                )
+                status = "reported"
+                pattern = "classic_flb_signs"
+            tail_rows.append(
+                (
+                    "trade_phase",
+                    None,
+                    sample,
+                    phase,
+                    d1_n,
+                    d1[trade_index["game_count"]],
+                    d1[trade_index["dollars"]],
+                    d10_n,
+                    d10[trade_index["game_count"]],
+                    d10[trade_index["dollars"]],
+                    suppressed,
+                    status,
+                    pattern,
+                    *estimate_fields,
                 )
             )
     tail_path = stage09 / "flb_tail_summary.parquet"
@@ -499,8 +527,8 @@ def _create_bundle(root: Path) -> tuple[Path, Path, Path]:
             "tail_summary_rows": 10,
             "closing_tail_rows": 2,
             "trade_phase_tail_rows": 8,
-            "reported_tail_rows": 9,
-            "suppressed_tail_rows": 1,
+            "reported_tail_rows": 6,
+            "suppressed_tail_rows": 4,
         },
         "reconciliation": {key: True for key in STAGE09_RECONCILIATION_KEYS},
         "outputs": {
@@ -557,9 +585,30 @@ def test_render_is_accessible_standalone_and_byte_deterministic(tmp_path: Path) 
     assert "0.01 &lt; price &lt; 0.99" in lowered
     assert "exclude flagged outcome-token buyers" in lowered
     assert "this is a buyer-centered sample, not a bot-free or human-to-human series" in lowered
+    assert "each phase panel contains the complete d1–d10 profile for both timing samples" in lowered
+    assert lowered.count("adjacent d1/d10 tail contrasts</caption>") == 4
+    assert lowered.count('<th scope="row">literal boundaries</th>') == 4
+    assert lowered.count('<th scope="row">exclude within ±30s</th>') == 4
+    assert (
+        '<tr><th scope="row">literal boundaries</th>'
+        '<td>71 / 61 / $7,100.00</td><td>-0.014000</td>'
+        '<td>80 / 70 / $8,000.00</td><td>+0.014000</td>'
+        '<td>+0.028000 [-0.001400, +0.057400]</td>'
+        '<td>classic_flb_signs</td><td>reported</td></tr>'
+    ) in lowered
+    assert (
+        '<tr><th scope="row">exclude within ±30s</th>'
+        '<td>61 / 51 / $6,100.00</td><td>-0.015000</td>'
+        '<td>70 / 60 / $7,000.00</td><td>+0.015000</td>'
+        '<td>+0.030000 [+0.000600, +0.059400]</td>'
+        '<td>classic_flb_signs</td><td>reported</td></tr>'
+    ) in lowered
+    assert lowered.count(
+        "suppressed_tail_n_lt_50 because d10 n=20 (&lt;50)"
+    ) == 2
     assert "withheld" in lowered
     assert "suppressed_tail_n_lt_50" in lowered
-    assert lowered.count('data-status="reported"') == 99
+    assert lowered.count('data-status="reported"') == 96
     assert 'data-status="suppressed"' not in lowered
     assert first == second
     assert first["analysis_state"] == "exploratory_descriptive"
@@ -619,6 +668,46 @@ def test_renderer_rejects_suppressed_tail_estimate_leak(tmp_path: Path) -> None:
     output = tmp_path / "report"
 
     with pytest.raises(FlbReportError, match="leaks suppressed estimates"):
+        render_flb_report(stage07, stage08, stage09, output)
+
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("replacement", "message"),
+    (
+        ("literal", "unique grain"),
+        ("unexpected_sample", "expected grid is incomplete"),
+    ),
+)
+def test_renderer_rejects_duplicate_or_mismatched_phase_tail_key(
+    tmp_path: Path, replacement: str, message: str
+) -> None:
+    stage07, stage08, stage09 = _create_bundle(tmp_path)
+    path = stage09 / "flb_tail_summary.parquet"
+    con = duckdb.connect()
+    try:
+        escaped = str(path).replace("'", "''")
+        con.execute(f"CREATE TABLE tails AS SELECT * FROM read_parquet('{escaped}')")
+        con.execute(
+            "UPDATE tails SET boundary_sample=? "
+            "WHERE analysis_scope='trade_phase' "
+            "AND boundary_sample='exclude_within_30s' AND phase='innings_1_3'",
+            [replacement],
+        )
+        replacement_path = stage09 / "replacement.parquet"
+        escaped_replacement = str(replacement_path).replace("'", "''")
+        con.execute(
+            f"COPY (SELECT * FROM tails) TO '{escaped_replacement}' "
+            "(FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
+    finally:
+        con.close()
+    path.unlink()
+    replacement_path.rename(path)
+    output = tmp_path / "report"
+
+    with pytest.raises(FlbReportError, match=message):
         render_flb_report(stage07, stage08, stage09, output)
 
     assert not output.exists()

@@ -196,7 +196,7 @@ primary and sensitivity calibration tables are inspected and validated.
   tail estimates, and the jointly estimated D10-minus-D1 spread
 - `09_flb_tail_v1/flb_summary.json`: source fingerprints, frozen definitions, row counts,
   and profile/support/serialization reconciliation gates
-- `10_flb_report_v3/mlb_flb_report.html` and `report_manifest.json`: a deterministic,
+- `10_flb_report_v4/mlb_flb_report.html` and `report_manifest.json`: a deterministic,
   offline, standalone presentation that validates and formats Stages 7–9 without new
   estimation
 
@@ -225,12 +225,18 @@ definitions, but both joint intervals include zero. Innings 1–3 is both-positi
 innings 7+ has reverse signs under both definitions. Therefore this first pass finds no
 robust classic FLB pattern; the complete profile remains the primary interpretation.
 
-The approved standalone publication is `10_flb_report_v3/mlb_flb_report.html`, 104,878
+The approved standalone publication is `10_flb_report_v4/mlb_flb_report.html`, 108,898
 bytes with SHA-256
-`1407f6d7f8229c625c7ee5b8a2f639652d1d5e0f3e61fb7883c126ed1e6ffaf4`. Its manifest
-records deterministic second-render equality, no external resources, schema/fingerprint
-reconciliation, semantic tables and labelled SVGs, and responsive targets of 320, 375,
-768, and 1,440 pixels. Independent runtime QA found no page overflow at 1,024, 736, and
-360 pixels; content, mobile, and print QA also approved v3. The retained
-`10_flb_report_v1` and `10_flb_report_v2` directories are immutable QA iterations
-superseded for presentation and are not approved publications.
+`3dbdadd1f1d455f33f11f702fc45c7d954b3deb48adf0a623d7445f39be16634`. Each of its
+four phase panels contains the complete 20-row D1–D10 profile—ten literal and ten
+inclusive-30-second-exclusion rows—followed by the corresponding two-row FLB tail
+contrast. Both pregame tail rows explicitly report
+`suppressed_tail_n_lt_50 because D10 n=20 (<50)`.
+
+The v4 manifest records deterministic second-render equality, no external resources,
+schema/fingerprint reconciliation, semantic tables and labelled SVGs, and responsive
+targets of 320, 375, 768, and 1,440 pixels. Independent content, mobile, and print QA
+also approved v4 without a numerical or chart regression. The retained
+`10_flb_report_v1`, `10_flb_report_v2`, and `10_flb_report_v3` directories are
+immutable QA/report iterations superseded for presentation and are not the current
+approved publication.

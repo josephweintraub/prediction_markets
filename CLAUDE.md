@@ -140,6 +140,11 @@ Local sync: `/Users/josephweintraub/Library/CloudStorage/Dropbox/Polymarket Data
   `scripts/`; immutable generated runs → `/mnt/data/runs/`; finished shared deliverables
   → Dropbox; superseded source and documents → indexed archives.
 - **Findings reports.** Delivered as self-contained HTML opened in the browser. Reproducibility rule: a finalized report's headline numbers come from a committed script's summary artifact (parquet/JSON), and the report names that script + artifact near the top — no hand-transcribed ad-hoc query results. See `docs/methods_reference.md` ("Reporting reproducibility").
+- **Open finished HTML in Codex.** Use the Codex app's native open-in-app mechanism for
+  completed HTML writeups. Never launch them through an OS/default-browser command such
+  as `open`, `xdg-open`, `start`, `osascript`, or Python's `webbrowser`. If native Codex
+  opening is unavailable, provide the absolute report path instead of opening an external
+  browser.
 
 ## Patterns to avoid
 

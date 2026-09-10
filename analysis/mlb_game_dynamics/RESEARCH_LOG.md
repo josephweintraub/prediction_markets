@@ -650,3 +650,29 @@ dependencies or overclaim.
 The retained `10_flb_report_v1` and `10_flb_report_v2` directories are superseded QA
 renders retained as immutable QA iterations, not approved publications; they were not
 deleted or treated as research results.
+
+## 23. Phase-local FLB presentation approved
+
+The v3 report remained numerically correct, but its phase profiles and D10-minus-D1
+contrasts were separated across report sections. A presentation-only revision retained
+the full profile as primary and placed each phase's tail contrast directly beside it.
+No estimator, schema, input, chart, or headline value changed.
+
+The current approved immutable report is
+`10_flb_report_v4/mlb_flb_report.html`, exactly 108,898 bytes with SHA-256
+`3dbdadd1f1d455f33f11f702fc45c7d954b3deb48adf0a623d7445f39be16634`.
+All four phase panels—pregame, innings 1–3, innings 4–6, and innings 7+—now contain
+their complete 20-row D1–D10 table, comprising ten literal and ten
+inclusive-30-second-exclusion rows, followed by an adjacent two-row FLB tail table.
+The global tail overview remains available.
+
+Both pregame tail rows explicitly state
+`suppressed_tail_n_lt_50 because D10 n=20 (<50)`; the support remains visible while
+the tail estimates and joint interval remain withheld under the frozen rule. The other
+six phase/timing rows reproduce the approved Stage 9 point estimates and joint
+intervals. Independent review found no regression in the pre-existing tables or five
+SVG charts, and the output manifest matches the file.
+
+The earlier `10_flb_report_v1`, `10_flb_report_v2`, and `10_flb_report_v3`
+directories remain immutable QA/report iterations. They are preserved for audit history
+but are superseded for presentation by v4.

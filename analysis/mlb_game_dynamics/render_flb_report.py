@@ -1042,6 +1042,65 @@ def _phase_table(phase_label: str, rows: list[dict[str, Any]]) -> str:
     )
 
 
+def _phase_tail_table(
+    phase_label: str, phase: str, rows: list[dict[str, Any]]
+) -> str:
+    selected = sorted(
+        (
+            row
+            for row in rows
+            if row["analysis_scope"] == "trade_phase" and row["phase"] == phase
+        ),
+        key=lambda row: BOUNDARY_SAMPLES.index(row["boundary_sample"]),
+    )
+
+    def status(row: dict[str, Any]) -> str:
+        if not row["suppressed"]:
+            return row["status"]
+        thin_tails = []
+        if row["d1_n"] < MIN_CELL_N:
+            thin_tails.append(f"D1 n={row['d1_n']} (<{MIN_CELL_N})")
+        if row["d10_n"] < MIN_CELL_N:
+            thin_tails.append(f"D10 n={row['d10_n']} (<{MIN_CELL_N})")
+        return f"{row['status']} because {' and '.join(thin_tails)}"
+
+    sample_labels = {
+        "literal": "Literal boundaries",
+        "exclude_within_30s": "Exclude within ±30s",
+    }
+    return _table(
+        f"{phase_label}: adjacent D1/D10 tail contrasts",
+        (
+            "Timing sample",
+            "D1 n / games / dollars",
+            "D1 y − p",
+            "D10 n / games / dollars",
+            "D10 y − p",
+            "D10 − D1 / joint nominal 95% interval",
+            "Point signs",
+            "Status",
+        ),
+        (
+            (
+                sample_labels[row["boundary_sample"]],
+                f"{_fmt_count(row['d1_n'])} / {_fmt_count(row['d1_games'])} / {_fmt_dollars(row['d1_dollars'])}",
+                _fmt_number(row["d1_mean_calibration"], signed=True),
+                f"{_fmt_count(row['d10_n'])} / {_fmt_count(row['d10_games'])} / {_fmt_dollars(row['d10_dollars'])}",
+                _fmt_number(row["d10_mean_calibration"], signed=True),
+                (
+                    f"{_fmt_number(row['spread_d10_minus_d1'], signed=True)} "
+                    f"{_fmt_ci(row['spread_ci95_low'], row['spread_ci95_high'])}"
+                    if not row["suppressed"]
+                    else "withheld"
+                ),
+                row["point_pattern"],
+                status(row),
+            )
+            for row in selected
+        ),
+    )
+
+
 def _closing_table(rows: list[dict[str, Any]], *, overall: bool) -> str:
     chosen = [row for row in rows if (row["profile_scope"] == "overall") is overall]
     chosen.sort(
@@ -1268,7 +1327,8 @@ def _build_html(bundle: dict[str, Any]) -> str:
             )
         phase_sections.append(
             f'<article class="phase-card"><h3>{_e(label)}</h3>'
-            f"{phase_chart}{_phase_table(label, selected)}</article>"
+            f"{phase_chart}{_phase_table(label, selected)}"
+            f"{_phase_tail_table(label, phase, tails)}</article>"
         )
     provenance_payload = {
         "report_method": "mlb_flb_self_contained_html_v1",
@@ -1336,6 +1396,7 @@ code,pre{{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}} code{{displa
 
 <section id="phase"><h2>3. Calibration by game phase</h2>
 <p>Literal phases use official observed first-play, top-fourth, top-seventh, and final-play boundaries. The fixed sensitivity removes, without reassigning, trades within 30 seconds inclusive of any boundary. Phase observations require <code>0.01 &lt; price &lt; 0.99</code> and exclude flagged outcome-token buyers; this is a buyer-centered sample, not a bot-free or human-to-human series. Each BUY fill has equal estimator weight; dollars are descriptive.</p>
+<p>Each phase panel contains the complete D1–D10 profile for both timing samples. Its adjacent D10 − D1 tail contrast is reported only when both D1 and D10 have <em>n</em> ≥ {MIN_CELL_N}; thin-tail support and the suppression reason remain visible.</p>
 <div class="chart-grid">{''.join(phase_sections)}</div>
 </section>
 

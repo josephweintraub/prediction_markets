@@ -277,7 +277,7 @@ python analysis/mlb_game_dynamics/render_flb_report.py \
   --stage07-dir "$MLB_RUN_ROOT/07_dual_closes_v1" \
   --stage08-dir "$MLB_RUN_ROOT/08_calibration_v1" \
   --stage09-dir "$MLB_RUN_ROOT/09_flb_tail_v1" \
-  --output-dir "$MLB_RUN_ROOT/10_flb_report_v3"
+  --output-dir "$MLB_RUN_ROOT/10_flb_report_v4"
 ```
 
 The renderer validates and fingerprints the published Stage 7–9 artifacts and
@@ -322,7 +322,7 @@ rename.
 ├── 09_flb_tail_v1/
 │   ├── flb_tail_summary.parquet
 │   └── flb_summary.json
-└── 10_flb_report_v3/
+└── 10_flb_report_v4/
     ├── mlb_flb_report.html
     └── report_manifest.json
 ```
@@ -475,14 +475,20 @@ live trading is both-positive and late live trading has reverse signs. The
 full profiles supply no robust classic FLB pattern.
 
 The approved publication is the standalone
-`10_flb_report_v3/mlb_flb_report.html`: 104,878 bytes with SHA-256
-`1407f6d7f8229c625c7ee5b8a2f639652d1d5e0f3e61fb7883c126ed1e6ffaf4`.
-Its manifest records responsive targets of 320, 375, 768, and 1,440 pixels.
+`10_flb_report_v4/mlb_flb_report.html`: 108,898 bytes with SHA-256
+`3dbdadd1f1d455f33f11f702fc45c7d954b3deb48adf0a623d7445f39be16634`.
+Each of its four phase panels contains the complete 20-row D1–D10 profile—ten
+literal and ten inclusive-30-second-exclusion rows—with an adjacent two-row
+FLB tail contrast. Both pregame contrasts explicitly report
+`suppressed_tail_n_lt_50 because D10 n=20 (<50)`.
+
+The manifest records responsive targets of 320, 375, 768, and 1,440 pixels.
 Independent runtime QA at 1,024, 736, and 360 pixels found no page overflow;
 content and print review also approved its tables, charts, uncertainty whiskers,
 zero lines, suppression display, mobile wrapping, and methodological caveats.
-The retained `10_flb_report_v1` and `10_flb_report_v2` directories are
-immutable QA iterations superseded for presentation, not approved publications.
+The retained `10_flb_report_v1`, `10_flb_report_v2`, and
+`10_flb_report_v3` directories are immutable QA/report iterations superseded
+for presentation, not the current approved publication.
 
 ## Team workflow
 
