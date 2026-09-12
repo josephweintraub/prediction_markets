@@ -20,7 +20,7 @@ UNIVERSE_TOKENS=/mnt/data/embedding_difficulty/universe_tokens.parquet
 TOKEN_MAP=/mnt/data/pipeline_data/token_map.parquet
 RAW_TRADES=/mnt/data/pipeline_data/resolved_trades.parquet
 EXACT_CACHE=/mnt/data/pipeline_data/block_timestamps.parquet
-WALLET_FLAGS=/mnt/data/learnability/cache/wallet_flags.parquet
+WALLET_FLAGS=/mnt/data/pipeline_data/wallet_flags.parquet
 PROVIDER_CACHE=/mnt/data/research_cache/replace-with-reviewed-nba-provider-cache
 PHASE_CONTRACT=configs/game_dynamics/nba_phase_contract_v1.json
 ```
