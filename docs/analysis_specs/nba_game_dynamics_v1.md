@@ -114,7 +114,14 @@ The NBA adapter freezes and tests the official historical-schedule and
 LiveData providers, exact team-label map, event-date semantics, canonical
 winner rule, opening-tip and terminal representations, overtime completeness,
 provider-cache fingerprints, and irregular-game exclusions before validated
-publication. Its mandatory Stage-03 handoff emits provenance schema v2 only
+publication. For each candidate, Stage 03 requires both canonical token-map
+rows to retain the exact `condition_id` and question. Their `event_slug` values
+must either both equal the exact candidate slug or both be the exact empty
+string used by the historical token map for a missing slug; null, whitespace,
+mixed, inconsistent, and other nonempty values fail closed. The immutable
+Stage-03 manifest fingerprints that token-map input, preserving the provenance
+of this explicit missing-field convention. Its mandatory Stage-03 handoff
+emits provenance schema v2 only
 after reverifying the native Stage-02/03 manifests and summaries, the provider
 provenance, and the fingerprints of every cached provider resource recorded in
 `native_lineage.source_evidence`.

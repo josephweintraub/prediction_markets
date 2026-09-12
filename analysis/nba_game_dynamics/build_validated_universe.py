@@ -726,11 +726,16 @@ def _validate_tokens(
     for row in token_rows:
         if _nonnull(row["condition_id"]) != market_id:
             raise ValidatedUniverseBuildError(f"NBA token condition_id mismatch: {market_id}")
-        if (
-            _nonnull(row["event_slug"]) != candidate["event_slug"]
-            or _nonnull(row["question"]) != candidate["question"]
-        ):
+        if _nonnull(row["question"]) != candidate["question"]:
             raise ValidatedUniverseBuildError(f"NBA token-map identity mismatch: {market_id}")
+    token_slugs = [_nonnull(row["event_slug"]) for row in token_rows]
+    if not (
+        token_slugs == [candidate["event_slug"], candidate["event_slug"]]
+        or token_slugs == ["", ""]
+    ):
+        raise ValidatedUniverseBuildError(
+            f"NBA token-map event_slug convention mismatch: {market_id}"
+        )
     if not match.is_matched or game is None:
         return False, "upstream_not_exact_final_match", {}
     token_by_team: dict[int, str] = {}

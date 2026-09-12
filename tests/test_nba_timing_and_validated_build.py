@@ -151,7 +151,13 @@ def _bound_contract(
     return contract
 
 
-def _tokens(tmp_path: Path) -> tuple[Path, Path]:
+def _tokens(
+    tmp_path: Path,
+    event_slugs: tuple[str | None, str | None] = (
+        "nba-nyk-por-2025-03-12",
+        "nba-nyk-por-2025-03-12",
+    ),
+) -> tuple[Path, Path]:
     universe_tokens = tmp_path / "tokens.parquet"
     token_map = tmp_path / "token_map.parquet"
     _write(universe_tokens, [
@@ -160,9 +166,9 @@ def _tokens(tmp_path: Path) -> tuple[Path, Path]:
     ])
     _write(token_map, [
         {"token_id": "away-token", "condition_id": "market-1", "outcome": "Knicks",
-         "event_slug": "nba-nyk-por-2025-03-12", "question": "Knicks vs. Trail Blazers"},
+         "event_slug": event_slugs[0], "question": "Knicks vs. Trail Blazers"},
         {"token_id": "home-token", "condition_id": "market-1", "outcome": "Trail Blazers",
-         "event_slug": "nba-nyk-por-2025-03-12", "question": "Knicks vs. Trail Blazers"},
+         "event_slug": event_slugs[1], "question": "Knicks vs. Trail Blazers"},
     ])
     return universe_tokens, token_map
 
@@ -242,6 +248,66 @@ def test_timing_then_validated_universe_full_offline_path(tmp_path: Path) -> Non
         load_phase_contract(DEFAULT_PHASE_CONTRACT), boundaries,
         eligible["period_2_start_utc"].to_pydatetime(),
     ) == "quarter_2"
+
+
+@pytest.mark.parametrize(
+    "event_slugs",
+    (
+        ("nba-nyk-por-2025-03-12", "nba-nyk-por-2025-03-12"),
+        ("", ""),
+    ),
+    ids=("exact-candidate-slug", "explicit-empty-pair"),
+)
+def test_token_map_accepts_only_supported_slug_pairs(
+    tmp_path: Path, event_slugs: tuple[str | None, str | None]
+) -> None:
+    candidates = tmp_path / "candidates.parquet"
+    _candidate(candidates)
+    cache = tmp_path / "cache"
+    client = FakeClient(cache)
+    timing = tmp_path / "timing"
+    build_game_timing_audit(
+        candidates, cache, timing, client=client,
+        phase_contract_path=_bound_contract(tmp_path, candidates, cache),
+    )
+    tokens, token_map = _tokens(tmp_path, event_slugs)
+    summary = build_validated_universe(
+        candidates, timing, tokens, token_map, tmp_path / "validated"
+    )
+
+    assert summary["counts"]["eligible_moneylines"] == 1
+
+
+@pytest.mark.parametrize(
+    "event_slugs",
+    (
+        ("", "nba-nyk-por-2025-03-12"),
+        (" ", " "),
+        (None, None),
+        ("nba-bos-lal-2025-03-12", "nba-bos-lal-2025-03-12"),
+        ("nba-nyk-por-2025-03-12", "nba-bos-lal-2025-03-12"),
+    ),
+    ids=("mixed-empty-exact", "whitespace", "null", "wrong-slug", "inconsistent-pair"),
+)
+def test_token_map_rejects_unsupported_slug_pairs(
+    tmp_path: Path, event_slugs: tuple[str | None, str | None]
+) -> None:
+    candidates = tmp_path / "candidates.parquet"
+    _candidate(candidates)
+    cache = tmp_path / "cache"
+    client = FakeClient(cache)
+    timing = tmp_path / "timing"
+    build_game_timing_audit(
+        candidates, cache, timing, client=client,
+        phase_contract_path=_bound_contract(tmp_path, candidates, cache),
+    )
+    tokens, token_map = _tokens(tmp_path, event_slugs)
+
+    with pytest.raises(ValueError, match="event_slug convention mismatch"):
+        build_validated_universe(
+            candidates, timing, tokens, token_map, tmp_path / "validated"
+        )
+    assert not (tmp_path / "validated").exists()
 
 
 def test_timing_failure_is_retained_and_no_timing_row_is_written(tmp_path: Path) -> None:
