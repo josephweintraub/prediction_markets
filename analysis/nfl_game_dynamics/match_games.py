@@ -143,6 +143,8 @@ def _match_one(candidate: Mapping[str, Any], schedules: tuple[ScheduleGame, ...]
         return GameMatchAudit(**common, exclusion_reason="multiple_schedule_matches")
     if not exact[0].is_completed:
         return GameMatchAudit(**common, exclusion_reason="nonfinal_game")
+    if exact[0].away_final_score == exact[0].home_final_score:
+        return GameMatchAudit(**common, exclusion_reason="tied_final_game")
     common["matched_game_id"] = exact[0].game_id
     return GameMatchAudit(**common, exclusion_reason=None)
 

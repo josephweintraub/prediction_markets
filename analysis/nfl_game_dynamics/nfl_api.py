@@ -234,13 +234,20 @@ def _validate_final_result(
     home_winner: Any,
     *,
     source: str,
+    allow_tie: bool = False,
 ) -> tuple[int, int, bool, bool]:
     away = _strict_int(away_score, f"{source} away score")
     home = _strict_int(home_score, f"{source} home score")
-    if away < 0 or home < 0 or away == home:
-        raise ValueError(f"{source} final scores must be nonnegative and non-tied")
+    if away < 0 or home < 0:
+        raise ValueError(f"{source} final scores must be nonnegative")
     if not isinstance(away_winner, bool) or not isinstance(home_winner, bool):
         raise ValueError(f"{source} requires two boolean winner flags")
+    if away == home:
+        if not allow_tie:
+            raise ValueError(f"{source} tied final is unsupported for a binary game winner")
+        if away_winner or home_winner:
+            raise ValueError(f"{source} tied final requires both winner flags false")
+        return away, home, away_winner, home_winner
     if away_winner is home_winner:
         raise ValueError(f"{source} requires exactly one true winner flag")
     score_away_won = away > home
@@ -320,7 +327,8 @@ def parse_scoreboard(payload: Mapping[str, Any]) -> tuple[ScheduleGame, ...]:
                 raise ValueError(f"Completed scoreboard game {game_id} lacks exact Final status")
             expected_final_period = _final_period(detail)
             final_result = _validate_final_result(
-                away[3], home[3], away[4], home[4], source="Scoreboard"
+                away[3], home[3], away[4], home[4], source="Scoreboard",
+                allow_tie=True,
             )
         else:
             final_result = (None, None, None, None)

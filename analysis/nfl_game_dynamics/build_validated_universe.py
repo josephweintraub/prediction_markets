@@ -124,7 +124,11 @@ def _validate_schedule_game(game: ScheduleGame) -> None:
     if any(not isinstance(value, int) or value < 0 for value in values):
         raise ValidatedUniverseBuildError(f"Invalid final schedule scores: {game.game_id}")
     if game.away_final_score == game.home_final_score:
-        raise ValidatedUniverseBuildError(f"Tied final schedule score: {game.game_id}")
+        if (game.away_is_winner, game.home_is_winner) != (False, False):
+            raise ValidatedUniverseBuildError(
+                f"Tied final schedule winner flags are invalid: {game.game_id}"
+            )
+        return
     if (game.away_is_winner, game.home_is_winner) not in {(True, False), (False, True)}:
         raise ValidatedUniverseBuildError(f"Invalid final schedule winner flags: {game.game_id}")
     if game.away_is_winner is not (game.away_final_score > game.home_final_score):

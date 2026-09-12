@@ -29,6 +29,7 @@ from analysis.nfl_game_dynamics.build_market_universe import (
 )
 from analysis.nfl_game_dynamics.build_validated_universe import (
     ValidatedUniverseBuildError,
+    _validate_schedule_game,
     build_validated_universe,
     verify_validated_run,
 )
@@ -62,6 +63,15 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 def _payload(name: str) -> dict:
     return json.loads((FIXTURES / name).read_text())
+
+
+def _tied_scoreboard() -> dict:
+    scoreboard = _payload("nfl_scoreboard.json")
+    competitors = scoreboard["events"][0]["competitions"][0]["competitors"]
+    for competitor in competitors:
+        competitor["score"] = "20"
+        competitor["winner"] = False
+    return scoreboard
 
 
 def _market(market_id: str, slug: str, question: str, *, tokens: int = 2) -> dict:
@@ -150,7 +160,7 @@ class NflTimingTests(unittest.TestCase):
 
     def test_summary_fetch_spine_contains_only_exact_candidate_matches(self) -> None:
         scoreboard = _payload("nfl_scoreboard.json")
-        unrelated = copy.deepcopy(scoreboard["events"][0])
+        unrelated = _tied_scoreboard()["events"][0]
         unrelated["id"] = "9999"
         unrelated["competitions"][0]["id"] = "9999"
         unrelated["competitions"][0]["competitors"][0]["team"] = {
@@ -164,7 +174,45 @@ class NflTimingTests(unittest.TestCase):
             "market_id": "m1", "date": "2025-01-05",
             "team_1_slug": "la", "team_2_slug": "lv",
         }
+        parsed = {game.game_id: game for game in parse_scoreboard(scoreboard)}
+        self.assertEqual(parsed["9999"].away_final_score, parsed["9999"].home_final_score)
+        self.assertEqual(
+            (parsed["9999"].away_is_winner, parsed["9999"].home_is_winner),
+            (False, False),
+        )
+        _validate_schedule_game(parsed["9999"])
         self.assertEqual(matched_summary_game_ids([candidate], [scoreboard]), ("9001",))
+
+    def test_matched_tied_final_fails_closed_for_binary_moneyline(self) -> None:
+        scoreboard = _tied_scoreboard()
+        game = parse_scoreboard(scoreboard)[0]
+        candidate = {
+            "market_id": "m1", "date": "2025-01-05",
+            "team_1_slug": "la", "team_2_slug": "lv",
+        }
+        match = match_market_candidates([candidate], [game])[0]
+        self.assertFalse(match.is_matched)
+        self.assertEqual(match.exclusion_reason, "tied_final_game")
+        self.assertEqual(matched_summary_game_ids([candidate], [scoreboard]), ())
+        tokens = [
+            {"market_id": "m1", "token_id": "away", "outcome": "Raiders", "winning_outcome": "Rams"},
+            {"market_id": "m1", "token_id": "home", "outcome": "Rams", "winning_outcome": "Rams"},
+        ]
+        validation = validate_moneylines([candidate], [match], tokens)
+        self.assertEqual(validation.audits[0].exclusion_reason, "tied_final_game")
+        self.assertEqual(validation.eligible_markets, ())
+
+        summary = _payload("nfl_summary.json")
+        for competitor in summary["header"]["competitions"][0]["competitors"]:
+            competitor["score"] = "20"
+            competitor["winner"] = False
+        with self.assertRaisesRegex(ValueError, "tied final is unsupported"):
+            parse_game_timing(summary, "9001")
+
+        negative = _tied_scoreboard()
+        negative["events"][0]["competitions"][0]["competitors"][0]["score"] = -1
+        with self.assertRaisesRegex(ValueError, "scores must be nonnegative"):
+            parse_scoreboard(negative)
 
     def test_competitive_wallclocks_numeric_sequence_admin_exclusion_and_overtime(self) -> None:
         timing = parse_game_timing(_payload("nfl_summary.json"), "9001")
