@@ -1,0 +1,33 @@
+{
+  "header": {
+    "id": "9001",
+    "competitions": [
+      {
+        "id": "9001",
+        "status": {"type": {"id": "3", "name": "STATUS_FINAL", "state": "post", "description": "Final", "detail": "Final/OT", "completed": true}},
+        "competitors": [
+          {"homeAway": "home", "score": "26", "winner": true, "team": {"id": "14", "abbreviation": "LAR", "displayName": "Los Angeles Rams"}},
+          {"homeAway": "away", "score": "20", "winner": false, "team": {"id": "13", "abbreviation": "LV", "displayName": "Las Vegas Raiders"}}
+        ]
+      }
+    ]
+  },
+  "drives": {
+    "current": null,
+    "previous": [
+      {
+        "plays": [
+          {"id": "p300", "sequenceNumber": "300", "wallclock": "2025-01-06T04:00:00Z", "period": {"number": 4}, "clock": {"displayValue": "15:00"}, "type": {"id": "53", "text": "Kickoff"}},
+          {"id": "admin-q1", "sequenceNumber": "20", "wallclock": "2025-01-05T23:00:00Z", "period": {"number": 1}, "type": {"id": "74", "text": "Official Timeout"}},
+          {"id": "p10", "sequenceNumber": "10", "wallclock": "2025-01-06T01:20:00Z", "period": {"number": 1}, "clock": {"displayValue": "15:00"}, "type": {"id": "53", "text": "Kickoff"}},
+          {"id": "p200", "sequenceNumber": "200", "wallclock": "2025-01-06T03:00:00Z", "period": {"number": 3}, "clock": {"displayValue": "15:00"}, "type": {"id": "67", "text": "Passing Touchdown"}, "pointAfterAttempt": {"id": 16, "text": "Two Point Rush", "value": 2}},
+          {"id": "p30", "sequenceNumber": "30", "wallclock": "2025-01-06T01:25:00Z", "period": {"number": 1}, "clock": {"displayValue": "14:40"}, "type": {"id": "68", "text": "Rushing Touchdown"}, "pointAfterAttempt": {"id": 61, "text": "Extra Point Good", "value": 1}},
+          {"id": "admin-end", "sequenceNumber": "350", "wallclock": "2025-01-05T23:00:00Z", "period": {"number": 4}, "type": {"id": "79", "text": "End of Regulation"}},
+          {"id": "p400", "sequenceNumber": "400", "wallclock": "2025-01-06T05:00:00Z", "period": {"number": 5}, "clock": {"displayValue": "08:00"}, "type": {"id": "24", "text": "Pass Reception"}},
+          {"id": "admin-game", "sequenceNumber": "450", "wallclock": "2025-01-05T23:00:00Z", "period": {"number": 5}, "type": {"id": "66", "text": "End of Game"}},
+          {"id": "p100", "sequenceNumber": "100", "wallclock": "2025-01-06T02:00:00Z", "period": {"number": 2}, "clock": {"displayValue": "15:00"}, "type": {"id": "53", "text": "Kickoff"}}
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "meta": {"version": 1, "code": 200},
+  "game": {
+    "gameId": "0022400953",
+    "actions": [
+      {"actionNumber": 2, "orderNumber": 20000, "clock": "PT12M00.00S", "timeActual": "2025-03-13T02:13:12.7Z", "period": 1, "actionType": "period", "subType": "start"},
+      {"actionNumber": 3, "orderNumber": 30000, "clock": "PT12M00.00S", "timeActual": "2025-03-13T02:13:27.7Z", "period": 1, "actionType": "jumpball", "subType": ""},
+      {"actionNumber": 163, "orderNumber": 1620000, "clock": "PT00M00.00S", "timeActual": "2025-03-13T02:37:53.2Z", "period": 1, "actionType": "period", "subType": "end"},
+      {"actionNumber": 170, "orderNumber": 1690000, "clock": "PT12M00.00S", "timeActual": "2025-03-13T02:40:32.8Z", "period": 2, "actionType": "period", "subType": "start"},
+      {"actionNumber": 324, "orderNumber": 3180000, "clock": "PT00M00.00S", "timeActual": "2025-03-13T03:08:22.0Z", "period": 2, "actionType": "period", "subType": "end"},
+      {"actionNumber": 330, "orderNumber": 3210000, "clock": "PT12M00.00S", "timeActual": "2025-03-13T03:23:37.8Z", "period": 3, "actionType": "period", "subType": "start"},
+      {"actionNumber": 482, "orderNumber": 4710000, "clock": "PT00M00.00S", "timeActual": "2025-03-13T03:52:50.3Z", "period": 3, "actionType": "period", "subType": "end"},
+      {"actionNumber": 493, "orderNumber": 4820000, "clock": "PT12M00.00S", "timeActual": "2025-03-13T03:55:30.2Z", "period": 4, "actionType": "period", "subType": "start"},
+      {"actionNumber": 672, "orderNumber": 6540000, "clock": "PT00M00.00S", "timeActual": "2025-03-13T04:36:38.2Z", "period": 4, "actionType": "period", "subType": "end"},
+      {"actionNumber": 673, "orderNumber": 6550000, "clock": "PT05M00.00S", "timeActual": "2025-03-13T04:39:29.9Z", "period": 5, "actionType": "period", "subType": "start"},
+      {"actionNumber": 760, "orderNumber": 7410000, "clock": "PT00M00.00S", "timeActual": "2025-03-13T04:54:47.3Z", "period": 5, "actionType": "period", "subType": "end"}
+    ]
+  }
+}

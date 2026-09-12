@@ -1,0 +1,33 @@
+{
+  "lscd": [
+    {
+      "mscd": {
+        "mon": "March",
+        "g": [
+          {
+            "gid": "0022400953",
+            "gdte": "2025-03-12",
+            "gdtutc": "2025-03-13",
+            "utctm": "02:00",
+            "stt": "Final/OT",
+            "ppdst": "I",
+            "ppd": "",
+            "v": {"tid": 1610612752, "tc": "New York", "tn": "Knicks", "ta": "NYK", "s": "114"},
+            "h": {"tid": 1610612757, "tc": "Portland", "tn": "Trail Blazers", "ta": "POR", "s": "113"}
+          },
+          {
+            "gid": "0022400954",
+            "gdte": "2025-03-12",
+            "gdtutc": "2025-03-13",
+            "utctm": "02:30",
+            "stt": "7:00 pm ET",
+            "ppdst": "A",
+            "ppd": "Postponed",
+            "v": {"tid": 1610612738, "tc": "Boston", "tn": "Celtics", "ta": "BOS", "s": ""},
+            "h": {"tid": 1610612747, "tc": "Los Angeles", "tn": "Lakers", "ta": "LAL", "s": ""}
+          }
+        ]
+      }
+    }
+  ]
+}

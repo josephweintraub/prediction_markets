@@ -1,0 +1,90 @@
+{
+  "actual_end_event": "timestamp of the last competitive play, with subsequent End Game evidence",
+  "actual_start_event": "start of the opening kickoff play",
+  "boundary_samples": [
+    {
+      "exclude_within_seconds": null,
+      "inclusive": null,
+      "key": "literal",
+      "label": "Literal boundaries"
+    },
+    {
+      "exclude_within_seconds": 30,
+      "inclusive": true,
+      "key": "exclude_within_30s",
+      "label": "Exclude within ±30s"
+    }
+  ],
+  "contract_version": 1,
+  "display_name": "NFL",
+  "nonstandard_game_policy": "retain_in_audit_exclude_from_core",
+  "overtime_policy": "fold_into_final_phase",
+  "period_boundary_event": "start of the first complete official play in the period",
+  "phases": [
+    {
+      "analysis_eligible": true,
+      "end_boundary": "actual_start_utc",
+      "end_inclusive": false,
+      "key": "pregame",
+      "label": "Pregame",
+      "order": 1,
+      "start_boundary": null,
+      "start_inclusive": null
+    },
+    {
+      "analysis_eligible": true,
+      "end_boundary": "period_2_start_utc",
+      "end_inclusive": false,
+      "key": "quarter_1",
+      "label": "Quarter 1",
+      "order": 2,
+      "start_boundary": "actual_start_utc",
+      "start_inclusive": true
+    },
+    {
+      "analysis_eligible": true,
+      "end_boundary": "period_3_start_utc",
+      "end_inclusive": false,
+      "key": "quarter_2",
+      "label": "Quarter 2",
+      "order": 3,
+      "start_boundary": "period_2_start_utc",
+      "start_inclusive": true
+    },
+    {
+      "analysis_eligible": true,
+      "end_boundary": "period_4_start_utc",
+      "end_inclusive": false,
+      "key": "quarter_3",
+      "label": "Quarter 3",
+      "order": 4,
+      "start_boundary": "period_3_start_utc",
+      "start_inclusive": true
+    },
+    {
+      "analysis_eligible": true,
+      "end_boundary": "actual_end_utc",
+      "end_inclusive": true,
+      "key": "quarter_4_plus",
+      "label": "Quarter 4 and overtime",
+      "order": 5,
+      "start_boundary": "period_4_start_utc",
+      "start_inclusive": true
+    },
+    {
+      "analysis_eligible": false,
+      "end_boundary": null,
+      "end_inclusive": null,
+      "key": "post_final",
+      "label": "After final play",
+      "order": 6,
+      "start_boundary": "actual_end_utc",
+      "start_inclusive": false
+    }
+  ],
+  "regulation_period_minutes": 15,
+  "regulation_periods": 4,
+  "schema_version": 1,
+  "sport": "nfl",
+  "tie_policy": "exclude_without_unique_winner"
+}

@@ -1,0 +1,31 @@
+{
+  "events": [
+    {
+      "id": "9001",
+      "date": "2025-01-06T01:15Z",
+      "season": {"year": 2024, "type": 2},
+      "competitions": [
+        {
+          "id": "9001",
+          "date": "2025-01-06T01:15Z",
+          "neutralSite": false,
+          "status": {"type": {"id": "3", "name": "STATUS_FINAL", "state": "post", "description": "Final", "detail": "Final/OT", "completed": true}},
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "26",
+              "winner": true,
+              "team": {"id": "14", "abbreviation": "LAR", "displayName": "Los Angeles Rams"}
+            },
+            {
+              "homeAway": "away",
+              "score": "20",
+              "winner": false,
+              "team": {"id": "13", "abbreviation": "LV", "displayName": "Las Vegas Raiders"}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

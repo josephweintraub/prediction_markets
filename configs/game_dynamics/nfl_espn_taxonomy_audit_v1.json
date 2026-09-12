@@ -1,0 +1,50 @@
+{
+  "administrative_play_types": {
+    "2": "End Period",
+    "21": "Timeout",
+    "65": "End of Half",
+    "66": "End of Game",
+    "74": "Official Timeout",
+    "75": "Two-minute warning",
+    "79": "End of Regulation"
+  },
+  "audited_game_ids": [
+    "401671718",
+    "401671610",
+    "401671626",
+    "401671802",
+    "401671784",
+    "401671886",
+    "401671889"
+  ],
+  "competitive_play_types": {
+    "3": "Pass Incompletion",
+    "5": "Rush",
+    "7": "Sack",
+    "8": "Penalty",
+    "9": "Fumble Recovery (Own)",
+    "12": "Kickoff Return (Offense)",
+    "18": "Blocked Field Goal",
+    "20": "Safety",
+    "24": "Pass Reception",
+    "26": "Pass Interception Return",
+    "29": "Fumble Recovery (Opponent)",
+    "32": "Kickoff Return Touchdown",
+    "36": "Interception Return Touchdown",
+    "51": "Pass",
+    "52": "Punt",
+    "53": "Kickoff",
+    "59": "Field Goal Good",
+    "60": "Field Goal Missed",
+    "67": "Passing Touchdown",
+    "68": "Rushing Touchdown"
+  },
+  "point_after_types": {
+    "0": "Not Available",
+    "15": "Two Point Pass",
+    "16": "Two Point Rush",
+    "61": "Extra Point Good"
+  },
+  "schema_version": 1,
+  "source": "ESPN site API (third-party undocumented endpoint)"
+}
