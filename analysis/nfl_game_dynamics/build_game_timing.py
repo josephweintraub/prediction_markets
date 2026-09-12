@@ -23,13 +23,14 @@ from .build_market_universe import CANDIDATE_SCHEMA
 from .match_games import GameMatchAudit, assert_one_to_one_matches, match_market_candidates
 from .nfl_api import (
     ADMINISTRATIVE_PLAY_TYPES,
-    AUDITED_ESPN_GAME_IDS,
     COMPETITIVE_PLAY_TYPES,
     NFL_PHASE_CONTRACT_PATH,
     NFL_PHASE_CONTRACT_SHA256,
     NFL_TAXONOMY_AUDIT_PATH,
     NFL_TAXONOMY_AUDIT_SHA256,
     POINT_AFTER_TYPES,
+    REPRESENTATIVE_ESPN_GAME_IDS,
+    TAXONOMY_AUDIT_SCOPE,
     EspnNflClient,
     GameTiming,
     NFL_ANALYSIS_PHASES,
@@ -127,9 +128,10 @@ def _support_fingerprints(
         raise TimingBuildError("NFL taxonomy audit does not match its frozen SHA-256")
     value = json.loads(Path(taxonomy_audit_source).read_text(encoding="utf-8"))
     expected = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": "ESPN site API (third-party undocumented endpoint)",
-        "audited_game_ids": list(AUDITED_ESPN_GAME_IDS),
+        "representative_game_ids": list(REPRESENTATIVE_ESPN_GAME_IDS),
+        "audit_scope": TAXONOMY_AUDIT_SCOPE,
         "administrative_play_types": ADMINISTRATIVE_PLAY_TYPES,
         "competitive_play_types": COMPETITIVE_PLAY_TYPES,
         "point_after_types": POINT_AFTER_TYPES,

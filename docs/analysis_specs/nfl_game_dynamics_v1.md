@@ -23,11 +23,11 @@ reporting NFL production estimates before that run and its audits pass.
 The machine-readable phase source of truth is
 [`nfl_phase_contract_v1.json`](../../configs/game_dynamics/nfl_phase_contract_v1.json).
 The provider-taxonomy source of truth is
-[`nfl_espn_taxonomy_audit_v1.json`](../../configs/game_dynamics/nfl_espn_taxonomy_audit_v1.json).
+[`nfl_espn_taxonomy_audit_v2.json`](../../configs/game_dynamics/nfl_espn_taxonomy_audit_v2.json).
 The frozen SHA-256 values are
 `62826a4e7e647db78dfcd7862e16d73396c7942b9cdbeb7dc50b9c8b38f21cfd`
 for the phase contract and
-`f79f2ab97ae60a3ae1853be6c2147892c0239c08c32d175f7266926fa7bbdea9`
+`2d2f4b3a10d73090da64f54898503d75a095df7262e74d7f598ce725a78ddfee`
 for the taxonomy audit; the timing build rejects either file if it differs.
 
 ## Provider, status, and limitations
@@ -51,7 +51,8 @@ Known provider limitations are part of the contract:
   never used as boundaries.
 - ESPN does not supply a trustworthy, separate game-over wall-clock. The final
   analysis boundary is therefore the last competitive play's timestamp,
-  conditional on later terminal `End of Game` evidence.
+  conditional on later normal terminal `End of Game` evidence. The terminal's
+  own wallclock remains unused.
 - Completed-game reschedule history is not exposed reliably. Matching uses the
   ESPN schedule record's Eastern-calendar date and does not infer a prior date.
 - The frozen taxonomy is based on an audited historical sample; it is not a
@@ -61,21 +62,26 @@ Known provider limitations are part of the contract:
 ## Frozen ESPN taxonomy audit
 
 The parser is an allowlist, and the timing-stage manifest fingerprints the
-frozen taxonomy file. Its audited sample contains seven game IDs spanning a
-regular game, shortened preseason game, overtime game, neutral-site game,
-delayed-start game, postseason game, and Super Bowl. This coverage tests known
-format variants; it does not convert the source into an official or stable API.
+frozen taxonomy file. Taxonomy v2 is backed by an immutable cache inventory of
+150 scoreboard resources and 659 summary resources spanning candidate dates
+2024-08-08 through 2026-02-08. The file records the complete cache-inventory
+hash and Stage-01 candidate hash. Its game-ID list contains 20 representative
+examples, not all 659 audited summaries. This coverage tests known format
+variants; it does not convert the source into an official or stable API.
 
 The frozen categories are:
 
 - Administrative top-level types: `2` End Period, `21` Timeout, `65` End of
   Half, `66` End of Game, `74` Official Timeout, `75` Two-minute warning, and
   `79` End of Regulation. These are excluded from competitive-play timing.
-- Competitive top-level types: `3`, `5`, `7`, `8`, `9`, `12`, `18`, `20`,
-  `24`, `26`, `29`, `32`, `36`, `51`, `52`, `53`, `59`, `60`, `67`, and
-  `68`, with the exact text labels recorded in the taxonomy file.
-- Nested point-after types: `0`, `15`, `16`, and `61`, again with exact audited
-  text labels.
+- Competitive top-level types: `3`, `5`, `7`, `8`, `9`, `12`, `17`, `18`,
+  `20`, `24`, `26`, `29`, `30`, `32`, `34`, `36`, `37`, `38`, `39`, `40`,
+  `51`, `52`, `53`, `59`, `60`, `67`, `68`, and `80`, with the exact text
+  labels recorded in the taxonomy file.
+- Nested point-after types: `0`, `10`, `15`, `16`, `43`, `61`, and `62`, again
+  with exact audited text labels. Type `15` Two Point Pass is valid only in
+  this nested metadata. The observed top-level type-`15` rows are not plays
+  and remain excluded rather than being admitted as competitive events.
 
 An identifier with different text, an unknown nonadministrative type, or an
 unknown nested point-after type excludes that game's timing. The parser never
@@ -127,15 +133,25 @@ timestamps of the first complete competitive plays in periods 2, 3, and 4.
 The parser requires contiguous competitive periods from 1 through the final
 period and requires all of periods 1--4. End Period, End of Half, and timeout
 markers do not define a quarter boundary because their wall clocks are not
-reliable.
+reliable. Quarter 4 must contain a positive competitive-play span:
+`period_4_start_utc < actual_end_utc`. A feed whose first and last competitive
+Q4 timestamps are identical is treated as suspended or shortened and excluded.
 
 ### Terminal `End of Game` evidence
 
 `actual_end_utc` is the timestamp of the last competitive play, not the
 timestamp carried by an administrative marker. A type-`66` `End of Game`
 marker must have a greater sequence number than that play and must belong to
-the same expected final period. Its timestamp is ignored. Missing, earlier, or
-wrong-period terminal evidence excludes the game's timing.
+the same expected final period. Its play text must be exactly `END GAME`. A
+regulation terminal must have game clock `0:00`; a nonzero terminal clock is
+allowed only in period 5 or later after the existing `Final/OT` detail and
+competitive-final-period checks pass, covering legitimate walk-off overtime.
+The audit found 627 zero-clock regulation terminals, 9 zero-clock overtime
+terminals, 22 nonzero-clock overtime terminals, and one abnormal regulation
+terminal at `6:19` whose text was `Game Suspended. Will not resume.` The latter
+is excluded explicitly as suspended or shortened. The terminal wallclock is
+ignored. Missing, malformed, earlier, or wrong-period terminal evidence also
+excludes the game's timing.
 
 The summary status must be exactly completed/final: ID `3`, name
 `STATUS_FINAL`, state `post`, description `Final`, plus a supported detail.
@@ -177,7 +193,8 @@ team/date matches; duplicate market-to-game mappings; nonfinal, tied, missing,
 or contradictory results; token/outcome/resolution failures; unreviewed ESPN
 taxonomy; missing or nonchronological competitive timestamps; a missing
 opening kickoff; incomplete Q1--Q4 representation; final-status/period
-disagreement; and missing terminal `End of Game` evidence. Postseason,
+disagreement; a zero-duration Q4; and missing or abnormal terminal `End of
+Game` evidence. Postseason,
 neutral-site, delayed-start, and overtime games are not excluded merely by
 label, but they must pass the same contract. A shortened preseason or other
 nonstandard format that lacks complete regulation-quarter boundaries remains

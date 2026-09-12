@@ -35,9 +35,9 @@ ESPN_SUMMARY_URL = (
 NFL_CALENDAR_ZONE = ZoneInfo("America/New_York")
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 NFL_PHASE_CONTRACT_PATH = PROJECT_ROOT / "configs/game_dynamics/nfl_phase_contract_v1.json"
-NFL_TAXONOMY_AUDIT_PATH = PROJECT_ROOT / "configs/game_dynamics/nfl_espn_taxonomy_audit_v1.json"
+NFL_TAXONOMY_AUDIT_PATH = PROJECT_ROOT / "configs/game_dynamics/nfl_espn_taxonomy_audit_v2.json"
 NFL_PHASE_CONTRACT_SHA256 = "62826a4e7e647db78dfcd7862e16d73396c7942b9cdbeb7dc50b9c8b38f21cfd"
-NFL_TAXONOMY_AUDIT_SHA256 = "f79f2ab97ae60a3ae1853be6c2147892c0239c08c32d175f7266926fa7bbdea9"
+NFL_TAXONOMY_AUDIT_SHA256 = "2d2f4b3a10d73090da64f54898503d75a095df7262e74d7f598ce725a78ddfee"
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
@@ -86,13 +86,20 @@ COMPETITIVE_PLAY_TYPES: dict[str, str] = {
     "8": "Penalty",
     "9": "Fumble Recovery (Own)",
     "12": "Kickoff Return (Offense)",
+    "17": "Blocked Punt",
     "18": "Blocked Field Goal",
     "20": "Safety",
     "24": "Pass Reception",
     "26": "Pass Interception Return",
     "29": "Fumble Recovery (Opponent)",
+    "30": "Muffed Punt Recovery (Opponent)",
     "32": "Kickoff Return Touchdown",
+    "34": "Punt Return Touchdown",
     "36": "Interception Return Touchdown",
+    "37": "Blocked Punt Touchdown",
+    "38": "Blocked Field Goal Touchdown",
+    "39": "Fumble Return Touchdown",
+    "40": "Missed Field Goal Return",
     "51": "Pass",
     "52": "Punt",
     "53": "Kickoff",
@@ -100,17 +107,21 @@ COMPETITIVE_PLAY_TYPES: dict[str, str] = {
     "60": "Field Goal Missed",
     "67": "Passing Touchdown",
     "68": "Rushing Touchdown",
+    "80": "Sack Opp Fumble Recovery",
 }
 
 # ``pointAfterAttempt`` is nested inside touchdown plays rather than emitted as
 # a top-level drive play in the audited responses.
 POINT_AFTER_TYPES: dict[str, str] = {
     "0": "Not Available",
+    "10": "Extra Point",
     "15": "Two Point Pass",
     "16": "Two Point Rush",
+    "43": "Blocked PAT",
     "61": "Extra Point Good",
+    "62": "Extra Point Missed",
 }
-AUDITED_ESPN_GAME_IDS = (
+REPRESENTATIVE_ESPN_GAME_IDS = (
     "401671718",  # regular
     "401671610",  # shortened preseason
     "401671626",  # overtime
@@ -118,7 +129,39 @@ AUDITED_ESPN_GAME_IDS = (
     "401671784",  # delayed start
     "401671886",  # postseason
     "401671889",  # Super Bowl
+    "401671645",  # Blocked Punt
+    "401772631",  # Muffed Punt Recovery (Opponent)
+    "401671685",  # Punt Return Touchdown
+    "401772845",  # Blocked Punt Touchdown
+    "401671714",  # Blocked Field Goal Touchdown
+    "401671494",  # Fumble Return Touchdown
+    "401772630",  # Sack Opp Fumble Recovery
+    "401671491",  # Missed Field Goal Return
+    "401671637",  # Missed Field Goal Return
+    "401673561",  # Missed Field Goal Return
+    "401671651",  # top-level Two Point Pass exclusion
+    "401671844",  # nested point-after taxonomy
+    "401773016",  # suspended terminal
 )
+TAXONOMY_AUDIT_SCOPE: dict[str, Any] = {
+    "abnormal_terminal_resources": 1,
+    "cache_inventory_name": "2026-09-11_nfl_espn_v1",
+    "cache_inventory_sha256": "f432485a8868b85046f106f711d7e2a89044715f86409a833d833c480271a807",
+    "cache_inventory_sha256_method": (
+        "SHA-256 of sorted UTF-8 <relative_path>\\t<byte_count>\\t<file_sha256>\\n records"
+    ),
+    "candidate_artifact_sha256": "d3ece3ff78040ec15751fb536ff731965fc7abdad7fb93ff07e0b0cb57af10df",
+    "candidate_date_from": "2024-08-08",
+    "candidate_date_to": "2026-02-08",
+    "candidate_market_rows": 661,
+    "normal_end_game_text_resources": 658,
+    "overtime_nonzero_terminal_clock_resources": 22,
+    "overtime_zero_terminal_clock_resources": 9,
+    "regulation_zero_terminal_clock_resources": 627,
+    "representative_game_ids_are_exhaustive": False,
+    "scoreboard_resources": 150,
+    "summary_resources": 659,
+}
 
 
 @dataclass(frozen=True)
@@ -483,9 +526,32 @@ def parse_game_timing(payload: Mapping[str, Any], expected_game_id: str | None =
                     period_obj = play.get("period")
                     if not isinstance(marker_id, str) or not marker_id.strip() or not isinstance(period_obj, Mapping):
                         raise ValueError("NFL terminal marker lacks identity or period")
+                    terminal_period = _strict_int(period_obj.get("number"), f"play {marker_id} period")
+                    terminal_clock_obj = play.get("clock")
+                    terminal_clock = (
+                        terminal_clock_obj.get("displayValue")
+                        if isinstance(terminal_clock_obj, Mapping) else None
+                    )
+                    if play.get("text") != "END GAME":
+                        raise ValueError(
+                            "NFL terminal indicates a suspended or shortened game: "
+                            "expected exact END GAME text"
+                        )
+                    if not isinstance(terminal_clock, str) or re.fullmatch(
+                        r"(?:[0-9]|1[0-5]):[0-5][0-9]", terminal_clock
+                    ) is None:
+                        raise ValueError(
+                            "NFL terminal indicates a suspended or shortened game: "
+                            "missing or invalid game clock"
+                        )
+                    if terminal_period == 4 and terminal_clock != "0:00":
+                        raise ValueError(
+                            "NFL terminal indicates a suspended or shortened regulation game: "
+                            "expected a zero game clock"
+                        )
                     terminal_markers.append((
                         _sequence_int(play.get("sequenceNumber"), f"play {marker_id} sequenceNumber"),
-                        _strict_int(period_obj.get("number"), f"play {marker_id} period"),
+                        terminal_period,
                     ))
                 continue
             if COMPETITIVE_PLAY_TYPES.get(type_id) != type_text:
@@ -557,8 +623,13 @@ def parse_game_timing(payload: Mapping[str, Any], expected_game_id: str | None =
     first_by_period = {period: next(row[1] for row in ordered if row[2] == period) for period in present}
     boundaries = [first_by_period[index] for index in (1, 2, 3, 4)]
     actual_end = ordered[-1][1]
-    if not (boundaries[0] < boundaries[1] < boundaries[2] < boundaries[3] <= actual_end):
+    if not (boundaries[0] < boundaries[1] < boundaries[2] < boundaries[3]):
         raise ValueError("NFL quarter boundaries are not strictly ordered")
+    if not boundaries[3] < actual_end:
+        raise ValueError(
+            "NFL timing indicates a suspended or shortened game: "
+            "Quarter 4 has no positive competitive-play span"
+        )
     return GameTiming(
         game_id=game_id,
         away_team_id=away_team[0],

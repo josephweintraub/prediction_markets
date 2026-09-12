@@ -1,0 +1,36 @@
+{
+  "competitive_top_level": [
+    {"id": "17", "text": "Blocked Punt"},
+    {"id": "30", "text": "Muffed Punt Recovery (Opponent)"},
+    {"id": "34", "text": "Punt Return Touchdown"},
+    {"id": "37", "text": "Blocked Punt Touchdown"},
+    {"id": "38", "text": "Blocked Field Goal Touchdown"},
+    {"id": "39", "text": "Fumble Return Touchdown"},
+    {"id": "40", "text": "Missed Field Goal Return"},
+    {"id": "80", "text": "Sack Opp Fumble Recovery"}
+  ],
+  "nested_point_after": [
+    {"id": "10", "text": "Extra Point"},
+    {"id": "43", "text": "Blocked PAT"},
+    {"id": "62", "text": "Extra Point Missed"}
+  ],
+  "normal_overtime_terminal": {
+    "clock": {"displayValue": "7:33"},
+    "period": {"number": 5},
+    "text": "END GAME",
+    "type": {"id": "66", "text": "End of Game"}
+  },
+  "normal_regulation_terminal": {
+    "clock": {"displayValue": "0:00"},
+    "period": {"number": 4},
+    "text": "END GAME",
+    "type": {"id": "66", "text": "End of Game"}
+  },
+  "rejected_top_level": {"id": "15", "text": "Two Point Pass"},
+  "suspended_terminal": {
+    "clock": {"displayValue": "6:19"},
+    "period": {"number": 4},
+    "text": "Game Suspended. Will not resume.",
+    "type": {"id": "66", "text": "End of Game"}
+  }
+}

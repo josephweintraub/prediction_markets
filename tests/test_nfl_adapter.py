@@ -40,7 +40,6 @@ from analysis.nfl_game_dynamics.match_games import (
 )
 from analysis.nfl_game_dynamics.nfl_api import (
     ADMINISTRATIVE_PLAY_TYPES,
-    AUDITED_ESPN_GAME_IDS,
     COMPETITIVE_PLAY_TYPES,
     NFL_ANALYSIS_PHASES,
     NFL_PHASE_CONTRACT_PATH,
@@ -48,6 +47,8 @@ from analysis.nfl_game_dynamics.nfl_api import (
     NFL_TAXONOMY_AUDIT_PATH,
     NFL_TAXONOMY_AUDIT_SHA256,
     POINT_AFTER_TYPES,
+    REPRESENTATIVE_ESPN_GAME_IDS,
+    TAXONOMY_AUDIT_SCOPE,
     EspnNflClient,
     assign_phase,
     parse_game_timing,
@@ -224,6 +225,115 @@ class NflTimingTests(unittest.TestCase):
         self.assertEqual(timing.final_period, 5)
         self.assertTrue(timing.went_to_overtime)
 
+    def test_taxonomy_v2_accepts_only_audited_top_level_and_nested_pairs(self) -> None:
+        audit = _payload("nfl_stage02_taxonomy_v2.json")
+        for type_pair in audit["competitive_top_level"]:
+            with self.subTest(top_level=type_pair):
+                summary = _payload("nfl_summary.json")
+                play = next(
+                    row for row in summary["drives"]["previous"][0]["plays"]
+                    if row["id"] == "p30"
+                )
+                play["type"] = type_pair
+                play.pop("pointAfterAttempt", None)
+                parse_game_timing(summary)
+
+        for type_pair in audit["nested_point_after"]:
+            with self.subTest(point_after=type_pair):
+                summary = _payload("nfl_summary.json")
+                play = next(
+                    row for row in summary["drives"]["previous"][0]["plays"]
+                    if row["id"] == "p30"
+                )
+                play["pointAfterAttempt"] = type_pair
+                parse_game_timing(summary)
+
+        top_level_two_point = _payload("nfl_summary.json")
+        play = next(
+            row for row in top_level_two_point["drives"]["previous"][0]["plays"]
+            if row["id"] == "p30"
+        )
+        play["type"] = audit["rejected_top_level"]
+        play.pop("pointAfterAttempt", None)
+        with self.assertRaisesRegex(ValueError, "Unreviewed competitive play taxonomy"):
+            parse_game_timing(top_level_two_point)
+
+    def test_new_competitive_types_still_require_type_and_absolute_wallclock(self) -> None:
+        audit = _payload("nfl_stage02_taxonomy_v2.json")
+        missing_type = _payload("nfl_summary.json")
+        play = next(
+            row for row in missing_type["drives"]["previous"][0]["plays"]
+            if row["id"] == "p30"
+        )
+        play.pop("type")
+        with self.assertRaisesRegex(ValueError, "play type is missing"):
+            parse_game_timing(missing_type)
+
+        missing_wallclock = _payload("nfl_summary.json")
+        play = next(
+            row for row in missing_wallclock["drives"]["previous"][0]["plays"]
+            if row["id"] == "p30"
+        )
+        play["type"] = audit["competitive_top_level"][0]
+        play.pop("pointAfterAttempt", None)
+        play["wallclock"] = None
+        with self.assertRaisesRegex(ValueError, "Missing or invalid play p30 wallclock"):
+            parse_game_timing(missing_wallclock)
+
+    def test_terminal_gate_allows_walkoff_ot_and_normal_regulation_only(self) -> None:
+        audit = _payload("nfl_stage02_taxonomy_v2.json")
+        overtime = parse_game_timing(_payload("nfl_summary.json"))
+        self.assertEqual(overtime.final_period, 5)
+
+        regulation = _payload("nfl_summary.json")
+        status = regulation["header"]["competitions"][0]["status"]
+        status["type"]["detail"] = "Final"
+        status["period"] = 4
+        plays = regulation["drives"]["previous"][0]["plays"]
+        final_play = next(row for row in plays if row["id"] == "p400")
+        final_play["period"]["number"] = 4
+        terminal = next(row for row in plays if row["id"] == "admin-game")
+        terminal.update(audit["normal_regulation_terminal"])
+        parsed = parse_game_timing(regulation)
+        self.assertEqual(parsed.final_period, 4)
+        self.assertLess(parsed.period_4_start_utc, parsed.actual_end_utc)
+
+        nonzero_regulation = copy.deepcopy(regulation)
+        terminal = next(
+            row for row in nonzero_regulation["drives"]["previous"][0]["plays"]
+            if row["id"] == "admin-game"
+        )
+        terminal["clock"]["displayValue"] = "6:19"
+        with self.assertRaisesRegex(ValueError, "suspended or shortened regulation game"):
+            parse_game_timing(nonzero_regulation)
+
+        suspended = copy.deepcopy(regulation)
+        terminal = next(
+            row for row in suspended["drives"]["previous"][0]["plays"]
+            if row["id"] == "admin-game"
+        )
+        terminal.update(audit["suspended_terminal"])
+        with self.assertRaisesRegex(ValueError, "suspended or shortened game"):
+            parse_game_timing(suspended)
+
+    def test_zero_duration_quarter_four_fails_closed(self) -> None:
+        audit = _payload("nfl_stage02_taxonomy_v2.json")
+        summary = _payload("nfl_summary.json")
+        status = summary["header"]["competitions"][0]["status"]
+        status["type"]["detail"] = "Final"
+        status["period"] = 4
+        plays = summary["drives"]["previous"][0]["plays"]
+        summary["drives"]["previous"][0]["plays"] = [
+            row for row in plays if row["id"] != "p400"
+        ]
+        terminal = next(
+            row for row in summary["drives"]["previous"][0]["plays"]
+            if row["id"] == "admin-game"
+        )
+        terminal.update(audit["normal_regulation_terminal"])
+        with self.assertRaisesRegex(ValueError, "Quarter 4 has no positive competitive-play span"):
+            parse_game_timing(summary)
+
     def test_shortened_and_competitive_timestamp_corruption_fail_closed(self) -> None:
         shortened = _payload("nfl_summary.json")
         shortened["drives"]["previous"][0]["plays"] = [
@@ -372,7 +482,11 @@ class NflTimingTests(unittest.TestCase):
             NFL_TAXONOMY_AUDIT_SHA256,
         )
         taxonomy = json.loads(NFL_TAXONOMY_AUDIT_PATH.read_text())
-        self.assertEqual(taxonomy["audited_game_ids"], list(AUDITED_ESPN_GAME_IDS))
+        self.assertEqual(
+            taxonomy["representative_game_ids"],
+            list(REPRESENTATIVE_ESPN_GAME_IDS),
+        )
+        self.assertEqual(taxonomy["audit_scope"], TAXONOMY_AUDIT_SCOPE)
         self.assertEqual(taxonomy["competitive_play_types"], COMPETITIVE_PLAY_TYPES)
         self.assertEqual(taxonomy["administrative_play_types"], ADMINISTRATIVE_PLAY_TYPES)
         self.assertEqual(taxonomy["point_after_types"], POINT_AFTER_TYPES)
