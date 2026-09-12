@@ -105,9 +105,11 @@ or more than one market assigned to one game is an explicit exclusion.
 
 Moneyline validation then requires exactly two unique token IDs and two
 distinct recognized team outcomes. Accepted outcome labels are each team's
-nickname or full canonical name, including the explicit `49ers` case. The two
-outcomes must equal the matched away/home teams, all token rows must agree on
-one Polymarket winning outcome, and that outcome must equal the unique ESPN
+nickname or full canonical name, including the explicit `49ers` case. The Rams
+also accept the exact normalized official abbreviation `LAR`; ambiguous `LA`
+and the unrequested `LAC` abbreviation remain unrecognized. The two outcomes
+must equal the matched away/home teams, all token rows must agree on one
+Polymarket winning outcome, and that outcome must equal the unique ESPN
 score-and-flag winner.
 
 ## Exact timing semantics

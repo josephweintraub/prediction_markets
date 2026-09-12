@@ -602,6 +602,57 @@ class NflValidationAndArtifactTests(unittest.TestCase):
         invalid = validate_moneylines([candidate], match, mismatch)
         self.assertEqual(invalid.audits[0].exclusion_reason, "polymarket_nfl_winner_disagreement")
 
+    def test_explicit_lar_outcome_alias_is_rams_only(self) -> None:
+        game = parse_scoreboard(_payload("nfl_scoreboard.json"))[0]
+        candidate = {
+            "market_id": "m1", "date": "2025-01-05",
+            "team_1_slug": "la", "team_2_slug": "lv",
+        }
+        match = match_market_candidates([candidate], [game])
+        lar_winner = [
+            {"market_id": "m1", "token_id": "away", "outcome": "Raiders", "winning_outcome": "LAR"},
+            {"market_id": "m1", "token_id": "home", "outcome": "LAR", "winning_outcome": "LAR"},
+        ]
+        valid = validate_moneylines([candidate], match, lar_winner)
+        self.assertTrue(valid.audits[0].is_valid)
+        self.assertEqual(valid.eligible_markets[0].home_token_id, "home")
+        self.assertEqual(valid.eligible_markets[0].winning_team_id, 14)
+
+        rams_loss_scoreboard = _payload("nfl_scoreboard.json")
+        competitors = rams_loss_scoreboard["events"][0]["competitions"][0]["competitors"]
+        for competitor in competitors:
+            is_raiders = competitor["team"]["id"] == "13"
+            competitor["score"] = "27" if is_raiders else "20"
+            competitor["winner"] = is_raiders
+        rams_loss = parse_scoreboard(rams_loss_scoreboard)[0]
+        loss_match = match_market_candidates([candidate], [rams_loss])
+        lar_loser = copy.deepcopy(lar_winner)
+        for row in lar_loser:
+            row["winning_outcome"] = "Raiders"
+        valid_loss = validate_moneylines([candidate], loss_match, lar_loser)
+        self.assertTrue(valid_loss.audits[0].is_valid)
+        self.assertEqual(valid_loss.eligible_markets[0].winning_team_id, 13)
+
+        for ambiguous in ("LA", "LAC"):
+            with self.subTest(unrecognized=ambiguous):
+                tokens = copy.deepcopy(lar_winner)
+                tokens[1]["outcome"] = ambiguous
+                tokens[1]["winning_outcome"] = ambiguous
+                invalid = validate_moneylines([candidate], match, tokens)
+                self.assertEqual(
+                    invalid.audits[0].exclusion_reason,
+                    "unrecognized_outcome_label",
+                )
+
+        chargers = copy.deepcopy(lar_winner)
+        chargers[1]["outcome"] = "Chargers"
+        chargers[1]["winning_outcome"] = "Chargers"
+        wrong_team = validate_moneylines([candidate], match, chargers)
+        self.assertEqual(
+            wrong_team.audits[0].exclusion_reason,
+            "outcome_teams_do_not_match_game",
+        )
+
     def test_atomic_staged_timing_to_validated_round_trip_with_nullable_fields(self) -> None:
         scoreboard = _payload("nfl_scoreboard.json")
         summary = _payload("nfl_summary.json")

@@ -12,10 +12,11 @@ from .match_games import GameMatchAudit, NFL_TEAMS
 from .nfl_api import ScheduleGame
 
 
-NFL_OUTCOME_LABELS_BY_SLUG: dict[str, tuple[str, str]] = {
+NFL_OUTCOME_LABELS_BY_SLUG: dict[str, tuple[str, ...]] = {
     slug: (team.name.split()[-1], team.name) for slug, team in NFL_TEAMS.items()
 }
 NFL_OUTCOME_LABELS_BY_SLUG["sf"] = ("49ers", "San Francisco 49ers")
+NFL_OUTCOME_LABELS_BY_SLUG["lar"] = ("Rams", "Los Angeles Rams", "LAR")
 
 
 def _normalize(value: Any) -> str | None:
