@@ -13,6 +13,11 @@ import pandas as pd
 import pytest
 
 from analysis.nba_game_dynamics.build_game_timing import parse_args as parse_nba_timing_args
+from analysis.nba_game_dynamics.build_game_timing import cache_inventory_fingerprint
+from analysis.nba_game_dynamics.artifact_manifest import file_fingerprint
+from analysis.nba_game_dynamics.build_market_universe import (
+    build_market_universe as build_nba_market_universe,
+)
 from analysis.nba_game_dynamics.build_validated_universe import (
     parse_args as parse_nba_validated_args,
 )
@@ -96,7 +101,7 @@ def _args(tmp_path: Path, run_id: str = "fixture"):
         "--raw-trades", str(paths["raw_trades"]),
         "--block-timestamps", str(paths["block_timestamps"]),
         "--wallet-flags", str(paths["wallet_flags"]),
-        "--phase-contract", str(ROOT / "configs/game_dynamics/nba_phase_contract_v1.json"),
+        "--phase-contract", str(ROOT / "configs/game_dynamics/nba_phase_contract_v2.json"),
     ]
     return parse_args(arguments)
 
@@ -445,6 +450,49 @@ def test_workflow_runs_real_cached_nba_stage01_to_10_offline(tmp_path: Path) -> 
         flags, (("proxyWallet", "VARCHAR"), ("is_nonhuman", "BOOLEAN")),
         [("unrelated", True)], ("proxyWallet",),
     )
+    expected_universe = tmp_path / "expected-universe"
+    con = duckdb.connect()
+    try:
+        con.execute(f"CREATE VIEW markets AS SELECT * FROM read_parquet('{markets}')")
+        build_nba_market_universe(con, "markets", markets, expected_universe)
+    finally:
+        con.close()
+    phase_contract = tmp_path / "nba-test-phase-contract-v2.json"
+    contract_payload = json.loads(
+        (ROOT / "configs/game_dynamics/nba_phase_contract_v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    inventory = cache_inventory_fingerprint(provider_cache)
+    contract_payload["audit_scope"].update({
+        "cache_inventory_name": inventory["name"],
+        "cache_inventory_sha256": inventory["sha256"],
+        "candidate_artifact_sha256": file_fingerprint(
+            expected_universe / "candidate_markets.parquet"
+        )["sha256"],
+        "candidate_date_from": "2025-03-12",
+        "candidate_date_to": "2025-03-12",
+        "candidate_market_rows": 1,
+        "matched_completed_date_from": "2025-03-12",
+        "matched_completed_date_to": "2025-03-12",
+        "schedule_resources": 1,
+        "play_by_play_resources": 1,
+        "matched_completed_games": 1,
+        "opening_rule_passes": 1,
+        "opening_rule_failures": 0,
+        "opening_failure_game_id": "0022400887",
+        "schedule_score_mismatches": 0,
+        "schedule_score_mismatch_game_id": "0022400072",
+        "reconciled_timing_games": 1,
+        "overtime_games": 1,
+        "single_overtime_games": 1,
+        "double_overtime_games": 0,
+        "spurious_period_5_games": 0,
+    })
+    phase_contract.write_text(
+        json.dumps(contract_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     repository = _runtime_repository(tmp_path / "runtime-repository")
     args = parse_args([
         "--sport", "nba", "--run-root", str(tmp_path / "real-runs"),
@@ -454,7 +502,7 @@ def test_workflow_runs_real_cached_nba_stage01_to_10_offline(tmp_path: Path) -> 
         "--universe-tokens", str(universe), "--token-map", str(token_map),
         "--raw-trades", str(raw), "--block-timestamps", str(block_cache),
         "--wallet-flags", str(flags), "--phase-contract",
-        str(ROOT / "configs/game_dynamics/nba_phase_contract_v1.json"),
+        str(phase_contract),
     ])
 
     run = run_workflow(args)

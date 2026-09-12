@@ -295,9 +295,12 @@ def _validate_schedule(rows: list[dict[str, Any]]) -> dict[str, ScheduleGame]:
                 winning_team_id(game)
             except ValueError as exc:
                 raise ValidatedUniverseBuildError(str(exc)) from exc
-            if game.expected_final_period is None:
+            if (
+                game.expected_final_period is None
+                and game.status_text.strip().casefold() != "final"
+            ):
                 raise ValidatedUniverseBuildError(
-                    f"Final schedule game {game.game_id} lacks expected final period"
+                    f"Final schedule game {game.game_id} lacks a valid final status"
                 )
         elif any(
             value is not None
@@ -438,7 +441,23 @@ def _validate_timing_rows(
                 f"{market_id} timing {timing_field}", timing[timing_field],
                 getattr(game, game_field),
             )
-        _same(f"{market_id} final period", timing["final_period"], game.expected_final_period)
+        if game.expected_final_period is not None:
+            _same(
+                f"{market_id} final period",
+                timing["final_period"], game.expected_final_period,
+            )
+        elif game.status_text.strip().casefold() != "final" or timing["final_period"] < 4:
+            raise ValidatedUniverseBuildError(
+                f"NBA game {game.game_id} lacks compatible observed final-period evidence"
+            )
+        _same(
+            f"{market_id} PBP away final score",
+            timing["pbp_away_final_score"], game.away_final_score,
+        )
+        _same(
+            f"{market_id} PBP home final score",
+            timing["pbp_home_final_score"], game.home_final_score,
+        )
         _same(f"{market_id} timestamp source", timing["timestamp_source"], TIMESTAMP_SOURCE)
         _same(f"{market_id} provenance", timing["provider_provenance_sha256"], provenance_sha)
         _same(f"{market_id} phase contract", timing["phase_contract_sha256"], phase_contract_sha)
@@ -872,6 +891,7 @@ def build_validated_universe(
     phase_contract_sha = str(contract_record["sha256"])
     if (
         contract.sport != "nba"
+        or contract.contract_version != 2
         or contract.regulation_period_minutes != 12
         or tuple(phase.key for phase in contract.analysis_phases) != NBA_ANALYSIS_PHASES
         or contract.actual_start_event != ACTUAL_START_EVENT

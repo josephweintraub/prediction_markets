@@ -27,7 +27,8 @@ CONTRACT_DIR = ROOT / "configs" / "game_dynamics"
 
 
 def _contract_path(sport: str) -> Path:
-    return CONTRACT_DIR / f"{sport}_phase_contract_v1.json"
+    version = 2 if sport == "nba" else 1
+    return CONTRACT_DIR / f"{sport}_phase_contract_v{version}.json"
 
 
 def _boundaries() -> dict[str, datetime]:
@@ -47,7 +48,9 @@ def _boundaries() -> dict[str, datetime]:
         ("nfl", 15, "start of the opening kickoff play",
          "start of the first complete official play in the period",
          "timestamp of the last competitive play, with subsequent End Game evidence"),
-        ("nba", 12, "first valid period-1 opening jump-ball action at 12:00",
+        ("nba", 12,
+         "first audited opening-tip action immediately after Q1 period/start and exact "
+         "0-0 12:00 delay-of-game violations",
          "unique official period/start action at regulation clock",
          "unique official final-period period/end action at 00:00"),
     ),
@@ -81,6 +84,64 @@ def test_versioned_contracts_freeze_natural_quarters(
     fingerprint = phase_contract_fingerprint(path)
     assert fingerprint["bytes"] == path.stat().st_size
     assert len(fingerprint["sha256"]) == 64
+
+
+def test_nba_v1_remains_loadable_but_v2_binds_the_audited_cache() -> None:
+    v1 = load_phase_contract(CONTRACT_DIR / "nba_phase_contract_v1.json")
+    v2 = load_phase_contract(CONTRACT_DIR / "nba_phase_contract_v2.json")
+
+    assert v1.contract_version == 1
+    assert v1.audit_scope is None
+    assert v2.contract_version == 2
+    assert v2.audit_scope == {
+        "cache_inventory_name": "2026-09-12_nba_official_v1",
+        "cache_inventory_sha256": "7adac545cb08071305d05385eb07514e25d6712a0a170ecea36f2d3dc490be31",
+        "cache_inventory_sha256_method": (
+            "SHA-256 of sorted UTF-8 <relative_path>\\t<byte_count>\\t"
+            "<file_sha256>\\n records"
+        ),
+        "candidate_artifact_sha256": "ac4eb0236becbccb3a38bfb7401176a06eb529408c11ff5c1dd93329fe9f948f",
+        "candidate_date_from": "2024-10-22",
+        "candidate_date_to": "2026-06-13",
+        "candidate_market_rows": 2796,
+        "double_overtime_games": 4,
+        "matched_completed_date_from": "2024-10-22",
+        "matched_completed_date_to": "2025-10-14",
+        "matched_completed_games": 1365,
+        "opening_failure_game_id": "0022400887",
+        "opening_rule_failures": 1,
+        "opening_rule_passes": 1364,
+        "overtime_games": 70,
+        "play_by_play_resources": 1365,
+        "reconciled_timing_games": 1363,
+        "schedule_resources": 2,
+        "schedule_score_mismatch_game_id": "0022400072",
+        "schedule_score_mismatches": 1,
+        "schema_version": 1,
+        "single_overtime_games": 66,
+        "spurious_period_5_games": 0,
+    }
+
+
+@pytest.mark.parametrize("mutation", ("missing", "extra", "bad_sha", "bad_count"))
+def test_nba_v2_audit_scope_fails_closed(
+    mutation: str, tmp_path: Path
+) -> None:
+    source = CONTRACT_DIR / "nba_phase_contract_v2.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    if mutation == "missing":
+        payload["audit_scope"].pop("play_by_play_resources")
+    elif mutation == "extra":
+        payload["audit_scope"]["unexpected"] = 1
+    elif mutation == "bad_sha":
+        payload["audit_scope"]["cache_inventory_sha256"] = "bad"
+    else:
+        payload["audit_scope"]["opening_rule_passes"] -= 1
+    target = tmp_path / f"bad-{mutation}.json"
+    target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(PhaseContractError, match="audit_scope"):
+        load_phase_contract(target)
 
 
 @pytest.mark.parametrize("sport", ("nfl", "nba"))

@@ -33,10 +33,20 @@ NBA_LIVE_DATA_ORIGIN = (
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 GAME_ID_PATTERN = re.compile(r"^[0-9]{10}$")
 PHASES = ("quarter_1", "quarter_2", "quarter_3", "quarter_4_plus")
-ACTUAL_START_EVENT = "first valid period-1 opening jump-ball action at 12:00"
+ACTUAL_START_EVENT = (
+    "first audited opening-tip action immediately after Q1 period/start and exact "
+    "0-0 12:00 delay-of-game violations"
+)
 ACTUAL_END_EVENT = "unique official final-period period/end action at 00:00"
 PERIOD_BOUNDARY_EVENT = "unique official period/start action at regulation clock"
 PROVENANCE_SCHEMA_VERSION = 1
+OPENING_SIGNATURES = {
+    ("jumpball", "recovered", "startperiod"),
+    ("jumpball", "recovered", "outofbounds"),
+    ("jumpball", "recovered", "heldball"),
+    ("jumpball", "recovered", "unclearpass"),
+    ("violation", "jumpball", ""),
+}
 
 
 @dataclass(frozen=True)
@@ -101,6 +111,8 @@ class GameTiming:
     actual_end_event: str
     period_boundary_event: str
     final_period: int
+    pbp_away_final_score: int
+    pbp_home_final_score: int
     action_count: int
     periods: tuple[PeriodBoundary, ...]
     phase_windows: tuple[PhaseWindow, ...]
@@ -115,6 +127,10 @@ class _ObservedAction:
     clock: str
     action_type: str
     subtype: str
+    descriptor: str
+    description: str
+    raw_score_away: Any
+    raw_score_home: Any
 
 
 def _parse_date(value: Any, field: str) -> date:
@@ -150,10 +166,24 @@ def _required_int(value: Any, field: str) -> int:
         raise ValueError(f"Missing or invalid {field}") from exc
 
 
-def _optional_int(value: Any, field: str) -> int | None:
+def _required_score(value: Any, field: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"Missing or invalid {field}")
+    if isinstance(value, int):
+        score = value
+    elif isinstance(value, str) and re.fullmatch(r"[0-9]+", value.strip()):
+        score = int(value.strip())
+    else:
+        raise ValueError(f"Missing or invalid {field}")
+    if score < 0:
+        raise ValueError(f"Missing or invalid {field}")
+    return score
+
+
+def _optional_score(value: Any, field: str) -> int | None:
     if value in (None, ""):
         return None
-    return _required_int(value, field)
+    return _required_score(value, field)
 
 
 def nba_season_start_for_date(value: date) -> int:
@@ -166,20 +196,20 @@ def nba_season_start_for_date(value: date) -> int:
     return value.year if value.month >= 7 else value.year - 1
 
 
-def _expected_final_period(status: str) -> int | None:
+def _final_status(status: str) -> tuple[bool, int | None]:
     normalized = status.strip().casefold()
     if not normalized.startswith("final"):
-        return None
+        return False, None
     match = re.fullmatch(r"final(?:/(\d*)ot)?", normalized)
     if match is None:
         raise ValueError(f"Unsupported final NBA schedule status: {status!r}")
     overtime = match.group(1)
     if "/" not in normalized:
-        return 4
+        return True, None
     overtime_count = int(overtime) if overtime else 1
     if overtime_count < 1:
         raise ValueError(f"Invalid overtime count in NBA schedule status: {status!r}")
-    return 4 + overtime_count
+    return True, 4 + overtime_count
 
 
 def _legacy_start_utc(game: Mapping[str, Any]) -> datetime:
@@ -210,7 +240,7 @@ def _team(game: Mapping[str, Any], key: str) -> tuple[int, str, str, int | None]
     parts = [part.strip() for part in (city, nickname) if isinstance(part, str) and part.strip()]
     if not parts:
         raise ValueError(f"Missing or invalid {key} team name")
-    return team_id, " ".join(parts), tricode.strip().upper(), _optional_int(
+    return team_id, " ".join(parts), tricode.strip().upper(), _optional_score(
         value.get("s"), f"{key}.s"
     )
 
@@ -239,8 +269,7 @@ def parse_legacy_schedule(
             away_id, away_name, away_code, away_score = _team(raw, "v")
             home_id, home_name, home_code, home_score = _team(raw, "h")
             status = str(raw.get("stt") or raw.get("st") or "").strip()
-            expected_final_period = _expected_final_period(status)
-            is_completed = expected_final_period is not None
+            is_completed, expected_final_period = _final_status(status)
             if is_completed:
                 if away_score is None or home_score is None:
                     raise ValueError(f"Final NBA game {game_id} lacks final scores")
@@ -297,11 +326,13 @@ def winning_team_id(game: ScheduleGame) -> int:
         raise ValueError(f"NBA game {game.game_id} is not final")
     if game.away_final_score is None or game.home_final_score is None:
         raise ValueError(f"NBA game {game.game_id} lacks final scores")
-    if game.away_final_score == game.home_final_score:
+    away_score = _required_score(game.away_final_score, "away final score")
+    home_score = _required_score(game.home_final_score, "home final score")
+    if away_score == home_score:
         raise ValueError(f"NBA game {game.game_id} has tied final scores")
     score_winner = (
         game.away_team_id
-        if game.away_final_score > game.home_final_score
+        if away_score > home_score
         else game.home_team_id
     )
     if game.winner_team_id != score_winner:
@@ -322,13 +353,50 @@ def _clock(value: Any, expected: str, label: str) -> None:
         raise ValueError(f"{label} must have clock {expected}, got {value!r}")
 
 
+def _clock_seconds(value: str, label: str) -> float:
+    match = re.fullmatch(r"PT([0-9]+)M([0-9]+(?:\.[0-9]+)?)S", value)
+    if match is None:
+        raise ValueError(f"{label} has invalid clock {value!r}")
+    seconds = float(match.group(2))
+    if seconds >= 60:
+        raise ValueError(f"{label} has invalid clock {value!r}")
+    return 60 * int(match.group(1)) + seconds
+
+
+def _scores(action: _ObservedAction, label: str) -> tuple[int, int]:
+    return (
+        _required_score(action.raw_score_away, f"{label}.scoreAway"),
+        _required_score(action.raw_score_home, f"{label}.scoreHome"),
+    )
+
+
+def _is_opening_admin(action: _ObservedAction) -> bool:
+    return (
+        action.period == 1
+        and action.clock == "PT12M00.00S"
+        and action.action_type == "violation"
+        and action.subtype == "delay-of-game"
+        and action.descriptor == ""
+        and action.description == "TEAM delay-of-game VIOLATION"
+        and _scores(action, "opening administration") == (0, 0)
+    )
+
+
+def _has_opening_description(action: _ObservedAction) -> bool:
+    signature = (action.action_type, action.subtype, action.descriptor)
+    if signature == ("violation", "jumpball", ""):
+        return bool(re.fullmatch(r".+ jumpball VIOLATION", action.description))
+    return action.description.startswith("Jump Ball ")
+
+
 def parse_live_data_play_by_play(
     payload: Mapping[str, Any], *, expected_game_id: str | None = None
 ) -> GameTiming:
     """Parse exact phase boundaries from official NBA LiveData actions.
 
     Every action must have a timezone-aware ``timeActual``. ``actual_start``
-    is the first valid period-1 opening jump ball at 12:00. ``actual_end`` is
+    is the first audited opening-tip representation immediately after the Q1
+    period start and any exact delay-of-game administration. ``actual_end`` is
     the unique official ``period/end`` action in the final observed period.
     Each period must have exactly one start and end action. Four regulation
     periods are mandatory; later periods remain inside Q4+.
@@ -361,8 +429,16 @@ def parse_live_data_play_by_play(
         clock = action.get("clock")
         action_type = action.get("actionType")
         subtype = action.get("subType", "")
+        descriptor = action.get("descriptor", "")
+        description = action.get("description", "")
         if not isinstance(clock, str) or not isinstance(action_type, str) or not isinstance(subtype, str):
             raise ValueError("NBA LiveData clock/actionType/subType fields must be strings")
+        if descriptor is None:
+            descriptor = ""
+        if not isinstance(descriptor, str):
+            raise ValueError("NBA LiveData descriptor must be a string or null")
+        if not isinstance(description, str):
+            description = ""
         observed.append(
             _ObservedAction(
                 action_number=action_number,
@@ -372,6 +448,10 @@ def parse_live_data_play_by_play(
                 clock=clock.strip().upper(),
                 action_type=action_type.strip().casefold(),
                 subtype=subtype.strip().casefold(),
+                descriptor=descriptor.strip().casefold(),
+                description=description.strip(),
+                raw_score_away=action.get("scoreAway"),
+                raw_score_home=action.get("scoreHome"),
             )
         )
 
@@ -388,6 +468,8 @@ def parse_live_data_play_by_play(
         )
 
     boundaries: list[PeriodBoundary] = []
+    period_starts: dict[int, _ObservedAction] = {}
+    period_ends: dict[int, _ObservedAction] = {}
     for period in periods:
         starts = [
             row for row in observed
@@ -406,6 +488,8 @@ def parse_live_data_play_by_play(
                 f"NBA game {game_id} period {period} requires exactly one start and end"
             )
         start, end = starts[0], ends[0]
+        period_starts[period] = start
+        period_ends[period] = end
         _clock(start.clock, "PT12M00.00S" if period <= 4 else "PT05M00.00S", f"period {period} start")
         _clock(end.clock, "PT00M00.00S", f"period {period} end")
         if end.timestamp <= start.timestamp:
@@ -425,25 +509,60 @@ def parse_live_data_play_by_play(
     if any(right.start_utc <= left.end_utc for left, right in zip(boundaries, boundaries[1:])):
         raise ValueError(f"NBA game {game_id} period boundaries overlap or reorder")
     by_period = {row.period: row for row in boundaries}
-    opening_tips = [
-        row for row in observed
-        if row.period == 1
-        and row.action_type == "jumpball"
-        and row.clock == "PT12M00.00S"
-        and by_period[1].start_order_number < row.order_number
-        and row.order_number < by_period[1].end_order_number
-    ]
-    if not opening_tips:
+    start_index = observed.index(period_starts[1])
+    opening_index = start_index + 1
+    while opening_index < len(observed) and _is_opening_admin(observed[opening_index]):
+        opening_index += 1
+    if opening_index >= len(observed):
         raise ValueError(
-            f"NBA game {game_id} lacks a valid period-1 opening jump-ball at 12:00"
+            f"NBA game {game_id} lacks an action after its Q1 period start"
         )
-    opening_tip = opening_tips[0]
+    opening_tip = observed[opening_index]
+    signature = (
+        opening_tip.action_type, opening_tip.subtype, opening_tip.descriptor
+    )
+    opening_seconds = _clock_seconds(opening_tip.clock, "opening-tip action")
+    if (
+        opening_tip.period != 1
+        or not 11 * 60 + 45 <= opening_seconds <= 12 * 60
+        or _scores(opening_tip, "opening-tip action") != (0, 0)
+        or signature not in OPENING_SIGNATURES
+        or not _has_opening_description(opening_tip)
+        or not (
+            by_period[1].start_order_number < opening_tip.order_number
+            < by_period[1].end_order_number
+        )
+    ):
+        raise ValueError(
+            f"NBA game {game_id} first post-start action is not an audited opening-tip"
+        )
     if opening_tip.timestamp < by_period[1].start_utc or opening_tip.timestamp >= by_period[1].end_utc:
         raise ValueError(f"NBA game {game_id} opening-tip timestamp is outside period 1")
-    terminal = next(
+    final_period = periods[-1]
+    terminal = period_ends[final_period]
+    game_ends = [
         row for row in observed
-        if row.order_number == by_period[periods[-1]].end_order_number
-    )
+        if row.action_type == "game" and row.subtype == "end"
+    ]
+    if len(game_ends) != 1:
+        raise ValueError(f"NBA game {game_id} requires exactly one game/end action")
+    game_end = game_ends[0]
+    _clock(game_end.clock, "PT00M00.00S", "game/end action")
+    if game_end.period != final_period:
+        raise ValueError(f"NBA game {game_id} game/end is not in its final period")
+    if game_end.order_number <= terminal.order_number or game_end.timestamp < terminal.timestamp:
+        raise ValueError(f"NBA game {game_id} game/end precedes its final period/end")
+    final_scores = _scores(terminal, "final period/end")
+    if _scores(game_end, "game/end action") != final_scores:
+        raise ValueError(f"NBA game {game_id} terminal scores disagree")
+    for period in range(4, final_period):
+        away_score, home_score = _scores(period_ends[period], f"period {period} end")
+        if away_score != home_score:
+            raise ValueError(
+                f"NBA game {game_id} has a decisive period {period} before later play"
+            )
+    if final_scores[0] == final_scores[1]:
+        raise ValueError(f"NBA game {game_id} has tied final PBP scores")
     actual_start = opening_tip.timestamp
     actual_end = terminal.timestamp
     starts = [actual_start, *(by_period[index].start_utc for index in range(2, 5))]
@@ -466,7 +585,9 @@ def parse_live_data_play_by_play(
         actual_end_order_number=terminal.order_number,
         actual_end_event=ACTUAL_END_EVENT,
         period_boundary_event=PERIOD_BOUNDARY_EVENT,
-        final_period=max(periods),
+        final_period=final_period,
+        pbp_away_final_score=final_scores[0],
+        pbp_home_final_score=final_scores[1],
         action_count=len(actions),
         periods=tuple(boundaries),
         phase_windows=windows,
@@ -474,20 +595,35 @@ def parse_live_data_play_by_play(
 
 
 def validate_schedule_timing(game: ScheduleGame, timing: GameTiming) -> None:
-    """Fail when a final schedule result and exact PBP terminal period disagree."""
+    """Fail unless schedule result and observed PBP terminal evidence agree."""
 
     if game.game_id != timing.game_id:
         raise ValueError(
             f"NBA schedule game {game.game_id} does not match timing {timing.game_id}"
         )
-    winning_team_id(game)
+    schedule_winner = winning_team_id(game)
     if game.expected_final_period is None:
-        raise ValueError(f"NBA game {game.game_id} lacks a final-period declaration")
-    if timing.final_period != game.expected_final_period:
+        if game.status_text.strip().casefold() != "final":
+            raise ValueError(f"NBA game {game.game_id} lacks a valid final status")
+    elif timing.final_period != game.expected_final_period:
         raise ValueError(
             f"NBA game {game.game_id} schedule expects final period "
             f"{game.expected_final_period}, but PBP ends in period {timing.final_period}"
         )
+    schedule_scores = (game.away_final_score, game.home_final_score)
+    pbp_scores = (timing.pbp_away_final_score, timing.pbp_home_final_score)
+    if pbp_scores != schedule_scores:
+        raise ValueError(
+            f"NBA game {game.game_id} schedule/PBP final scores disagree: "
+            f"schedule={schedule_scores}, PBP={pbp_scores}"
+        )
+    pbp_winner = (
+        game.away_team_id
+        if timing.pbp_away_final_score > timing.pbp_home_final_score
+        else game.home_team_id
+    )
+    if pbp_winner != schedule_winner:
+        raise ValueError(f"NBA game {game.game_id} schedule/PBP winners disagree")
     if timing.actual_start_event != ACTUAL_START_EVENT:
         raise ValueError(f"NBA game {game.game_id} has wrong actual-start semantics")
     if timing.actual_end_event != ACTUAL_END_EVENT:

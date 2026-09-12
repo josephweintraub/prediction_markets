@@ -14,7 +14,11 @@ import pytest
 from analysis.nba_game_dynamics.build_downstream_handoff import (
     build_downstream_handoff as build_nba_handoff,
 )
-from analysis.nba_game_dynamics.build_game_timing import build_game_timing_audit
+from analysis.nba_game_dynamics.build_game_timing import (
+    build_game_timing_audit,
+    cache_inventory_fingerprint,
+)
+from analysis.nba_game_dynamics.artifact_manifest import file_fingerprint
 from analysis.nba_game_dynamics.build_validated_universe import (
     build_validated_universe as build_nba_validated,
 )
@@ -58,8 +62,8 @@ from analysis.sports_game_dynamics.timestamp_provenance import (
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures"
 CONTRACTS = {
-    sport: ROOT / "configs" / "game_dynamics" / f"{sport}_phase_contract_v1.json"
-    for sport in ("nba", "nfl")
+    "nba": ROOT / "configs" / "game_dynamics" / "nba_phase_contract_v2.json",
+    "nfl": ROOT / "configs" / "game_dynamics" / "nfl_phase_contract_v1.json",
 }
 RAW_SCHEMA = (
     ("maker", "VARCHAR"), ("taker", "VARCHAR"),
@@ -90,8 +94,10 @@ def _write_frame(path: Path, rows: list[dict]) -> None:
 class _NbaClient:
     def __init__(self, cache_dir: Path) -> None:
         cache_dir.mkdir(parents=True)
-        self.schedule_cache = cache_dir / "schedule.json"
-        self.pbp_cache = cache_dir / "playbyplay.json"
+        self.cache_dir = cache_dir
+        self.schedule_cache = cache_dir / "schedule_2024.json"
+        self.pbp_cache = cache_dir / "playbyplay" / "0022400953.json"
+        self.pbp_cache.parent.mkdir()
         self.schedule_cache.write_bytes(
             json.dumps(_payload("nba_legacy_schedule.json"), sort_keys=True).encode()
         )
@@ -130,6 +136,37 @@ class _NbaClient:
         }
 
 
+def _nba_test_contract(root: Path, candidates: Path, cache: Path) -> Path:
+    payload = json.loads(CONTRACTS["nba"].read_text(encoding="utf-8"))
+    inventory = cache_inventory_fingerprint(cache)
+    payload["audit_scope"].update({
+        "cache_inventory_name": inventory["name"],
+        "cache_inventory_sha256": inventory["sha256"],
+        "candidate_artifact_sha256": file_fingerprint(candidates)["sha256"],
+        "candidate_date_from": "2025-03-12",
+        "candidate_date_to": "2025-03-12",
+        "candidate_market_rows": 1,
+        "matched_completed_date_from": "2025-03-12",
+        "matched_completed_date_to": "2025-03-12",
+        "schedule_resources": 1,
+        "play_by_play_resources": 1,
+        "matched_completed_games": 1,
+        "opening_rule_passes": 1,
+        "opening_rule_failures": 0,
+        "opening_failure_game_id": "0022400887",
+        "schedule_score_mismatches": 0,
+        "schedule_score_mismatch_game_id": "0022400072",
+        "reconciled_timing_games": 1,
+        "overtime_games": 1,
+        "single_overtime_games": 1,
+        "double_overtime_games": 0,
+        "spurious_period_5_games": 0,
+    })
+    path = root / "nba-test-contract-v2.json"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return path
+
+
 def _nba_stage03(root: Path) -> Path:
     candidates = root / "nba_candidates.parquet"
     _write_frame(candidates, [{
@@ -142,8 +179,11 @@ def _nba_stage03(root: Path) -> Path:
         "last_trade_at": pd.Timestamp("2025-03-13T00:00:00Z"),
     }])
     timing = root / "nba_timing"
+    cache = root / "nba_cache"
+    client = _NbaClient(cache)
     build_game_timing_audit(
-        candidates, root / "nba_cache", timing, client=_NbaClient(root / "nba_provider")
+        candidates, cache, timing, client=client,
+        phase_contract_path=_nba_test_contract(root, candidates, cache),
     )
     universe = root / "nba_tokens.parquet"
     token_map = root / "nba_token_map.parquet"
@@ -220,7 +260,18 @@ def _schema(path: Path) -> tuple[tuple[str, str], ...]:
         con.close()
 
 
-def _run_stage04_to_10(root: Path, sport: str, handoff: Path) -> str:
+def _stage03_contract(stage03: Path, sport: str) -> Path:
+    if sport != "nba":
+        return CONTRACTS[sport]
+    manifest = json.loads(
+        (stage03 / "validated_manifest.json").read_text(encoding="utf-8")
+    )
+    return Path(manifest["inputs"]["phase_contract"]["path"])
+
+
+def _run_stage04_to_10(
+    root: Path, sport: str, handoff: Path, contract: Path
+) -> str:
     root.mkdir(parents=True)
     eligible = handoff / "eligible_moneylines.parquet"
     con = duckdb.connect()
@@ -254,7 +305,6 @@ def _run_stage04_to_10(root: Path, sport: str, handoff: Path) -> str:
     write_parquet(raw, RAW_SCHEMA, raw_rows, ("block_number", "log_index"))
     write_parquet(cache, CACHE_SCHEMA, cache_rows, ("block_number",))
     write_parquet(flags, FLAG_SCHEMA, [("unrelated-wallet", True)], ("proxyWallet",))
-    contract = CONTRACTS[sport]
     stage04 = root / "04_timestamp"
     declaration = build_timestamp_declaration(
         sport, raw, eligible, cache, handoff / "adapter_provenance.json", contract, stage04
@@ -302,9 +352,10 @@ def test_real_adapter_stage03_handoff_runs_shared_stage04_to_10(
     tmp_path: Path, sport: str
 ) -> None:
     stage03 = _nba_stage03(tmp_path) if sport == "nba" else _nfl_stage03(tmp_path)
+    contract = _stage03_contract(stage03, sport)
     handoff = tmp_path / f"{sport}_handoff"
     builder = build_nba_handoff if sport == "nba" else build_nfl_handoff
-    provenance = builder(stage03, CONTRACTS[sport], handoff)
+    provenance = builder(stage03, contract, handoff)
 
     eligible = handoff / "eligible_moneylines.parquet"
     assert {path.name for path in handoff.iterdir()} == {
@@ -326,7 +377,7 @@ def test_real_adapter_stage03_handoff_runs_shared_stage04_to_10(
     )
     assert provenance["native_lineage"]["source_evidence"]
     assert provenance["phase_contract"]["sha256"] == hashlib.sha256(
-        CONTRACTS[sport].read_bytes()
+        contract.read_bytes()
     ).hexdigest()
     expected_provider = (
         "NBA official data API" if sport == "nba"
@@ -336,7 +387,9 @@ def test_real_adapter_stage03_handoff_runs_shared_stage04_to_10(
     assert provenance["source_provider"] == expected_provider
     assert provenance["source_status"] == expected_status
 
-    html = _run_stage04_to_10(tmp_path / f"{sport}_downstream", sport, handoff)
+    html = _run_stage04_to_10(
+        tmp_path / f"{sport}_downstream", sport, handoff, contract
+    )
     assert f"Timing provider: <code>{expected_provider}</code>" in html
     assert f"source status: <code>{expected_status}</code>" in html
     assert html.count('<section class="panel">') == 5
@@ -348,9 +401,10 @@ def test_adapter_reopen_rejects_mutated_native_lineage(
     tmp_path: Path, sport: str, mutation: str
 ) -> None:
     stage03 = _nba_stage03(tmp_path) if sport == "nba" else _nfl_stage03(tmp_path)
+    contract = _stage03_contract(stage03, sport)
     handoff = tmp_path / f"{sport}_handoff"
     builder = build_nba_handoff if sport == "nba" else build_nfl_handoff
-    provenance = builder(stage03, CONTRACTS[sport], handoff)
+    provenance = builder(stage03, contract, handoff)
 
     if mutation == "manifest":
         value = json.loads((handoff / "adapter_provenance.json").read_text())
@@ -365,12 +419,15 @@ def test_adapter_reopen_rejects_mutated_native_lineage(
         )
         evidence_path.write_bytes(evidence_path.read_bytes() + b"\n")
 
-    with pytest.raises((ArtifactError, ValueError), match="lineage|Fingerprint|fingerprint"):
+    with pytest.raises(
+        (ArtifactError, ValueError),
+        match="lineage|Fingerprint|fingerprint|cache inventory changed",
+    ):
         load_and_verify_adapter_handoff(
             handoff / "adapter_provenance.json",
             sport,
             handoff / "eligible_moneylines.parquet",
-            CONTRACTS[sport],
+            contract,
         )
 
 
@@ -385,8 +442,9 @@ def test_nba_reopen_rejects_tampered_projected_team_name_with_updated_hash(
     tmp_path: Path,
 ) -> None:
     stage03 = _nba_stage03(tmp_path)
+    contract = _stage03_contract(stage03, "nba")
     handoff = tmp_path / "nba_handoff"
-    build_nba_handoff(stage03, CONTRACTS["nba"], handoff)
+    build_nba_handoff(stage03, contract, handoff)
     eligible = handoff / "eligible_moneylines.parquet"
     replacement = tmp_path / "tampered_eligible.parquet"
     con = duckdb.connect()
@@ -407,7 +465,7 @@ def test_nba_reopen_rejects_tampered_projected_team_name_with_updated_hash(
 
     with pytest.raises(ArtifactError, match="exact native Stage-03 projection"):
         load_and_verify_adapter_handoff(
-            provenance_path, "nba", eligible, CONTRACTS["nba"]
+            provenance_path, "nba", eligible, contract
         )
 
 

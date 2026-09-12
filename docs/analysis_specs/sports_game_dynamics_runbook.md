@@ -20,9 +20,9 @@ UNIVERSE_TOKENS=/mnt/data/embedding_difficulty/universe_tokens.parquet
 TOKEN_MAP=/mnt/data/pipeline_data/token_map.parquet
 RAW_TRADES=/mnt/data/pipeline_data/resolved_trades.parquet
 EXACT_CACHE=/mnt/data/pipeline_data/block_timestamps.parquet
-WALLET_FLAGS=/mnt/data/pipeline_data/wallet_flags.parquet
+WALLET_FLAGS=/mnt/data/learnability/cache/wallet_flags.parquet
 PROVIDER_CACHE=/mnt/data/research_cache/replace-with-reviewed-nba-provider-cache
-PHASE_CONTRACT=configs/game_dynamics/nba_phase_contract_v1.json
+PHASE_CONTRACT=configs/game_dynamics/nba_phase_contract_v2.json
 ```
 
 For NFL, use a different fresh root and the NFL provider cache and contract:
@@ -108,7 +108,13 @@ the public CDN returns HTTP 403 from the production EC2 environment. Each
 boundary must be directly observed as a parseable, absolute `timeActual` value
 on the required LiveData action. Missing or invalid absolute boundaries fail
 closed: scheduled tip time, game clock, neighboring actions, interpolation,
-and extrapolation are not substitutes.
+and extrapolation are not substitutes. NBA contract v2 also requires the
+audited first post-start opening-tip signature, complete observed-period and
+`game/end` evidence, and exact PBP-to-schedule score/winner reconciliation.
+Stage 02 also requires the supplied candidate artifact and complete immutable
+provider-cache tree to match the v2 audit-scope fingerprints and counts exactly;
+a refreshed or substituted input requires a newly audited contract version.
+The preserved v1 contract is audit history and must not be used for production.
 
 ### Stage 03: validated universe and mandatory bridge
 

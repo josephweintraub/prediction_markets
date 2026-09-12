@@ -69,7 +69,7 @@ PROVENANCE_OUTPUT = "provider_provenance.json"
 MANIFEST_OUTPUT = "timing_manifest.json"
 DEFAULT_PHASE_CONTRACT = (
     Path(__file__).resolve().parents[2]
-    / "configs/game_dynamics/nba_phase_contract_v1.json"
+    / "configs/game_dynamics/nba_phase_contract_v2.json"
 )
 NBA_ANALYSIS_PHASES = (
     "pregame",
@@ -77,6 +77,10 @@ NBA_ANALYSIS_PHASES = (
     "quarter_2",
     "quarter_3",
     "quarter_4_plus",
+)
+CACHE_INVENTORY_SHA256_METHOD = (
+    "SHA-256 of sorted UTF-8 <relative_path>\\t<byte_count>\\t"
+    "<file_sha256>\\n records"
 )
 
 SCHEDULE_SCHEMA = (
@@ -127,6 +131,8 @@ TIMING_SCHEMA = (
     ("period_3_start_utc", "TIMESTAMPTZ"), ("period_4_start_utc", "TIMESTAMPTZ"),
     ("actual_end_utc", "TIMESTAMPTZ"), ("final_period", "INTEGER"),
     ("expected_final_period", "INTEGER"),
+    ("pbp_away_final_score", "INTEGER"),
+    ("pbp_home_final_score", "INTEGER"),
     ("actual_start_action_number", "INTEGER"),
     ("actual_start_order_number", "BIGINT"),
     ("actual_start_event", "VARCHAR"),
@@ -152,6 +158,78 @@ TIMING_SCHEMA = (
 
 def _quote(path: str | Path) -> str:
     return str(Path(path).expanduser().resolve()).replace("'", "''")
+
+
+def cache_inventory_fingerprint(cache_dir: str | Path) -> dict[str, Any]:
+    """Fingerprint the exact immutable schedule/PBP cache tree."""
+
+    cache = Path(cache_dir).expanduser().resolve()
+    if not cache.is_dir():
+        raise FileNotFoundError(f"NBA provider cache directory does not exist: {cache}")
+    files = sorted(path for path in cache.rglob("*") if path.is_file())
+    if not files:
+        raise ValueError("NBA provider cache inventory is empty")
+    records: list[str] = []
+    total_bytes = 0
+    schedule_resources = 0
+    play_by_play_resources = 0
+    for path in files:
+        if path.is_symlink():
+            raise ValueError(f"NBA provider cache may not contain symlinks: {path}")
+        relative = path.relative_to(cache).as_posix()
+        if re.fullmatch(r"schedule_[0-9]{4}\.json", relative):
+            schedule_resources += 1
+        elif re.fullmatch(r"playbyplay/[0-9]{10}\.json", relative):
+            play_by_play_resources += 1
+        else:
+            raise ValueError(f"NBA provider cache contains an unexpected file: {relative}")
+        payload = path.read_bytes()
+        size = len(payload)
+        total_bytes += size
+        digest = hashlib.sha256(payload).hexdigest()
+        records.append(f"{relative}\t{size}\t{digest}\n")
+    return {
+        "path": str(cache),
+        "name": cache.name,
+        "files": len(files),
+        "bytes": total_bytes,
+        "schedule_resources": schedule_resources,
+        "play_by_play_resources": play_by_play_resources,
+        "sha256": hashlib.sha256("".join(records).encode("utf-8")).hexdigest(),
+        "sha256_method": CACHE_INVENTORY_SHA256_METHOD,
+    }
+
+
+def _require_bound_audit_inputs(
+    contract: Any,
+    candidate_path: Path,
+    candidates: list[dict[str, Any]],
+    start: date,
+    end: date,
+    cache_inventory: dict[str, Any],
+) -> None:
+    scope = contract.audit_scope
+    if not isinstance(scope, dict):
+        raise ValueError("NBA phase contract v2 lacks a validated audit_scope")
+    candidate_fingerprint = file_fingerprint(candidate_path)
+    expected = {
+        "candidate_artifact_sha256": candidate_fingerprint["sha256"],
+        "candidate_market_rows": len(candidates),
+        "candidate_date_from": start.isoformat(),
+        "candidate_date_to": end.isoformat(),
+        "cache_inventory_name": cache_inventory["name"],
+        "cache_inventory_sha256": cache_inventory["sha256"],
+        "cache_inventory_sha256_method": cache_inventory["sha256_method"],
+        "schedule_resources": cache_inventory["schedule_resources"],
+        "play_by_play_resources": cache_inventory["play_by_play_resources"],
+    }
+    mismatches = {
+        key: {"contract": scope.get(key), "observed": observed}
+        for key, observed in expected.items()
+        if scope.get(key) != observed
+    }
+    if mismatches:
+        raise ValueError(f"NBA v2 audit_scope input mismatch: {mismatches}")
 
 
 def _read_candidates(path: str | Path) -> tuple[list[dict[str, Any]], date, date]:
@@ -269,6 +347,8 @@ def _timing_row(
         "actual_end_utc": timing.actual_end_utc,
         "final_period": timing.final_period,
         "expected_final_period": schedule.expected_final_period,
+        "pbp_away_final_score": timing.pbp_away_final_score,
+        "pbp_home_final_score": timing.pbp_home_final_score,
         "actual_start_action_number": timing.actual_start_action_number,
         "actual_start_order_number": timing.actual_start_order_number,
         "actual_start_event": timing.actual_start_event,
@@ -381,8 +461,8 @@ def build_game_timing_audit(
     candidate = Path(candidate_path).expanduser().resolve()
     contract_path = Path(phase_contract_path).expanduser().resolve()
     contract = load_phase_contract(contract_path)
-    if contract.sport != "nba":
-        raise ValueError(f"NBA timing requires an NBA phase contract, got {contract.sport!r}")
+    if contract.sport != "nba" or contract.contract_version != 2:
+        raise ValueError("NBA timing requires the audited NBA phase contract v2")
     if contract.regulation_period_minutes != 12:
         raise ValueError("NBA phase contract must use 12-minute regulation periods")
     if tuple(phase.key for phase in contract.analysis_phases) != NBA_ANALYSIS_PHASES:
@@ -404,6 +484,10 @@ def build_game_timing_audit(
         if source == output or source.is_relative_to(output) or output.is_relative_to(source):
             raise ValueError("NBA timing output must not overlap inputs or API cache")
     candidates, start, end = _read_candidates(candidate)
+    cache_inventory = cache_inventory_fingerprint(cache)
+    _require_bound_audit_inputs(
+        contract, candidate, candidates, start, end, cache_inventory
+    )
     api = client or NbaApiClient(cache)
     schedules = api.schedule_games(start, end, refresh=refresh)
     schedule_ids = [row.game_id for row in schedules]
@@ -415,12 +499,14 @@ def build_game_timing_audit(
     assert_one_to_one_matches(audits)
     match_rows = {row.market_id: _match_row(row) for row in audits}
     timing_rows: list[dict[str, Any]] = []
+    parsed_timings: dict[str, GameTiming] = {}
     for audit in audits:
         if not audit.is_matched:
             continue
         assert audit.matched_game_id is not None
         try:
             timing = api.game_timing(audit.matched_game_id, refresh=refresh)
+            parsed_timings[timing.game_id] = timing
             validate_schedule_timing(audit.schedule_matches[0], timing)
             timing_rows.append(_timing_row(audit, timing, contract_sha))
         except Exception as exc:
@@ -435,6 +521,76 @@ def build_game_timing_audit(
             match_rows[audit.market_id]["timing_status"] = "passed"
 
     _, provenance_payload, provenance_sha256 = _validated_provenance(api)
+    provenance_resources = json.loads(provenance_payload)["resources"]
+    cache_root = cache.resolve()
+    if any(
+        not Path(resource["cache_path"]).resolve().is_relative_to(cache_root)
+        for resource in provenance_resources
+    ):
+        raise ValueError("NBA provider provenance contains resources outside the bound cache")
+    inventory_paths = {
+        str(path.resolve()) for path in cache.rglob("*") if path.is_file()
+    }
+    provenance_paths = {
+        str(Path(resource["cache_path"]).resolve()) for resource in provenance_resources
+    }
+    if provenance_paths != inventory_paths:
+        raise ValueError("NBA provider provenance does not cover the exact bound cache")
+    observed_inventory = cache_inventory_fingerprint(cache)
+    if observed_inventory != cache_inventory:
+        raise ValueError("NBA provider cache inventory changed during timing build")
+
+    scope = contract.audit_scope
+    assert isinstance(scope, dict)
+    matched = [audit for audit in audits if audit.is_matched]
+    matched_dates = sorted(
+        audit.schedule_matches[0].official_date for audit in matched
+    )
+    opening_failure_ids = sorted(
+        audit.matched_game_id for audit in matched
+        if audit.matched_game_id not in parsed_timings
+    )
+    score_mismatch_ids = sorted(
+        audit.matched_game_id for audit in matched
+        if audit.matched_game_id in parsed_timings
+        and (
+            parsed_timings[audit.matched_game_id].pbp_away_final_score,
+            parsed_timings[audit.matched_game_id].pbp_home_final_score,
+        ) != (
+            audit.schedule_matches[0].away_final_score,
+            audit.schedule_matches[0].home_final_score,
+        )
+    )
+    one_ot = sum(timing.final_period == 5 for timing in parsed_timings.values())
+    two_ot = sum(timing.final_period == 6 for timing in parsed_timings.values())
+    observed_scope = {
+        "matched_completed_games": len(matched),
+        "matched_completed_date_from": matched_dates[0].isoformat() if matched_dates else None,
+        "matched_completed_date_to": matched_dates[-1].isoformat() if matched_dates else None,
+        "opening_rule_passes": len(parsed_timings),
+        "opening_rule_failures": len(opening_failure_ids),
+        "schedule_score_mismatches": len(score_mismatch_ids),
+        "reconciled_timing_games": len(timing_rows),
+        "overtime_games": one_ot + two_ot,
+        "single_overtime_games": one_ot,
+        "double_overtime_games": two_ot,
+        "spurious_period_5_games": 0,
+    }
+    if opening_failure_ids:
+        observed_scope["opening_failure_game_id"] = (
+            opening_failure_ids[0] if len(opening_failure_ids) == 1 else None
+        )
+    if score_mismatch_ids:
+        observed_scope["schedule_score_mismatch_game_id"] = (
+            score_mismatch_ids[0] if len(score_mismatch_ids) == 1 else None
+        )
+    scope_mismatches = {
+        key: {"contract": scope.get(key), "observed": value}
+        for key, value in observed_scope.items()
+        if scope.get(key) != value
+    }
+    if scope_mismatches:
+        raise ValueError(f"NBA v2 audit_scope result mismatch: {scope_mismatches}")
     for row in timing_rows:
         row["provider_provenance_sha256"] = provenance_sha256
     summary = {
@@ -486,9 +642,10 @@ def build_game_timing_audit(
                 "candidates": file_fingerprint(candidate),
                 "phase_contract": contract_record,
             },
+            "provider_cache_inventory": cache_inventory,
             "provider_cache_inputs": [
                 file_fingerprint(resource["cache_path"])
-                for resource in json.loads(provenance_payload)["resources"]
+                for resource in provenance_resources
             ],
             "schemas": {
                 name: [list(row) for row in schema] for name, schema in schemas.items()
@@ -532,8 +689,8 @@ def verify_game_timing_run(run_dir: str | Path) -> dict[str, Any]:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ArtifactManifestError("NBA timing metadata is invalid JSON") from exc
     if set(manifest) != {
-        "schema_version", "stage", "inputs", "provider_cache_inputs",
-        "schemas", "outputs",
+        "schema_version", "stage", "inputs", "provider_cache_inventory",
+        "provider_cache_inputs", "schemas", "outputs",
     }:
         raise ArtifactManifestError("NBA timing manifest keys mismatch")
     if manifest["schema_version"] != 1 or manifest["stage"] != "nba_game_timing":
@@ -544,12 +701,26 @@ def verify_game_timing_run(run_dir: str | Path) -> dict[str, Any]:
     contract_path = verify_fingerprint(manifest["inputs"]["phase_contract"])
     require_parquet_schema(candidate_path, CANDIDATE_SCHEMA, "NBA timing candidate input")
     contract = load_phase_contract(contract_path)
-    if contract.sport != "nba":
-        raise ArtifactManifestError("NBA timing phase contract has wrong sport")
+    if contract.sport != "nba" or contract.contract_version != 2:
+        raise ArtifactManifestError("NBA timing phase contract is not NBA v2")
     if contract.regulation_period_minutes != 12:
         raise ArtifactManifestError("NBA timing phase contract must use 12-minute periods")
     if tuple(phase.key for phase in contract.analysis_phases) != NBA_ANALYSIS_PHASES:
         raise ArtifactManifestError("NBA timing phase contract eligible phases mismatch")
+    inventory_record = manifest["provider_cache_inventory"]
+    if not isinstance(inventory_record, dict) or set(inventory_record) != {
+        "path", "name", "files", "bytes", "schedule_resources",
+        "play_by_play_resources", "sha256", "sha256_method",
+    }:
+        raise ArtifactManifestError("NBA timing provider-cache inventory schema mismatch")
+    observed_inventory = cache_inventory_fingerprint(inventory_record.get("path", ""))
+    if observed_inventory != inventory_record:
+        raise ArtifactManifestError("NBA timing provider-cache inventory changed")
+    candidates, candidate_start, candidate_end = _read_candidates(candidate_path)
+    _require_bound_audit_inputs(
+        contract, candidate_path, candidates, candidate_start, candidate_end,
+        observed_inventory,
+    )
     cache_records = manifest["provider_cache_inputs"]
     if not isinstance(cache_records, list) or not cache_records:
         raise ArtifactManifestError("NBA timing provider-cache declaration is empty")
@@ -583,6 +754,14 @@ def verify_game_timing_run(run_dir: str | Path) -> dict[str, Any]:
             or resource.get("sha256") != cache_record.get("sha256")
         ):
             raise ArtifactManifestError("NBA provider cache fingerprint lineage mismatch")
+    if {
+        str(Path(resource["cache_path"]).resolve()) for resource in resource_records
+    } != {
+        str(path.resolve())
+        for path in Path(inventory_record["path"]).resolve().rglob("*")
+        if path.is_file()
+    }:
+        raise ArtifactManifestError("NBA provider provenance does not cover bound cache")
     con = duckdb.connect()
     try:
         q = lambda name: str(run / name).replace("'", "''")
@@ -606,16 +785,30 @@ def verify_game_timing_run(run_dir: str | Path) -> dict[str, Any]:
         ).fetchone()
         bad_timing = int(con.execute(
             f"SELECT count(*) FROM read_parquet('{q(TIMING_OUTPUT)}') WHERE "
-            "NOT (actual_start_utc < period_2_start_utc "
+            "NOT COALESCE((actual_start_utc < period_2_start_utc "
             "AND period_2_start_utc < period_3_start_utc "
             "AND period_3_start_utc < period_4_start_utc "
-            "AND period_4_start_utc < actual_end_utc) "
-            f"OR provider_provenance_sha256 <> '{provenance_sha}' "
-            f"OR phase_contract_sha256 <> '{manifest['inputs']['phase_contract']['sha256']}'"
+            "AND period_4_start_utc < actual_end_utc), FALSE) "
+            "OR pbp_away_final_score IS DISTINCT FROM away_final_score "
+            "OR pbp_home_final_score IS DISTINCT FROM home_final_score "
+            f"OR provider_provenance_sha256 IS DISTINCT FROM '{provenance_sha}' "
+            f"OR phase_contract_sha256 IS DISTINCT FROM "
+            f"'{manifest['inputs']['phase_contract']['sha256']}'"
         ).fetchone()[0])
         passed = int(con.execute(
             f"SELECT count(*) FROM read_parquet('{q(MATCH_OUTPUT)}') WHERE timing_status='passed'"
         ).fetchone()[0])
+        matched_count, matched_date_from, matched_date_to = con.execute(
+            f"SELECT count(*), min(schedule_official_date), max(schedule_official_date) "
+            f"FROM read_parquet('{q(MATCH_OUTPUT)}') "
+            "WHERE match_exclusion_reason IS NULL"
+        ).fetchone()
+        failed_game_ids = {
+            row[0] for row in con.execute(
+                f"SELECT matched_game_id FROM read_parquet('{q(MATCH_OUTPUT)}') "
+                "WHERE timing_status='failed'"
+            ).fetchall()
+        }
         match_ids = {
             row[0] for row in con.execute(
                 f"SELECT market_id FROM read_parquet('{q(MATCH_OUTPUT)}')"
@@ -646,6 +839,25 @@ def verify_game_timing_run(run_dir: str | Path) -> dict[str, Any]:
         raise ArtifactManifestError("NBA serialized timing identities do not match passed matches")
     if bad_timing:
         raise ArtifactManifestError("NBA serialized timing boundaries or lineage are invalid")
+    scope = contract.audit_scope
+    assert isinstance(scope, dict)
+    expected_failed_ids = set()
+    if scope["opening_rule_failures"]:
+        expected_failed_ids.add(scope["opening_failure_game_id"])
+    if scope["schedule_score_mismatches"]:
+        expected_failed_ids.add(scope["schedule_score_mismatch_game_id"])
+    if (
+        matched_count != scope["matched_completed_games"]
+        or (
+            matched_date_from.isoformat() if matched_date_from is not None else None
+        ) != scope["matched_completed_date_from"]
+        or (
+            matched_date_to.isoformat() if matched_date_to is not None else None
+        ) != scope["matched_completed_date_to"]
+        or timing_count != scope["reconciled_timing_games"]
+        or failed_game_ids != expected_failed_ids
+    ):
+        raise ArtifactManifestError("NBA serialized rows do not match v2 audit_scope")
     expected_counts = {
         "candidate_markets": candidate_count,
         "schedule_records": schedule_count,

@@ -8,7 +8,7 @@ the frozen phase declaration and applies its interval semantics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 import hashlib
 import json
 import math
@@ -18,7 +18,7 @@ from typing import Any, Mapping
 
 
 SCHEMA_VERSION = 1
-CONTRACT_VERSION = 1
+SUPPORTED_CONTRACT_VERSIONS = {1, 2}
 EXPECTED_PHASE_KEYS = (
     "pregame",
     "quarter_1",
@@ -51,6 +51,31 @@ TOP_LEVEL_KEYS = {
     "nonstandard_game_policy",
     "boundary_samples",
     "phases",
+}
+V2_AUDIT_SCOPE_KEYS = {
+    "schema_version",
+    "cache_inventory_name",
+    "cache_inventory_sha256",
+    "cache_inventory_sha256_method",
+    "candidate_artifact_sha256",
+    "candidate_date_from",
+    "candidate_date_to",
+    "candidate_market_rows",
+    "matched_completed_date_from",
+    "matched_completed_date_to",
+    "schedule_resources",
+    "play_by_play_resources",
+    "matched_completed_games",
+    "opening_rule_passes",
+    "opening_rule_failures",
+    "opening_failure_game_id",
+    "schedule_score_mismatches",
+    "schedule_score_mismatch_game_id",
+    "reconciled_timing_games",
+    "overtime_games",
+    "single_overtime_games",
+    "double_overtime_games",
+    "spurious_period_5_games",
 }
 SAMPLE_KEYS = {
     "key",
@@ -110,6 +135,7 @@ class PhaseContract:
     nonstandard_game_policy: str
     boundary_samples: tuple[BoundarySample, ...]
     phases: tuple[Phase, ...]
+    audit_scope: Mapping[str, Any] | None = None
 
     @property
     def analysis_phases(self) -> tuple[Phase, ...]:
@@ -216,27 +242,111 @@ def _parse_phase(value: Any, index: int) -> Phase:
     )
 
 
+def _sha256(value: Any, label: str) -> str:
+    digest = _nonempty(value, label)
+    if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise PhaseContractError(f"{label} must be a lowercase SHA-256")
+    return digest
+
+
+def _iso_date(value: Any, label: str) -> date:
+    raw = _nonempty(value, label)
+    try:
+        return date.fromisoformat(raw)
+    except ValueError as exc:
+        raise PhaseContractError(f"{label} must be an ISO date") from exc
+
+
+def _parse_v2_audit_scope(value: Any) -> dict[str, Any]:
+    scope = _object(value, "audit_scope")
+    _exact_keys(scope, V2_AUDIT_SCOPE_KEYS, "audit_scope")
+    if _integer(scope["schema_version"], "audit_scope.schema_version") != 1:
+        raise PhaseContractError("audit_scope.schema_version must equal 1")
+    _nonempty(scope["cache_inventory_name"], "audit_scope.cache_inventory_name")
+    _sha256(scope["cache_inventory_sha256"], "audit_scope.cache_inventory_sha256")
+    expected_method = (
+        "SHA-256 of sorted UTF-8 <relative_path>\\t<byte_count>\\t"
+        "<file_sha256>\\n records"
+    )
+    if scope["cache_inventory_sha256_method"] != expected_method:
+        raise PhaseContractError("audit_scope cache-inventory method is unsupported")
+    _sha256(scope["candidate_artifact_sha256"], "audit_scope.candidate_artifact_sha256")
+    candidate_from = _iso_date(scope["candidate_date_from"], "audit_scope.candidate_date_from")
+    candidate_to = _iso_date(scope["candidate_date_to"], "audit_scope.candidate_date_to")
+    matched_from = _iso_date(
+        scope["matched_completed_date_from"], "audit_scope.matched_completed_date_from"
+    )
+    matched_to = _iso_date(
+        scope["matched_completed_date_to"], "audit_scope.matched_completed_date_to"
+    )
+    if candidate_to < candidate_from or matched_to < matched_from:
+        raise PhaseContractError("audit_scope date ranges must be ordered")
+    if matched_from < candidate_from or matched_to > candidate_to:
+        raise PhaseContractError("audit_scope matched dates must lie inside candidate dates")
+    count_keys = V2_AUDIT_SCOPE_KEYS - {
+        "cache_inventory_name", "cache_inventory_sha256",
+        "cache_inventory_sha256_method", "candidate_artifact_sha256",
+        "candidate_date_from", "candidate_date_to",
+        "matched_completed_date_from", "matched_completed_date_to",
+        "opening_failure_game_id", "schedule_score_mismatch_game_id",
+    }
+    counts = {key: _integer(scope[key], f"audit_scope.{key}") for key in count_keys}
+    if any(value < 0 for value in counts.values()):
+        raise PhaseContractError("audit_scope counts must be nonnegative")
+    if counts["candidate_market_rows"] < counts["matched_completed_games"]:
+        raise PhaseContractError("audit_scope matched games exceed candidate rows")
+    if counts["play_by_play_resources"] != counts["matched_completed_games"]:
+        raise PhaseContractError("audit_scope PBP resources must equal matched games")
+    if (
+        counts["opening_rule_passes"] + counts["opening_rule_failures"]
+        != counts["matched_completed_games"]
+    ):
+        raise PhaseContractError("audit_scope opening counts do not reconcile")
+    if (
+        counts["reconciled_timing_games"]
+        != counts["opening_rule_passes"] - counts["schedule_score_mismatches"]
+    ):
+        raise PhaseContractError("audit_scope reconciled timing count does not reconcile")
+    if (
+        counts["single_overtime_games"] + counts["double_overtime_games"]
+        != counts["overtime_games"]
+    ):
+        raise PhaseContractError("audit_scope overtime counts do not reconcile")
+    for key in ("opening_failure_game_id", "schedule_score_mismatch_game_id"):
+        game_id = _nonempty(scope[key], f"audit_scope.{key}")
+        if re.fullmatch(r"[0-9]{10}", game_id) is None:
+            raise PhaseContractError(f"audit_scope.{key} must be a ten-digit game id")
+    return dict(scope)
+
+
 def _validate_fixed_semantics(contract: PhaseContract) -> None:
     if contract.schema_version != SCHEMA_VERSION:
         raise PhaseContractError(
             f"Unsupported phase-contract schema_version: {contract.schema_version}"
         )
-    if contract.contract_version != CONTRACT_VERSION:
+    if contract.contract_version not in SUPPORTED_CONTRACT_VERSIONS:
         raise PhaseContractError(
             f"Unsupported phase contract_version: {contract.contract_version}"
         )
+    if contract.contract_version == 1 and contract.audit_scope is not None:
+        raise PhaseContractError("Phase contract v1 cannot carry audit_scope")
+    if contract.contract_version == 2:
+        if contract.sport != "nba" or contract.audit_scope is None:
+            raise PhaseContractError(
+                "Phase contract v2 is supported only for NBA with audit_scope"
+            )
     if not re.fullmatch(r"[a-z][a-z0-9_]*", contract.sport):
         raise PhaseContractError(f"Invalid sport key: {contract.sport!r}")
     if contract.regulation_periods != 4:
-        raise PhaseContractError("Quarter-based v1 contracts require four regulation periods")
+        raise PhaseContractError("Quarter-based contracts require four regulation periods")
     if contract.regulation_period_minutes <= 0:
         raise PhaseContractError("regulation_period_minutes must be positive")
     if contract.overtime_policy != "fold_into_final_phase":
-        raise PhaseContractError("v1 overtime must fold into the final phase")
+        raise PhaseContractError("Overtime must fold into the final phase")
     if contract.tie_policy != "exclude_without_unique_winner":
-        raise PhaseContractError("v1 ties must fail closed without a unique winner")
+        raise PhaseContractError("Ties must fail closed without a unique winner")
     if contract.nonstandard_game_policy != "retain_in_audit_exclude_from_core":
-        raise PhaseContractError("v1 nonstandard games must remain audited and leave the core")
+        raise PhaseContractError("Nonstandard games must remain audited and leave the core")
 
     samples = contract.boundary_samples
     if tuple(sample.key for sample in samples) != EXPECTED_SAMPLE_KEYS:
@@ -287,14 +397,18 @@ def load_phase_contract(path: str | Path) -> PhaseContract:
     except json.JSONDecodeError as exc:
         raise PhaseContractError(f"Invalid phase-contract JSON: {exc}") from exc
     value = _object(root, "phase contract")
-    _exact_keys(value, TOP_LEVEL_KEYS, "phase contract")
+    contract_version = _integer(value.get("contract_version"), "contract_version")
+    if contract_version not in SUPPORTED_CONTRACT_VERSIONS:
+        raise PhaseContractError(f"Unsupported phase contract_version: {contract_version}")
+    expected_keys = TOP_LEVEL_KEYS | ({"audit_scope"} if contract_version == 2 else set())
+    _exact_keys(value, expected_keys, "phase contract")
     raw_samples = value["boundary_samples"]
     raw_phases = value["phases"]
     if not isinstance(raw_samples, list) or not isinstance(raw_phases, list):
         raise PhaseContractError("boundary_samples and phases must be arrays")
     contract = PhaseContract(
         schema_version=_integer(value["schema_version"], "schema_version"),
-        contract_version=_integer(value["contract_version"], "contract_version"),
+        contract_version=contract_version,
         sport=_nonempty(value["sport"], "sport"),
         display_name=_nonempty(value["display_name"], "display_name"),
         regulation_periods=_integer(value["regulation_periods"], "regulation_periods"),
@@ -315,6 +429,10 @@ def load_phase_contract(path: str | Path) -> PhaseContract:
             _parse_sample(item, index) for index, item in enumerate(raw_samples)
         ),
         phases=tuple(_parse_phase(item, index) for index, item in enumerate(raw_phases)),
+        audit_scope=(
+            _parse_v2_audit_scope(value["audit_scope"])
+            if contract_version == 2 else None
+        ),
     )
     _validate_fixed_semantics(contract)
     return contract
