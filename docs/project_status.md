@@ -1,8 +1,9 @@
 # Project status
 
-**Status date:** 2026-09-06
+**Status date:** 2026-09-12
 
-**Current stage:** repository stabilized; corrected candidate results regenerated
+**Current stage:** repository stabilized; corrected candidate and exploratory sport
+game-dynamics production results regenerated
 
 **Active workstream:** `analysis/calibration_heterogeneity/`
 
@@ -67,6 +68,20 @@ These are working findings, not finalized causal claims:
 
 The regenerated values and validation record are in
 [`runs/2026-09-06_headline_corrected_v1.md`](runs/2026-09-06_headline_corrected_v1.md).
+
+## Completed exploratory sport extension
+
+The audited NFL and NBA moneyline game-dynamics pipelines have completed immutable
+Stage 01--10 production runs at
+`/mnt/data/runs/2026-09-12_nfl_game_dynamics_v3` and
+`/mnt/data/runs/2026-09-12_nba_game_dynamics_v3`. Both use exact Polygon block
+timestamps with zero missing scoped blocks and zero fallback rows. The NFL timing source
+is ESPN's third-party undocumented site API; NBA timing uses official NBA historical
+schedule and LiveData sources. Results, support, exclusions, provider-vintage limits,
+report paths, and hashes are recorded in
+[`runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
+These estimates remain exploratory and do not change the primary paper workstream or
+constitute confirmatory evidence.
 
 ## Remaining publication work
 

@@ -1,6 +1,11 @@
 # NBA/NFL game dynamics: Stage 01--10 runbook
 
-**Status:** code-approved workflow; NBA and NFL production runs pending.
+**Status:** code-approved workflow with completed, independently audited exploratory
+production runs at `/mnt/data/runs/2026-09-12_nfl_game_dynamics_v3` and
+`/mnt/data/runs/2026-09-12_nba_game_dynamics_v3`. Their results and artifact hashes are
+recorded in
+[`../runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](../runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
+The commands below remain the required protocol for a new immutable run.
 
 Run every command from the repository root. Follow
 [`docs/workflow.md`](../workflow.md): confirm the active data vintage first,

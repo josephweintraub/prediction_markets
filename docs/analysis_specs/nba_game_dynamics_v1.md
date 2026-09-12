@@ -1,9 +1,12 @@
 # NBA moneyline game dynamics: phase contract v1
 
-**Status:** code-approved implementation contract; production run pending. The
-adapter and shared downstream path are approved at the code level, but no
-immutable NBA production run has completed. This document does not authorize
-reporting NBA production estimates before that run and its audits pass.
+**Status:** contract v2 is implemented and completed in the independently audited
+exploratory production run `/mnt/data/runs/2026-09-12_nba_game_dynamics_v3`.
+The immutable results, exclusions, report fingerprint, and interpretation boundary are
+recorded in
+[`../runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](../runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
+The preserved v1 contract is superseded audit history; the v2 results remain
+descriptive, not confirmatory.
 
 ## Scope
 

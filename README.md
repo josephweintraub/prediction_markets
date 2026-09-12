@@ -25,6 +25,7 @@ but it is not a data-compatible execution environment.
 | Path | Status | Purpose |
 |---|---|---|
 | `analysis/calibration_heterogeneity/` | **Active** | Current liquidity, duration, semantic-family, novelty, and FLB workstream. |
+| `analysis/{mlb,nfl,nba,sports}_game_dynamics/` | Active exploratory | Sport moneyline timing, exact-trade phases, closing calibration, and fixed-bin FLB reports. |
 | `analysis/stage0_v2/` | Supporting | Polymarket and Kalshi contract-normalization pipelines and regression harnesses. |
 | `pipeline/` | Active but infrequent | Builds and refreshes the canonical on-chain trade dataset. |
 | `scripts/` | Supporting operations | Data cleaning, flags, and Telonex acquisition utilities. |
@@ -72,6 +73,10 @@ canonical trades + market metadata + wallet flags
 
 No result is publication-ready unless it identifies its Git commit, data vintage,
 configuration, producing command, and source artifacts.
+
+The completed exploratory NFL and NBA production runs and their immutable report
+fingerprints are recorded in
+[`docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
 
 ## Secrets
 

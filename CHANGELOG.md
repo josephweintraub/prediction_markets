@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-12 — NFL and NBA game-dynamics production runs
+
+- Completed and independently audited the immutable NFL and NBA moneyline
+  game-dynamics Stage 01--10 pipelines, including exact-timestamp phase and close
+  construction, fixed-bin calibration, D1/D10 summaries, and standalone offline reports.
+- Froze and fingerprinted the NFL ESPN timing taxonomy/cache evidence and the NBA
+  official schedule/LiveData v2 timing contract; all strict exclusions and provider
+  limitations remain auditable.
+- Recorded run roots, reconciliations, output hashes, and exploratory interpretation
+  boundaries in
+  [`docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
+
 ## 2026-09-06 — Repository stabilization begins
 
 - Created safety tag `pre-cleanup-2026-09-06` and branch

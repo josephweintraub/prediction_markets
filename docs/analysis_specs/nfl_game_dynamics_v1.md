@@ -1,9 +1,10 @@
 # NFL moneyline game dynamics: phase contract v1
 
-**Status:** code-approved implementation contract; production run pending. The
-NFL adapter and shared downstream path are approved at the code level, but no
-immutable NFL production run has completed. This document does not authorize
-reporting NFL production estimates before that run and its audits pass.
+**Status:** implemented and completed in the independently audited exploratory
+production run `/mnt/data/runs/2026-09-12_nfl_game_dynamics_v3`. The immutable
+results, exclusions, report fingerprint, and interpretation boundary are recorded in
+[`../runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](../runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
+This contract and its results remain descriptive, not confirmatory.
 
 ## Scope
 

@@ -1,6 +1,6 @@
 # Repository map
 
-**Last structural review:** 2026-09-06
+**Last structural review:** 2026-09-12
 
 The repository has one active empirical workstream. Earlier paths remain available under
 `archive/` for provenance but should not be imported by current code.
@@ -19,6 +19,14 @@ The current liquidity, duration, semantic-family, novelty, and FLB analysis. It 
 - A research log explaining prior experiments and data corrections
 
 New empirical analysis belongs here until a narrower publication package is extracted.
+
+### `analysis/{mlb,nfl,nba,sports}_game_dynamics/`
+
+The active exploratory sport-moneyline extension. Sport adapters validate market,
+official-result, and game-boundary inputs; shared stages build exact-timestamp trades,
+phase samples, dual closes, fixed-bin calibration and D1/D10 summaries, and standalone
+reports. The completed NFL/NBA production record is
+[`runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
 
 ### Shared analysis utilities
 
@@ -52,6 +60,8 @@ pipeline remain useful for validation and future cross-platform work.
 - `workflow.md`: how exploration, confirmation, artifacts, and reporting work.
 - `decisions.md`: dated changes that alter interpretation.
 - `storage_inventory_2026-09-06.md`: EBS retention-planning snapshot.
+- `runs/2026-09-12_nfl_nba_game_dynamics_v3.md`: immutable NFL/NBA production
+  reconciliation, report hashes, findings, and interpretation limits.
 - `archive/`: superseded documents with historical status.
 
 ## Code archive
