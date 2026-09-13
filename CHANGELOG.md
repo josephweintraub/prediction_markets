@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-13 — Reproducible late-game sports tail diagnostic
+
+- Added `analysis/sports_game_dynamics/diagnose_late_game_tails.py`, an immutable
+  MLB/NFL/NBA D1/D10 diagnostic stage with price-band, outcome, game, wallet, timing,
+  and leave-top-game summaries and a provenance manifest.
+- Matched tail assignment to the published fixed-bin expression, superseding the v1
+  direct-threshold run, and added focused synthetic coverage for the mixed probability
+  conventions, matchup joins, timing-third endpoints, and floating-point bin edge.
+- Recorded the canonical v2 run and reproducibility details in
+  [`docs/runs/2026-09-13_sports_late_game_tail_diagnostics_v2.md`](docs/runs/2026-09-13_sports_late_game_tail_diagnostics_v2.md).
+
 ## 2026-09-12 — NFL and NBA game-dynamics production runs
 
 - Completed and independently audited the immutable NFL and NBA moneyline
