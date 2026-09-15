@@ -4,11 +4,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 import duckdb
+import pytest
 from matplotlib.axes import Axes
 
 from analysis.multisport_game_dynamics.render_latex import (
     SPORT_LABELS,
     SPORT_ORDER,
+    _validate_sport_domain,
     render_report,
 )
 
@@ -64,7 +66,7 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
                 1,
                 "Pregame",
                 1,
-                50,
+                500,
                 5,
                 100.0,
                 0.05,
@@ -73,6 +75,13 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
                 -0.01,
                 0.01,
                 False,
+            )
+            for sport in SPORT_ORDER
+        ]
+        + [
+            (
+                sport,"pregame",1,"Pregame",10,499,5,100.0,0.95,1.0,
+                None,None,None,True,
             )
             for sport in SPORT_ORDER
         ],
@@ -101,7 +110,7 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
                 sport,
                 sample,
                 1,
-                50,
+                500,
                 5,
                 100.0,
                 0.05,
@@ -114,6 +123,13 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
             )
             for sport in SPORT_ORDER
             for sample in ("all_trades", "filtered_trades")
+        ]
+        + [
+            (
+                sport,sample,10,499,5,100.0,0.95,1.0,None,None,None,None,True,
+            )
+            for sport in SPORT_ORDER
+            for sample in ("all_trades","filtered_trades")
         ],
     )
 
@@ -130,6 +146,7 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
         ("spread_d10_minus_d1", "DOUBLE"),
         ("spread_ci95_low", "DOUBLE"),
         ("spread_ci95_high", "DOUBLE"),
+        ("suppressed", "BOOLEAN"),
     )
     _write_parquet(
         estimator / "flb_spreads.parquet",
@@ -141,13 +158,7 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
                 "pregame",
                 1,
                 "Pregame",
-                50,
-                -0.01,
-                50,
-                0.01,
-                0.02,
-                0.0,
-                0.04,
+                500,None,499,None,None,None,None,True,
             )
             for sport in SPORT_ORDER
         ],
@@ -165,10 +176,12 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
     )
 
     line_styles: list[object] = []
+    plotted_bins: list[tuple[int, ...]] = []
     original_errorbar = Axes.errorbar
 
     def record_errorbar(self: Axes, *args: object, **kwargs: object) -> object:
         line_styles.append(kwargs.get("linestyle"))
+        plotted_bins.append(tuple(args[0]))
         return original_errorbar(self, *args, **kwargs)
 
     with patch.object(Axes, "errorbar", new=record_errorbar):
@@ -184,11 +197,17 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
     assert "\\label{tab:closing-filtered}" in source
     for sport in SPORT_ORDER:
         assert f"\\section{{{SPORT_LABELS[sport]}}}" in source
-    # One support table plus two headers for each of 13 longtables.
-    assert source.count("& Dollars &") == 27
+    # One support table plus two headers for each of 11 longtables.
+    assert source.count("& Dollars &") == 23
+    assert "Estimates with fewer than 500 observations are withheld" in source
+    assert "Withheld (<500)" in source
+    assert "WTA" not in source
+    assert "UFC" not in source
 
     assert line_styles
     assert set(line_styles) == {"none"}
+    assert plotted_bins
+    assert all(bins == (1,) for bins in plotted_bins)
     assert source.count("Points are isolated fixed-bin estimates.") == 2
 
     forbidden_sections = ("Interpretation limits", "Caveats", "Conclusion")
@@ -196,9 +215,17 @@ def test_render_latex_end_to_end_preserves_report_contract(tmp_path: Path) -> No
         assert f"\\section{{{title}}}" not in source
 
     assert manifest["counts"] == {
-        "phase_rows": 11,
-        "closing_rows": 22,
-        "tail_rows": 11,
-        "figures": 13,
+        "phase_rows": 18,
+        "closing_rows": 36,
+        "tail_rows": 9,
+        "figures": 11,
     }
-    assert len(list((output / "figures").glob("*.pdf"))) == 13
+    assert manifest["included_sports"] == list(SPORT_ORDER)
+    assert manifest["suppression_threshold"] == 500
+    assert len(list((output / "figures").glob("*.pdf"))) == 11
+
+
+def test_renderer_rejects_stale_excluded_sports() -> None:
+    rows = [{"sport": sport} for sport in SPORT_ORDER] + [{"sport":"wta"}]
+    with pytest.raises(ValueError,match="unexpected=\\['wta'\\]"):
+        _validate_sport_domain(rows,"phase calibration")

@@ -1,4 +1,4 @@
-"""Estimate common bought-contract calibration profiles for ten sports."""
+"""Estimate common bought-contract calibration profiles for nine sport cohorts."""
 from __future__ import annotations
 
 import argparse
@@ -23,7 +23,10 @@ from analysis.sports_game_dynamics.artifacts import (
 from .contracts import SPORT_CONFIGS
 
 
-MIN_CELL_N = 50
+MIN_CELL_N = 500
+RETAINED_NEW_SPORTS = ("nhl", "cbb", "atp", "epl", "cfb", "wnba")
+REPORT_SPORTS = ("mlb", "nfl", "nba", *RETAINED_NEW_SPORTS)
+EXCLUDED_REPORT_SPORTS = ("wta", "ufc")
 LEGACY_PHASES = {
     "mlb": (
         ("pregame", "Pregame"),
@@ -92,7 +95,8 @@ def _phase_dimensions() -> list[tuple[str, str, str, int]]:
     dimensions: list[tuple[str, str, str, int]] = []
     for sport, phases in LEGACY_PHASES.items():
         dimensions.extend((sport, key, label, order) for order, (key, label) in enumerate(phases, 1))
-    for sport, config in SPORT_CONFIGS.items():
+    for sport in RETAINED_NEW_SPORTS:
+        config = SPORT_CONFIGS[sport]
         dimensions.extend((sport, phase.key, phase.label, phase.order) for phase in config.phases)
     return dimensions
 
@@ -201,6 +205,7 @@ def estimate_combined(
     with fresh_run(target, inputs) as staging:
         con = duckdb.connect()
         try:
+            retained_new_sql = ",".join(f"'{sport}'" for sport in RETAINED_NEW_SPORTS)
             con.execute("""CREATE TABLE phase_dimension(
                 sport VARCHAR,phase VARCHAR,phase_label VARCHAR,phase_order INTEGER)""")
             con.executemany("INSERT INTO phase_dimension VALUES (?,?,?,?)", _phase_dimensions())
@@ -210,6 +215,7 @@ def estimate_combined(
                        phase,phase_order,price,won::DOUBLE won,calibration_error,usdc,
                        proxyWallet,trade_day
                 FROM read_parquet('{quoted(new_phase)}')
+                WHERE sport IN ({retained_new_sql})
                 UNION ALL
                 SELECT 'mlb',p.game_pk::VARCHAR,p.market_id,p.official_date,p.phase,d.phase_order,
                        p.price,p.won::DOUBLE,p.calibration_error,p.usdc,p.proxyWallet,p.trade_day_utc
@@ -268,7 +274,8 @@ def estimate_combined(
                            proxyWallet::VARCHAR proxyWallet,
                            "timestamp"::BIGINT close_timestamp,
                            calibration_error::DOUBLE calibration_error
-                    FROM read_parquet('{quoted(new_closes)}')""",
+                    FROM read_parquet('{quoted(new_closes)}')
+                    WHERE sport IN ({retained_new_sql})""",
                 f"""SELECT 'mlb',game_pk::VARCHAR,market_id,official_date,'all_trades',
                            primary_price,(primary_token_id=winning_token_id)::DOUBLE,primary_usdc,
                            primary_buyer,primary_close_timestamp,
@@ -332,7 +339,7 @@ def estimate_combined(
                                   se, mean-1.96*se, mean+1.96*se]
                     phase_output.append((
                         sport,phase,label,order,decile,_price_bin(decile),n,events,dollars,
-                        suppressed,"suppressed_n_lt_50" if suppressed else "reported",*values,
+                        suppressed,f"suppressed_n_lt_{MIN_CELL_N}" if suppressed else "reported",*values,
                     ))
 
             con.execute("""
@@ -352,9 +359,8 @@ def estimate_combined(
                 (row["sport"], row["close_sample"], row["price_decile"]): row
                 for row in _rows(con, "SELECT * FROM close_means")
             }
-            sports = ["mlb", "nfl", "nba", *SPORT_CONFIGS]
             closing_output: list[tuple[Any, ...]] = []
-            for sport in sports:
+            for sport in REPORT_SPORTS:
                 for sample in ("all_trades", "filtered_trades"):
                     for decile in range(1, 11):
                         key = (sport, sample, decile)
@@ -371,7 +377,7 @@ def estimate_combined(
                                       se, mean-1.96*se, mean+1.96*se,float(row["brier_score"])]
                         closing_output.append((
                             sport,sample,decile,_price_bin(decile),n,events,dollars,suppressed,
-                            "suppressed_n_lt_50" if suppressed else "reported",*values,
+                            f"suppressed_n_lt_{MIN_CELL_N}" if suppressed else "reported",*values,
                         ))
 
             con.execute("""
@@ -409,7 +415,7 @@ def estimate_combined(
                 (row["sport"],row["close_sample"]):row
                 for row in _rows(con, "SELECT * FROM close_tails")
             }
-            for sport in sports:
+            for sport in REPORT_SPORTS:
                 for sample in ("all_trades","filtered_trades"):
                     key = (sport,sample)
                     row = close_tail_rows.get(key)
@@ -424,7 +430,7 @@ def estimate_combined(
                     tail_output.append((
                         "closing",sport,sample,None,None,None,n1,n10,
                         int(row["d1_events"]) if row else 0,int(row["d10_events"]) if row else 0,*values,
-                        suppressed,"suppressed_tail_n_lt_50" if suppressed else "reported",
+                        suppressed,f"suppressed_tail_n_lt_{MIN_CELL_N}" if suppressed else "reported",
                     ))
             phase_tail_rows = {
                 (row["sport"],row["phase"],row["phase_order"]):row
@@ -444,7 +450,7 @@ def estimate_combined(
                 tail_output.append((
                     "trade_phase",sport,"filtered_trades",phase,label,order,n1,n10,
                     int(row["d1_events"]) if row else 0,int(row["d10_events"]) if row else 0,*values,
-                    suppressed,"suppressed_tail_n_lt_50" if suppressed else "reported",
+                    suppressed,f"suppressed_tail_n_lt_{MIN_CELL_N}" if suppressed else "reported",
                 ))
 
             con.execute(f"COPY phase_obs TO '{quoted(staging/'normalized_phase_trades.parquet')}' (FORMAT PARQUET,COMPRESSION ZSTD)")
@@ -467,9 +473,12 @@ def estimate_combined(
         write_parquet(staging/"flb_spreads.parquet",TAIL_SCHEMA,tail_output,
                       ("analysis_scope","sport","sample","phase_order"))
         manifest = {
-            "schema_version": 1,
-            "stage": "ten_sport_common_bought_contract_calibration_v1",
+            "schema_version": 2,
+            "stage": "nine_cohort_common_bought_contract_calibration_v2",
             "estimand": "eventual outcome of bought contract minus its actual purchase price",
+            "included_sports": list(REPORT_SPORTS),
+            "excluded_sports": list(EXCLUDED_REPORT_SPORTS),
+            "suppression_threshold": MIN_CELL_N,
             "phase_weighting": "equal BUY fill",
             "closing_weighting": "equal final pregame market close",
             "uncertainty": {

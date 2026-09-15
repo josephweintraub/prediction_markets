@@ -1,8 +1,10 @@
 # Multisport moneyline game dynamics v1
 
-**Status:** production contract; descriptive and exploratory until every immutable stage
-passes its reconciliation gates.  The eight new cohorts are NHL, men's college basketball
-(CBB), ATP, WTA, English Premier League (EPL), college football (CFB), WNBA, and UFC.
+**Status:** amended production contract. The upstream collection covers NHL, men's college
+basketball (CBB), ATP, WTA, English Premier League (EPL), college football (CFB), WNBA,
+and UFC. The released combined estimator retains NHL, CBB, ATP, EPL, CFB, and WNBA;
+WTA and UFC remain in the upstream audit artifacts but are excluded for insufficient
+support.
 
 ## Research contract
 
@@ -123,19 +125,20 @@ market, so an eligible EPL event can contribute three proposition-market closes.
 Bins are fixed bought-price intervals D1-D10:
 `[0,.1), [.1,.2), ..., [.8,.9), [.9,1]`.  Each profile reports support, event count,
 dollars, mean price, win rate, mean calibration, standard error, and nominal 95% interval.
-Cells with fewer than 50 observations retain support but suppress estimates.  Tail rows
+Cells with fewer than 500 observations retain support but suppress estimates.  Tail rows
 report D1 error, D10 error, and `D10 - D1`; the entire tail estimate is suppressed if
-either tail has fewer than 50 observations.
+either tail has fewer than 500 observations.
 
 Phase standard errors use Cameron-Gelbach-Miller clustering by UTC trade day, buyer
 wallet, and event.  Closing tables use one-way market-date clustering.  D10-D1 uncertainty
 is computed jointly from cluster scores and includes D1/D10 covariance.
 
-The eight new cohorts define 32 phases, hence 320 phase-bin rows, 160 closing-bin rows,
-and 48 tail rows before suppression.  Stage 04 also normalizes the frozen MLB/NFL/NBA
-artifacts, producing an eleven-sport grid of 460 phase-bin rows, 220 closing-bin rows,
-and 68 tail rows.  Missing grid cells must be serialized with zero support and suppressed
-estimates rather than omitted.
+The six retained new cohorts define 24 phases, hence 240 phase-bin rows, 120 closing-bin
+rows, and 36 tail rows before suppression. Stage 04 also normalizes the frozen MLB/NFL/NBA
+artifacts, producing a nine-cohort grid of 380 phase-bin rows, 180 closing-bin rows,
+and 56 tail rows. Missing grid cells must be serialized with zero support and suppressed
+estimates rather than omitted. WTA and UFC must be absent from every Stage 04 normalized
+observation and summary artifact.
 
 ## Immutable production stages
 
@@ -190,7 +193,7 @@ provider inventory, every exclusion count, and per-sport timing quality before S
 Require `missing_exact_blocks = 0`, no duplicate block mapping or EVM identity, and exact
 source-fill/BUY/phase/close reconciliation in `trade_manifest.json`.
 
-### 04_estimates
+### 04_estimates_v2
 
 ```sh
 "$PY" -m analysis.multisport_game_dynamics.estimate_combined \
@@ -205,19 +208,19 @@ source-fill/BUY/phase/close reconciliation in `trade_manifest.json`.
   --nba-closes "$NBA_ROOT/07_closes/game_closes.parquet" \
   --nba-exact "$NBA_ROOT/05_exact/exact_trades.parquet" \
   --nba-eligible "$NBA_ROOT/03_handoff/eligible_moneylines.parquet" \
-  --run-dir "$RUN_ROOT/04_estimates"
+  --run-dir "$RUN_ROOT/04_estimates_v2"
 ```
 
 Require the complete row grids above, support/suppression reconciliation, and estimator
 manifest fingerprints before rendering.
 
-### 05_report_v2
+### 05_report_v3
 
 ```sh
 "$PY" -m analysis.multisport_game_dynamics.render_latex \
-  --estimator-run "$RUN_ROOT/04_estimates" \
+  --estimator-run "$RUN_ROOT/04_estimates_v2" \
   --timing-run "$RUN_ROOT/02_timing_v3" \
-  --run-dir "$RUN_ROOT/05_report_v2"
+  --run-dir "$RUN_ROOT/05_report_v3"
 ```
 
 The portable `.tex` source and deterministic PDF figures are the report artifacts.

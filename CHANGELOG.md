@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-15 — Major-sports reporting support floor
+
+- Excluded WTA and UFC from the released combined estimator and report while preserving
+  their upstream candidate, timing, and trade artifacts for audit.
+- Raised the fixed-bin and D1/D10 tail support floor from 50 to 500 observations; withheld
+  estimates retain their support and explicit status and are omitted from figures.
+- Revised the combined output contract to nine cohorts, 380 phase-bin rows, 180 closing-bin
+  rows, and 56 tail rows, with a compact 3-by-3 closing-figure layout.
+- Recorded the revised production artifacts and reconciliation in
+  [`docs/runs/2026-09-15_multisport_game_dynamics_v2.md`](docs/runs/2026-09-15_multisport_game_dynamics_v2.md).
+
 ## 2026-09-15 — Major-sports game-dynamics extension
 
 - Added a reproducible moneyline game-dynamics pipeline for NHL, men's college

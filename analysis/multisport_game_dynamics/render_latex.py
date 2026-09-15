@@ -1,4 +1,4 @@
-"""Render the audited ten-category sports results as a data-first LaTeX report."""
+"""Render the audited nine-cohort sports results as a data-first LaTeX report."""
 from __future__ import annotations
 
 import argparse
@@ -23,12 +23,12 @@ from analysis.sports_game_dynamics.artifacts import (
 )
 
 
-SPORT_ORDER = ("mlb","nfl","nba","nhl","cbb","atp","wta","epl","cfb","wnba","ufc")
+SPORT_ORDER = ("mlb","nfl","nba","nhl","cbb","atp","epl","cfb","wnba")
 SPORT_LABELS = {
     "mlb":"MLB","nfl":"NFL","nba":"NBA","nhl":"NHL","cbb":"Men's CBB",
-    "atp":"ATP","wta":"WTA","epl":"EPL","cfb":"College football",
-    "wnba":"WNBA","ufc":"UFC",
+    "atp":"ATP","epl":"EPL","cfb":"College football","wnba":"WNBA",
 }
+MIN_CELL_N = 500
 
 
 def _rows(con: duckdb.DuckDBPyConnection, path: Path) -> list[dict[str, Any]]:
@@ -70,6 +70,21 @@ def _spread_ci(row: dict[str, Any]) -> str:
     if row.get("spread_ci95_low") is None:
         return "--"
     return f"[{row['spread_ci95_low']*100:.2f}, {row['spread_ci95_high']*100:.2f}]"
+
+
+def _status(row: dict[str, Any]) -> str:
+    return f"Withheld (<{MIN_CELL_N})" if row.get("suppressed") else "Reported"
+
+
+def _validate_sport_domain(rows: list[dict[str, Any]], artifact: str) -> None:
+    actual = {str(row["sport"]) for row in rows}
+    expected = set(SPORT_ORDER)
+    unexpected = sorted(actual - expected)
+    missing = sorted(expected - actual)
+    if unexpected or missing:
+        raise ValueError(
+            f"{artifact} sport domain mismatch: unexpected={unexpected}, missing={missing}"
+        )
 
 
 def _plot_panels(rows: list[dict[str, Any]], panels: list[tuple[str,str]], path: Path) -> None:
@@ -122,8 +137,11 @@ def _plot_closing(rows: list[dict[str, Any]], sample: str, path: Path) -> None:
          ("calibration_ci95_low","calibration_ci95_high") if row[value] is not None] or [5.0]
     )
     limit = max(5.0,math.ceil(max_abs/5)*5)
-    fig,axes = plt.subplots(4,3,figsize=(7.1,8.6),sharex=True,sharey=True)
-    for axis,(sport,label) in zip(axes.flat,panels):
+    columns = 3
+    nrows = math.ceil(len(panels) / columns)
+    fig,axes = plt.subplots(nrows,columns,figsize=(7.1,2.15*nrows),sharex=True,sharey=True)
+    axes_list = list(getattr(axes,"flat",[axes]))
+    for axis,(sport,label) in zip(axes_list,panels):
         cells = sorted((row for row in filtered if row["sport"] == sport),
                        key=lambda row: row["price_decile"])
         if cells:
@@ -138,7 +156,8 @@ def _plot_closing(rows: list[dict[str, Any]], sample: str, path: Path) -> None:
         axis.set_xlim(0.5,10.5); axis.set_ylim(-limit,limit)
         axis.set_xticks((1,3,5,7,10)); axis.tick_params(labelsize=6.5)
         axis.spines[["top","right"]].set_visible(False)
-    axes.flat[-1].set_visible(False)
+    for axis in axes_list[len(panels):]:
+        axis.set_visible(False)
     for axis in axes[-1,:]:
         if axis.get_visible(): axis.set_xlabel("Bought-price bin",fontsize=7)
     for axis in axes[:,0]: axis.set_ylabel("Outcome - price (pp)",fontsize=7)
@@ -157,16 +176,17 @@ def _closing_longtable(rows: list[dict[str, Any]], sample: str, caption: str, la
                 _n(row["event_count"]),_money(row["dollars"]),_f(row["mean_price"],3),
                 _f(row["win_rate"],3),
                 _f(row["mean_calibration"],2,100),_tex(_ci(row)),_f(row["brier_score"],3),
+                _tex(_status(row)),
             ))+" \\\\")
     return rf"""{{\scriptsize
-\begin{{longtable}}{{llrrrrrrrr}}
+\begin{{longtable}}{{llrrrrrrrrl}}
 \caption{{{_tex(caption)}}}\label{{{label}}}\\
 \toprule
-Sport & Bin & Closes & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Brier \\
+Sport & Bin & Closes & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Brier & Status \\
 \midrule
 \endfirsthead
 \toprule
-Sport & Bin & Closes & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Brier \\
+Sport & Bin & Closes & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Brier & Status \\
 \midrule
 \endhead
 {chr(10).join(body)}
@@ -184,21 +204,21 @@ def _phase_longtable(rows: list[dict[str, Any]], sport: str) -> str:
             _tex(row["phase_label"]),f"D{row['price_decile']}",_n(row["trade_count"]),
             _n(row["event_count"]),_money(row["dollars"]),_f(row["mean_price"],3),
             _f(row["win_rate"],3),
-            _f(row["mean_calibration"],2,100),_tex(_ci(row)),
+            _f(row["mean_calibration"],2,100),_tex(_ci(row)),_tex(_status(row)),
         ))+" \\\\")
     timing_label = (
-        "scoreboard-start elapsed phase" if sport in {"atp", "wta"}
+        "scoreboard-start elapsed phase" if sport == "atp"
         else "literal event phase"
     )
     return rf"""{{\scriptsize
-\begin{{longtable}}{{llrrrrrrr}}
+\begin{{longtable}}{{llrrrrrrrl}}
 \caption{{{_tex(SPORT_LABELS[sport])}: fixed-bin calibration by {_tex(timing_label)}}}\\
 \toprule
-Phase & Bin & Trades & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI \\
+Phase & Bin & Trades & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Status \\
 \midrule
 \endfirsthead
 \toprule
-Phase & Bin & Trades & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI \\
+Phase & Bin & Trades & Events & Dollars & Mean $p$ & Win rate & Error (pp) & 95\% CI & Status \\
 \midrule
 \endhead
 {chr(10).join(body)}
@@ -224,6 +244,9 @@ def render_report(estimator_run_dir: str | Path, timing_run_dir: str | Path,
         phase_rows = _rows(con,phase_path)
         closing_rows = _rows(con,closing_path)
         tail_rows = _rows(con,tails_path)
+        _validate_sport_domain(phase_rows,"phase calibration")
+        _validate_sport_domain(closing_rows,"closing calibration")
+        _validate_sport_domain(tail_rows,"FLB spread")
         cursor = con.execute(
             f"""SELECT sport,count(*)::BIGINT trades,count(DISTINCT event_id)::BIGINT events,
                        sum(usdc)::DOUBLE dollars
@@ -236,6 +259,7 @@ def render_report(estimator_run_dir: str | Path, timing_run_dir: str | Path,
     for row in coverage:
         record = coverage_summary[row["sport"]]
         record.update(trades=row["trades"],events=row["events"],dollars=row["dollars"])
+    _validate_sport_domain(coverage,"normalized phase trades")
     target = Path(run_dir).expanduser().resolve()
     with fresh_run(target,inputs) as staging:
         figures = staging/"figures"; figures.mkdir()
@@ -254,7 +278,7 @@ def render_report(estimator_run_dir: str | Path, timing_run_dir: str | Path,
         for sport in SPORT_ORDER:
             record = coverage_summary[sport]
             source = "Exact provider phases"
-            if sport in {"atp","wta"}:
+            if sport == "atp":
                 source = "ESPN start + archived duration thirds"
             coverage_body.append(" & ".join((
                 _tex(SPORT_LABELS[sport]),_n(record["events"]),_n(record["trades"]),
@@ -269,12 +293,13 @@ def render_report(estimator_run_dir: str | Path, timing_run_dir: str | Path,
                 _n(row["d1_n"]),_f(row["d1_mean_calibration"],2,100),
                 _n(row["d10_n"]),_f(row["d10_mean_calibration"],2,100),
                 _f(row["spread_d10_minus_d1"],2,100),_tex(_spread_ci(row)),
+                _tex(_status(row)),
             ))+" \\\\")
 
         phase_sections = []
         for sport in SPORT_ORDER:
             phase_description = (
-                "scoreboard-start elapsed phase" if sport in {"atp", "wta"}
+                "scoreboard-start elapsed phase" if sport == "atp"
                 else "literal event phase"
             )
             phase_sections.append(rf"""
@@ -303,11 +328,11 @@ def render_report(estimator_run_dir: str | Path, timing_run_dir: str | Path,
 \renewcommand{{\arraystretch}}{{0.93}}
 \title{{Moneyline Calibration Across Major Sports}}
 \author{{}}
-\date{{14 September 2026}}
+\date{{15 September 2026}}
 \begin{{document}}
 \maketitle
 \vspace{{-2em}}
-\noindent Calibration error is the eventual outcome of the bought contract minus its purchase price. Closing calibration uses the last pregame BUY fill and is not CLV. Team-sport and UFC phases use provider wallclocks; tennis uses the ESPN scoreboard time plus archived elapsed duration. The filtered sample applies $0.01<p<0.99$ and excludes flagged outcome-token buyers.
+\noindent Calibration error is the eventual outcome of the bought contract minus its purchase price. Closing calibration uses the last pregame BUY fill and is not CLV. Team-sport phases use provider wallclocks; ATP uses the ESPN scoreboard time plus archived elapsed duration. The filtered sample applies $0.01<p<0.99$ and excludes flagged outcome-token buyers. Estimates with fewer than {MIN_CELL_N:,} observations are withheld; support remains shown.
 
 \begin{{table}}[!htbp]
 \centering\small
@@ -345,14 +370,14 @@ Cohort & Events & Trades & Dollars & Timing \\
 \begin{{landscape}}
 \section{{FLB spread by event phase}}
 {{\scriptsize
-\begin{{longtable}}{{llrrrrrr}}
+\begin{{longtable}}{{llrrrrrrl}}
 \caption{{D10 minus D1 calibration spread; full fixed-bin profiles follow}}\\
 \toprule
-Sport & Phase & D1 $n$ & D1 err. & D10 $n$ & D10 err. & Spread & 95\% CI \\
+Sport & Phase & D1 $n$ & D1 err. & D10 $n$ & D10 err. & Spread & 95\% CI & Status \\
 \midrule
 \endfirsthead
 \toprule
-Sport & Phase & D1 $n$ & D1 err. & D10 $n$ & D10 err. & Spread & 95\% CI \\
+Sport & Phase & D1 $n$ & D1 err. & D10 $n$ & D10 err. & Spread & 95\% CI & Status \\
 \midrule
 \endhead
 {chr(10).join(spread_body)}
@@ -367,8 +392,10 @@ Sport & Phase & D1 $n$ & D1 err. & D10 $n$ & D10 err. & Spread & 95\% CI \\
         tex_path = staging/"major_sports_game_dynamics.tex"
         tex_path.write_text(source,encoding="utf-8")
         manifest = {
-            "schema_version":1,
-            "stage":"data_first_major_sports_latex_v1",
+            "schema_version":2,
+            "stage":"data_first_major_sports_latex_v2",
+            "included_sports":list(SPORT_ORDER),
+            "suppression_threshold":MIN_CELL_N,
             "counts":{"phase_rows":len(phase_rows),"closing_rows":len(closing_rows),
                       "tail_rows":len(tail_rows),"figures":2+len(SPORT_ORDER)},
             "inputs":{path.name:fingerprint(path) for path in inputs},
