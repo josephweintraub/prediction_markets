@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-15 — Multisport FLB time regressions
+
+- Added a reproducible exact-timestamp regression stage for the common nine-sport
+  bought-contract sample, with unified negative pregame time, live-only and wider-window
+  variants, fixed sport-duration normalization, and game-start piecewise interactions.
+- Added pooled unadjusted, sport-FE, composition-adjusted, equal-sport, literal mean-sport,
+  and dollar-weighted specifications with three-way clustered inference and explicit
+  500-fill tail-by-segment support gates.
+- Added saved live-time-bin tail profiles and a compact data-first LaTeX renderer with
+  stargazer-style coefficient tables and isolated-point uncertainty figures.
+- Corrected the equal-weight mean-sport contrast, defined equal-sport weights within
+  each final estimation sample, and restricted pooled piecewise fits to sports passing
+  the 500-fill segment-tail gate after independent QA.
+- Recorded the contract and production run in
+  [`docs/analysis_specs/flb_time_regressions_v1.md`](docs/analysis_specs/flb_time_regressions_v1.md)
+  and [`docs/runs/2026-09-15_flb_time_regressions_v1.md`](docs/runs/2026-09-15_flb_time_regressions_v1.md).
+
 ## 2026-09-15 — Major-sports reporting support floor
 
 - Excluded WTA and UFC from the released combined estimator and report while preserving
