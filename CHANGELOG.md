@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-15 — Major-sports game-dynamics extension
+
+- Added a reproducible moneyline game-dynamics pipeline for NHL, men's college
+  basketball, ATP, WTA, EPL, college football, WNBA, and UFC, including strict
+  candidate/provider matching, exact block timestamps, literal or explicitly labeled
+  elapsed phases, dual pregame closes, and bought-contract calibration.
+- Normalized the frozen MLB/NFL/NBA analyses to the same bought-contract estimand and
+  produced complete fixed-bin and D10-minus-D1 outputs across 11 report cohorts.
+- Added a compact data-first LaTeX report with native tables and isolated-point vector
+  figures, plus synthetic end-to-end tests for candidate, timing, trade, estimator, and
+  report contracts.
+- Recorded final run paths, reconciliation counts, and findings in
+  [`docs/runs/2026-09-15_multisport_game_dynamics_v1.md`](docs/runs/2026-09-15_multisport_game_dynamics_v1.md).
+
 ## 2026-09-13 — Reproducible late-game sports tail diagnostic
 
 - Added `analysis/sports_game_dynamics/diagnose_late_game_tails.py`, an immutable
