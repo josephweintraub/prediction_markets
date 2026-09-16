@@ -10,6 +10,8 @@
   500-fill tail-by-segment support gates.
 - Added saved live-time-bin tail profiles and a compact data-first LaTeX renderer with
   stargazer-style coefficient tables and isolated-point uncertainty figures.
+- Added table-specific definitions for the report's sample, adjustment, weighting, bin,
+  and interaction labels so the statistical shorthand is interpretable in place.
 - Corrected the equal-weight mean-sport contrast, defined equal-sport weights within
   each final estimation sample, and restricted pooled piecewise fits to sports passing
   the 500-fill segment-tail gate after independent QA.

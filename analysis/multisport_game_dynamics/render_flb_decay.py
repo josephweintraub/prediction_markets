@@ -66,6 +66,14 @@ def _p_value(value: float | None) -> str:
     return r"$<0.001$" if float(value) < 0.001 else f"{float(value):.3f}"
 
 
+def _weight_label(value: str) -> str:
+    return {
+        "equal_fill": "per fill",
+        "equal_sport": "equal sports",
+        "dollar": "per dollar",
+    }[value]
+
+
 def _coef_cell(row: dict[str, Any] | None) -> str:
     if not row or row["estimate"] is None:
         return "--"
@@ -96,6 +104,7 @@ def _stargazer_table(
     label: str,
     *,
     landscape: bool = False,
+    definition_note: str = "",
 ) -> str:
     coefficients = _lookup_coefficients(coefficient_rows)
     models = _lookup_models(model_rows)
@@ -129,7 +138,7 @@ def _stargazer_table(
                     ]
                 ) for model_id in model_ids
             )]) + r" \\",
-            " & ".join(["Weighting", *(_tex(models[model_id]["weighting"].replace("_", " ")) for model_id in model_ids)]) + r" \\",
+            " & ".join(["Weighting", *(_tex(_weight_label(models[model_id]["weighting"])) for model_id in model_ids)]) + r" \\",
         ]
     )
     table = rf"""
@@ -144,6 +153,7 @@ def _stargazer_table(
 \end{{tabular}}
 \begin{{minipage}}{{0.98\linewidth}}\footnotesize
 Entries are coefficients in percentage points; three-way clustered standard errors are in parentheses. Nuisance sport interactions are included where indicated and omitted from the displayed rows.
+{definition_note}
 \end{{minipage}}
 \end{{table}}
 """
@@ -174,7 +184,7 @@ Sport & Pregame D1 & Pregame D10 & Live D1 & Live D10 & Sport fit \\
 \bottomrule
 \end{{tabular}}
 \begin{{minipage}}{{0.94\linewidth}}\footnotesize
-A sport-specific unified tail regression is withheld unless every displayed segment-tail cell has at least 500 fills.
+D1 is the lowest bought-price bin, $[0,.1)$; D10 is the highest, $[.9,1)$. Pregame and live refer to trades before and after the recorded game start. A sport fit is reported only when every displayed segment-tail cell has at least 500 fills.
 \end{{minipage}}
 \end{{table}}
 """
@@ -211,13 +221,13 @@ def _sport_slope_table(estimands: list[dict[str, Any]]) -> str:
 \setlength{{\tabcolsep}}{{4.5pt}}
 \begin{{tabular}}{{lrrrr}}
 \toprule
-Sport & Unified & Live only & Wider pregame & Fixed duration \\
+Sport & Pregame + live & Live only & Wider window & Sport-median time \\
 \midrule
 {chr(10).join(body)}
 \bottomrule
 \end{{tabular}}
 \begin{{minipage}}{{0.96\linewidth}}\footnotesize
-Coefficients are percentage-point changes in the D10--D1 spread per unit of normalized time; clustered standard errors are in parentheses. Unified uses $[-1,1]$, live only uses $[0,1]$, and wider pregame uses $[-2,1]$.
+Coefficients are percentage-point changes in the D10--D1 spread per unit of normalized time; clustered standard errors are in parentheses. Pregame + live uses $T\in[-1,1]$; Live only uses $T\in[0,1]$; Wider window uses $T\in[-2,1]$; Sport-median time scales time by the sport's median game length rather than each game's realized length. Withheld means the 500-fill segment-tail minimum is not met.
 \end{{minipage}}
 \end{{table}}
 """
@@ -246,19 +256,23 @@ def _pooled_estimand_table(estimands: list[dict[str, Any]]) -> str:
     body = []
     for row in wanted:
         if row["adjustment"] == "none":
-            specification = "Unadjusted"
+            specification = "No sport controls"
         elif row["adjustment"] == "sport_intercepts":
-            specification = "Sport FE"
+            specification = "Sport intercepts"
         elif row["adjustment"] == "fully_interacted":
-            specification = "Mean sport slope"
+            specification = "Mean sport slopes"
         else:
-            specification = "Composition adjusted"
-        sample = {"unified": "Unified", "live_only": "Live only", "wider_pregame": "Wider pregame"}[row["sample"]]
+            specification = "Sport baselines/trends"
+        sample = {
+            "unified": "Pregame + live",
+            "live_only": "Live only",
+            "wider_pregame": "Wider window",
+        }[row["sample"]]
         if row["time_normalization"] == "sport_median_duration":
-            sample = "Fixed duration"
+            sample = "Sport-median time"
         sports = "All 9" if row["scope"] == "pooled" else str(len(row["sport"].split("+")))
         body.append(" & ".join((
-            sample, specification, _tex(row["weighting"].replace("_", " ")), sports,
+            sample, specification, _tex(_weight_label(row["weighting"])), sports,
             _num(row["estimate"], 2, 100), _num(row["standard_error"], 2, 100),
             _num(row["t_statistic"], 2), _p_value(row["p_value"]),
             f"[{_num(row['ci95_low'], 2, 100)}, {_num(row['ci95_high'], 2, 100)}]",
@@ -269,16 +283,19 @@ def _pooled_estimand_table(estimands: list[dict[str, Any]]) -> str:
 \begin{{longtable}}{{llllrrrrlr}}
 \caption{{Pooled D10--D1 time-slope variations}}\label{{tab:pooled-variations}}\\
 \toprule
-Sample & Adjustment & Weighting & Sports & Coef. (pp) & SE & $t$ & $p$ & 95\% CI & Fills \\
+Sample & Sport controls & Weighting & Sports & Coef. (pp) & SE & Est./SE & $p$ & 95\% CI & Fills \\
 \midrule
 \endfirsthead
 \toprule
-Sample & Adjustment & Weighting & Sports & Coef. (pp) & SE & $t$ & $p$ & 95\% CI & Fills \\
+Sample & Sport controls & Weighting & Sports & Coef. (pp) & SE & Est./SE & $p$ & 95\% CI & Fills \\
 \midrule
 \endhead
 {chr(10).join(body)}
 \bottomrule
 \end{{longtable}}
+\begin{{minipage}}{{0.96\linewidth}}\footnotesize
+The coefficient is the percentage-point change in the D10-minus-D1 calibration spread per unit of normalized time. Pregame + live uses $T\in[-1,1]$; Live only excludes pregame trades; Wider window extends the lower bound to $T=-2$; Sport-median time uses the sport's median game length. No sport controls pools sports without sport terms; Sport intercepts adds sport indicators; Sport baselines/trends also allows sport-specific D10 baselines and general time slopes; Mean sport slopes is the arithmetic mean of separately estimated supported-sport slopes. Per fill gives every trade equal weight; Equal sports gives every included sport equal total weight; Per dollar weights trades by dollars. Sports is the number included. Est./SE is the estimate divided by its clustered standard error; $p$ and the 95\% interval use a normal reference.
+\end{{minipage}}
 \end{{landscape}}
 """
 
@@ -312,13 +329,16 @@ def _pooled_bin_table(rows: list[dict[str, Any]]) -> str:
 \setlength{{\tabcolsep}}{{3.3pt}}
 \begin{{tabular}}{{lrrrrrrrrrrrr}}
 \toprule
-& \multicolumn{{6}}{{c}}{{Equal fill}} & \multicolumn{{6}}{{c}}{{Equal sport}} \\
+& \multicolumn{{6}}{{c}}{{Per fill}} & \multicolumn{{6}}{{c}}{{Equal sports}} \\
 \cmidrule(lr){{2-7}}\cmidrule(lr){{8-13}}
-$T$ bin & D1 cal. & D10 cal. & Spread & 95\% CI & D1 $N$ & D10 $N$ & D1 cal. & D10 cal. & Spread & 95\% CI & D1 $N$ & D10 $N$ \\
+$T$ bin & \shortstack{{D1 mean\\$Y-P$}} & \shortstack{{D10 mean\\$Y-P$}} & D10--D1 & 95\% CI & D1 $N$ & D10 $N$ & \shortstack{{D1 mean\\$Y-P$}} & \shortstack{{D10 mean\\$Y-P$}} & D10--D1 & 95\% CI & D1 $N$ & D10 $N$ \\
 \midrule
 {chr(10).join(body)}
 \bottomrule
 \end{{tabular}}
+\begin{{minipage}}{{0.98\linewidth}}\footnotesize
+Calibration error is eventual bought-contract outcome minus trade price, $Y-P$, in percentage points. D1 and D10 are the lowest and highest bought-price bins; D10--D1 subtracts the D1 mean from the D10 mean. Per fill gives every trade equal weight; Equal sports reweights trades so each sport has the same total weight within the displayed sample. Rows are raw weighted means, not regression-adjusted estimates; $N$ is the unweighted number of fills.
+\end{{minipage}}
 \end{{table}}
 \end{{landscape}}
 """
@@ -326,8 +346,8 @@ $T$ bin & D1 cal. & D10 cal. & Spread & 95\% CI & D1 $N$ & D10 $N$ & D1 cal. & D
 
 def _plot_pooled_bins(rows: list[dict[str, Any]], output: Path) -> None:
     fig, axis = plt.subplots(figsize=(7.0, 3.3), constrained_layout=True)
-    styles = (("equal_fill", "Equal fill", "#1f4e79", "o", -0.012),
-              ("equal_sport", "Equal sport", "#b24a33", "s", 0.012))
+    styles = (("equal_fill", "Per fill", "#1f4e79", "o", -0.012),
+              ("equal_sport", "Equal sports", "#b24a33", "s", 0.012))
     for weighting, label, color, marker, offset in styles:
         selected = sorted(
             (row for row in rows if row["scope"] == "pooled" and row["weighting"] == weighting and not row["suppressed"]),
@@ -393,9 +413,9 @@ def _data_decisions_table(duration_rows: list[dict[str, Any]]) -> str:
         ("Trade filters", r"$0.01<P_i<0.99$; flagged outcome-token buyers excluded"),
         ("Primary time", r"$T_i=(t_i-s_m)/(e_m-s_m)$; exact block time, realized event duration"),
         ("Primary window", r"$T\in[-1,1]$; pregame $T<0$, start $T=0$, end $T=1$"),
-        ("Variations", r"Live only $[0,1]$; wider pregame $[-2,1]$; fixed sport-median duration"),
+        ("Variations", r"Live only $[0,1]$; wider window $[-2,1]$; sport-median time"),
         ("Tail bins", r"D1: $[0,.1)$; D10: $[.9,1)$ under the filtered price support"),
-        ("Weighting", r"Equal fill; equal sport ($w_i=1/N_s$ within the final fit sample); dollar weighting reported separately"),
+        ("Weighting", r"Per fill; equal sports ($w_i=1/N_s$ within the final fit sample); per dollar"),
         ("Inference", "Cameron--Gelbach--Miller clustering: UTC day, buyer wallet, event"),
         ("Withholding", "500 fills per required tail-by-segment cell for sport-specific tail fits"),
         ("Median minutes", durations),
@@ -462,29 +482,50 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
         support_table = _support_table(support)
         pooled_stargazer = _stargazer_table(
             coefficients, models, pooled_ids,
-            ("Unadjusted", "Sport FE", "Composition", "Equal sport", "Dollar"),
-            (("Intercept", "Intercept"), ("D10", "D10"), ("Time", "Time"),
-             ("D10 x time", "D10 x time")),
-            "Pooled unified tail regressions, realized-duration time",
+            ("No controls", "Sport intercepts", "Sport-specific", "Equal sports", "Per dollar"),
+            (("Intercept", "D1 at T=0"), ("D10", "D10-D1 at T=0"),
+             ("Time", "D1 time slope"), ("D10 x time", "D10-D1 time slope")),
+            "Pooled pregame-and-live tail regressions, realized-duration time",
             "tab:pooled-stargazer",
+            definition_note=(
+                r"Pregame + live uses $T\in[-1,1]$. No controls pools sports without sport terms; "
+                r"Sport intercepts adds sport indicators; Sport-specific also allows sport-specific "
+                r"D10-minus-D1 baselines and D1 time slopes. Per fill gives every trade equal weight; "
+                r"Equal sports gives every sport equal total weight; Per dollar weights trades by dollars."
+            ),
         )
         sport_slope_table = _sport_slope_table(estimands)
         pooled_bin_table = _pooled_bin_table(time_bins)
         pooled_estimand_table = _pooled_estimand_table(estimands)
         piecewise_stargazer = _stargazer_table(
-            coefficients, models, piecewise_ids, ("Equal fill", "Equal sport"),
-            (("D10", "D10 at game start"),
-             ("D10 x pregame time", "D10 x pregame time"),
-             ("D10 x live time", "D10 x live time")),
+            coefficients, models, piecewise_ids, ("Per fill", "Equal sports"),
+            (("D10", "NBA D10-D1 at T=0"),
+             ("D10 x pregame time", "Pregame D10-D1 slope"),
+             ("D10 x live time", "Live D10-D1 slope")),
             "Piecewise pooled tail regressions at game start",
             "tab:piecewise-stargazer",
+            definition_note=(
+                r"Piecewise estimates separate pregame and live changes joined at $T=0$. "
+                r"The sample contains the five sports meeting the 500-fill minimum in every required "
+                r"pregame/live D1/D10 cell. Per fill gives every trade equal weight; Equal sports gives "
+                r"every included sport equal total weight."
+            ),
         )
         continuous_stargazer = _stargazer_table(
             coefficients, models, continuous_ids,
-            ("Unadjusted", "Composition", "Equal sport"),
-            (("Intercept", "Intercept"), ("Price centered", "Price - 0.5"),
-             ("Time", "Time"), ("Price x time", "Price x time")),
+            ("No controls", "Sport-specific", "Equal sports"),
+            (("Intercept", "Calibration at P=.5, T=0"),
+             ("Price centered", "Price gradient at T=0"),
+             ("Time", "Time slope at P=.5"),
+             ("Price x time", "Change in price gradient")),
             "Pooled continuous-price regressions", "tab:continuous-stargazer",
+            definition_note=(
+                r"The continuous-price model replaces the D1/D10 indicator with trade price minus 0.5. "
+                r"Price $\times$ time is the change in the calibration-price gradient per unit of $T$. "
+                r"No controls pools sports without sport terms; Sport-specific allows sport-specific "
+                r"intercepts, price gradients, and general time slopes. Per fill gives every trade "
+                r"equal weight; Equal sports gives every sport equal total weight."
+            ),
         )
         tex = rf"""\documentclass[10pt]{{article}}
 \usepackage[margin=0.72in]{{geometry}}
@@ -501,7 +542,7 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
 \begin{{document}}
 \maketitle
 \vspace{{-2em}}
-\noindent Nine resolved moneyline cohorts; common bought-contract calibration. Estimator: \path{{analysis/multisport_game_dynamics/estimate_flb_decay.py}}. Tables and figures read only the saved estimator artifacts.
+\noindent Nine sport samples of resolved game-winner moneyline markets; common bought-contract calibration. Estimator: \path{{analysis/multisport_game_dynamics/estimate_flb_decay.py}}. Tables and figures read only the saved estimator artifacts.
 
 \section{{Model specifications}}
 \noindent Let $R_i=Y_i-P_i$, $H_i=\mathbf{{1}}\{{P_i\in D10\}}$, and $T_i=(t_i-s_m)/(e_m-s_m)$. The primary tail-spread estimand is
@@ -517,7 +558,7 @@ Thus $\delta_s$ is the D10--D1 spread change per normalized game duration; over 
 \[
 R_i=\alpha_s+\beta_s(P_i-.5)+\gamma_sT_i+\delta_s^p((P_i-.5)T_i)+\varepsilon_i.
 \]
-The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ with separate interactions $H_iT_i^-$ and $H_iT_i^+$. Pooled composition-adjusted models allow sport-specific intercepts, D10 baselines, and general time slopes; the common $H_iT_i$ coefficient is the pooled tail-spread slope.
+The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ with separate interactions $H_iT_i^-$ and $H_iT_i^+$. Pooled models with sport-specific baselines allow each sport its own intercept, D10 baseline, and general time slope; the common $H_iT_i$ coefficient is the pooled tail-spread slope.
 
 \section{{Data decisions}}
 {data_decisions_table}
@@ -532,7 +573,7 @@ The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ wit
 \begin{{figure}}[!htbp]
 \centering
 \includegraphics[width=0.86\textwidth]{{figures/pooled_live_time_bins.pdf}}
-\caption{{Pooled live D10--D1 spreads in fixed normalized-time bins. Isolated points; 95\% three-way clustered intervals.}}
+\caption{{Pooled live D10--D1 spreads in fixed normalized-time bins. Per fill weights every trade equally; Equal sports gives every sport equal total weight. Isolated points; 95\% three-way clustered intervals.}}
 \label{{fig:pooled-time-bins}}
 \end{{figure}}
 

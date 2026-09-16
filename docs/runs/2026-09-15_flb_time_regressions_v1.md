@@ -2,7 +2,7 @@
 
 **Status:** complete production run  
 **Estimate run:** `/mnt/data/runs/2026-09-15_flb_time_regressions_v1/01_estimates_v4`  
-**Local report bundle:** `output/flb_time_regressions_v4/report`
+**Local report bundle:** `output/flb_time_regressions_v4/report_v4`
 
 ## Frozen inputs
 
@@ -37,6 +37,8 @@ phase fills reconcile to the preceding multisport estimator.
 - Report compilation: 8 letter-size pages, two passes, zero final LaTeX warnings.
 - Every PDF page was rendered to PNG and visually checked for clipping, overflow,
   broken labels, blank pages, and omitted suppressed points.
+- Every non-obvious sample, adjustment, weighting, and coefficient label is defined in
+  a compact note attached to the table in which it appears.
 
 ## Result map
 
