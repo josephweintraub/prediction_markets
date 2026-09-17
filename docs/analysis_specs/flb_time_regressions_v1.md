@@ -76,5 +76,6 @@ reference for the clustered t-statistic.
 - Renderer: `analysis/multisport_game_dynamics/render_flb_decay.py`
 - Focused tests: `tests/test_multisport_flb_decay.py`
 - Production estimates: `/mnt/data/runs/2026-09-15_flb_time_regressions_v1/01_estimates_v4`
-- Reader-facing report: local immutable bundle `output/flb_time_regressions_v4/report_v5`
-  (revised 17 September 2026 with table- and figure-adjacent technical reading notes)
+- Reader-facing report: local immutable bundle `output/flb_time_regressions_v4/report_v6`
+  (revised 17 September 2026 with complete calculation, measurement, and interpretation
+  notes for every table and figure)
