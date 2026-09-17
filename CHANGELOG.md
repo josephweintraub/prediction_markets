@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-17 — FLB time-regression report reading notes
+
+- Added concise technical explanations beside every table and figure in the multisport
+  FLB time-regression LaTeX renderer, including estimand, weighting, reference-category,
+  and raw-versus-adjusted distinctions; the revised immutable report is `report_v5`.
+
 ## 2026-09-15 — Multisport FLB time regressions
 
 - Added a reproducible exact-timestamp regression stage for the common nine-sport

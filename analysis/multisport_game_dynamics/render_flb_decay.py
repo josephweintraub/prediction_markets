@@ -185,6 +185,7 @@ Sport & Pregame D1 & Pregame D10 & Live D1 & Live D10 & Sport fit \\
 \end{{tabular}}
 \begin{{minipage}}{{0.94\linewidth}}\footnotesize
 D1 is the lowest bought-price bin, $[0,.1)$; D10 is the highest, $[.9,1)$. Pregame and live refer to trades before and after the recorded game start. A sport fit is reported only when every displayed segment-tail cell has at least 500 fills.
+\par\smallskip\textit{{Reading.}} This table reports unweighted support in each pregame/live and D1/D10 cell. A sport-specific pregame-and-live regression requires at least 500 fills in all four cells, which is satisfied by NBA, men's CBB, ATP, EPL, and college football. A withheld estimate therefore indicates insufficient tail support, not an estimated effect of zero.
 \end{{minipage}}
 \end{{table}}
 """
@@ -228,6 +229,7 @@ Sport & Pregame + live & Live only & Wider window & Sport-median time \\
 \end{{tabular}}
 \begin{{minipage}}{{0.96\linewidth}}\footnotesize
 Coefficients are percentage-point changes in the D10--D1 spread per unit of normalized time; clustered standard errors are in parentheses. Pregame + live uses $T\in[-1,1]$; Live only uses $T\in[0,1]$; Wider window uses $T\in[-2,1]$; Sport-median time scales time by the sport's median game length rather than each game's realized length. Withheld means the 500-fill segment-tail minimum is not met.
+\par\smallskip\textit{{Reading.}} Each entry is a separately estimated sport-level change in the D10--D1 spread per unit of normalized time. Under realized-duration pregame-and-live time, ATP has a positive estimate of $29.86$ with standard error $10.48$, while men's CBB has a negative estimate of $-3.48$ with standard error $1.26$; the remaining supported estimates are closer to zero or imprecise. The variation across sports and time constructions shows that a single pooled coefficient does not describe a uniform sport-level relationship.
 \end{{minipage}}
 \end{{table}}
 """
@@ -295,6 +297,7 @@ Sample & Sport controls & Weighting & Sports & Coef. (pp) & SE & Est./SE & $p$ &
 \end{{longtable}}
 \begin{{minipage}}{{0.96\linewidth}}\footnotesize
 The coefficient is the percentage-point change in the D10-minus-D1 calibration spread per unit of normalized time. Pregame + live uses $T\in[-1,1]$; Live only excludes pregame trades; Wider window extends the lower bound to $T=-2$; Sport-median time uses the sport's median game length. No sport controls pools sports without sport terms; Sport intercepts adds sport indicators; Sport baselines/trends also allows sport-specific D10 baselines and general time slopes; Mean sport slopes is the arithmetic mean of separately estimated supported-sport slopes. Per fill gives every trade equal weight; Equal sports gives every included sport equal total weight; Per dollar weights trades by dollars. Sports is the number included. Est./SE is the estimate divided by its clustered standard error; $p$ and the 95\% interval use a normal reference.
+\par\smallskip\textit{{Reading.}} Every reported coefficient is a D10--D1 spread slope, but the rows vary the time window, clock normalization, sport adjustment, weighting, and included sports. The adjusted live-only estimate is $12.83$ with standard error $3.11$ per fill and $8.22$ with standard error $2.63$ under equal-sport weighting, whereas the sport-median-time estimates are negative and imprecise. Because changing the clock construction also changes which trades enter the estimation window, the comparison reflects both time normalization and sample composition. Mean sport slopes are arithmetic means of separately estimated sport coefficients, not coefficients from the pooled fixed-effect regression.
 \end{{minipage}}
 \end{{landscape}}
 """
@@ -338,6 +341,7 @@ $T$ bin & \shortstack{{D1 mean\\$Y-P$}} & \shortstack{{D10 mean\\$Y-P$}} & D10--
 \end{{tabular}}
 \begin{{minipage}}{{0.98\linewidth}}\footnotesize
 Calibration error is eventual bought-contract outcome minus trade price, $Y-P$, in percentage points. D1 and D10 are the lowest and highest bought-price bins; D10--D1 subtracts the D1 mean from the D10 mean. Per fill gives every trade equal weight; Equal sports reweights trades so each sport has the same total weight within the displayed sample. Rows are raw weighted means, not regression-adjusted estimates; $N$ is the unweighted number of fills.
+\par\smallskip\textit{{Reading.}} This table provides the D1 and D10 means, their difference, clustered interval, and unweighted support underlying Figure~\ref{{fig:pooled-time-bins}}. In the final bin, the per-fill D1 mean is $-2.12$ and the D10 mean is $2.67$, producing a spread of $4.80$ with a 95\% interval of $[3.45,6.14]$. The terminal sign change is therefore produced by movement in both tails rather than by D1 or D10 alone. This table begins at $T=0$ because it is the live diagnostic; negative pregame time remains in the unified regressions.
 \end{{minipage}}
 \end{{table}}
 \end{{landscape}}
@@ -433,6 +437,9 @@ Decision & Definition \\
 {body}
 \bottomrule
 \end{{tabular}}
+\begin{{minipage}}{{0.98\linewidth}}\footnotesize
+\textit{{Reading.}} The observation is a resolved moneyline BUY fill, and calibration error is $R_i=Y_i-P_i$. Realized-duration time standardizes each game so that pregame trades have $T<0$, game start is $T=0$, and realized game end is $T=1$. D1 and D10 are fixed price bins, while uncertainty is estimated with three-way clustering by UTC day, buyer wallet, and event.
+\end{{minipage}}
 \end{{table}}
 """
 
@@ -491,7 +498,15 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
                 r"Pregame + live uses $T\in[-1,1]$. No controls pools sports without sport terms; "
                 r"Sport intercepts adds sport indicators; Sport-specific also allows sport-specific "
                 r"D10-minus-D1 baselines and D1 time slopes. Per fill gives every trade equal weight; "
-                r"Equal sports gives every sport equal total weight; Per dollar weights trades by dollars."
+                r"Equal sports gives every sport equal total weight; Per dollar weights trades by dollars. "
+                r"\par\smallskip\textit{Reading.} The D10--D1 time-slope coefficient measures the change "
+                r"in the tail calibration spread per unit of normalized time. With sport-specific baselines "
+                r"and trends, the per-fill estimate is $7.88$ percentage points with standard error $2.78$, "
+                r"implying a fitted change of $15.76$ points over $T\in[-1,1]$. Equal-sport weighting reduces "
+                r"the estimate to $3.68$ with standard error $2.10$, indicating that the pooled magnitude "
+                r"depends on the relative contribution of the more heavily traded sports. In the adjusted "
+                r"columns, the displayed level, initial spread, and D1 slope are MLB reference coefficients, "
+                r"while the D10--D1 time slope is common across sports."
             ),
         )
         sport_slope_table = _sport_slope_table(estimands)
@@ -508,7 +523,17 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
                 r"Piecewise estimates separate pregame and live changes joined at $T=0$. "
                 r"The sample contains the five sports meeting the 500-fill minimum in every required "
                 r"pregame/live D1/D10 cell. Per fill gives every trade equal weight; Equal sports gives "
-                r"every included sport equal total weight."
+                r"every included sport equal total weight. "
+                r"\par\smallskip\textit{Reading.} The piecewise model permits the D10--D1 spread to have "
+                r"separate slopes before and after game start while joining the fitted segments at $T=0$. "
+                r"Under per-fill weighting, the spread falls as game start approaches, with a pregame slope "
+                r"of $-19.57$ and standard error $5.30$, then rises during live play, with a slope of $13.38$ "
+                r"and standard error $5.22$; equal-sport weighting preserves both directions. The displayed "
+                r"$-12.39$ game-start spread is the NBA reference value, while the pregame and live slopes "
+                r"are common pooled interactions across the five supported sports. For the NBA reference "
+                r"category, the per-fill coefficients imply fitted spreads of $7.18$ at $T=-1$, $-12.39$ "
+                r"at $T=0$, and $0.99$ at $T=1$. These sport-adjusted associations are descriptive; the "
+                r"model does not include event fixed effects."
             ),
         )
         continuous_stargazer = _stargazer_table(
@@ -524,7 +549,17 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
                 r"Price $\times$ time is the change in the calibration-price gradient per unit of $T$. "
                 r"No controls pools sports without sport terms; Sport-specific allows sport-specific "
                 r"intercepts, price gradients, and general time slopes. Per fill gives every trade "
-                r"equal weight; Equal sports gives every sport equal total weight."
+                r"equal weight; Equal sports gives every sport equal total weight. "
+                r"\par\smallskip\textit{Reading.} The continuous-price model uses all eligible prices, "
+                r"so the price gradient at time $T$ is $\beta_s+\delta^pT$ and the reported change in price "
+                r"gradient is the cross-partial $\delta^p=\partial^2 E[R]/(\partial P\,\partial T)$. In the "
+                r"sport-specific per-fill model, $\delta^p=12.05$ with standard error $3.56$, implying that "
+                r"calibration becomes relatively more favorable to higher-priced contracts as normalized "
+                r"time advances. For the MLB reference category, the fitted price gradient changes from "
+                r"$-8.08$ at $T=0$ to $3.97$ at $T=1$, while the time slope at $P=.5$ is $-0.20$. The first "
+                r"three adjusted coefficients are MLB reference values, whereas the price-by-time interaction "
+                r"is common across sports; equal-sport weighting reduces that interaction to $5.97$ with "
+                r"standard error $3.90$."
             ),
         )
         tex = rf"""\documentclass[10pt]{{article}}
@@ -538,7 +573,7 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
 \renewcommand{{\arraystretch}}{{0.96}}
 \title{{Favorite--Longshot Bias Over Normalized Game Time}}
 \author{{}}
-\date{{15 September 2026}}
+\date{{17 September 2026}}
 \begin{{document}}
 \maketitle
 \vspace{{-2em}}
@@ -575,6 +610,9 @@ The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ wit
 \includegraphics[width=0.86\textwidth]{{figures/pooled_live_time_bins.pdf}}
 \caption{{Pooled live D10--D1 spreads in fixed normalized-time bins. Per fill weights every trade equally; Equal sports gives every sport equal total weight. Isolated points; 95\% three-way clustered intervals.}}
 \label{{fig:pooled-time-bins}}
+\begin{{minipage}}{{0.94\linewidth}}\footnotesize
+\textit{{Reading.}} The figure plots raw live D10--D1 calibration spreads in ten fixed normalized-time bins, using both per-fill and equal-sport weights. The point estimate is negative in each of the first nine bins, then becomes positive in the final tenth under both weighting schemes. This shape is inconsistent with a uniform linear change and instead indicates a concentrated shift near the realized end of the game.
+\end{{minipage}}
 \end{{figure}}
 
 {pooled_bin_table}
@@ -584,6 +622,9 @@ The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ wit
 \includegraphics[width=0.96\textwidth]{{figures/sport_live_time_bins.pdf}}
 \caption{{Sport-specific live D10--D1 spreads in fixed normalized-time bins. Withheld bins are omitted.}}
 \label{{fig:sport-time-bins}}
+\begin{{minipage}}{{0.94\linewidth}}\footnotesize
+\textit{{Reading.}} This figure repeats the raw live-bin calculation separately by sport, with bins that fail the support requirement omitted. Several sports exhibit a positive terminal-bin spread, but their earlier paths differ and many individual intervals are wide. The pooled late-game shift is therefore present across multiple sports, while the trajectory before the final bin is heterogeneous. These raw bin estimates are not the fitted sport slopes in Table~\ref{{tab:sport-slopes}}.
+\end{{minipage}}
 \end{{figure}}
 
 {pooled_estimand_table}
@@ -598,7 +639,7 @@ The game-start diagnostic uses $T_i^- = \min(T_i,0)$ and $T_i^+=\max(T_i,0)$ wit
         source.write_text(tex, encoding="utf-8")
         manifest = {
             "schema_version": 1,
-            "stage": "flb_time_regression_latex_v1",
+            "stage": "flb_time_regression_latex_v2",
             "inputs": {path.name: fingerprint(path) for path in inputs},
             "outputs": {
                 "tex": artifact_fingerprint(source),
