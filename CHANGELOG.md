@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-20 — ATP normalized-time swing audit
+
+- Added a reproducible exact-fill audit of ATP's unusually large live
+  D10-minus-D1 calibration movement, including clock-quality checks, equal-event
+  estimates, fixed clock shifts, concentration, calendar, full-decile, and
+  match-attribution summaries.
+- Verified that all 1,355 accepted ATP contracts are full-match moneylines and
+  showed that a small, selected, fill-weighted early cohort of high-volume
+  reversal matches amplifies the curve, while the late positive spread is broad
+  terminal outcome polarization.
+- Preserved compact artifacts under
+  `/mnt/data/runs/2026-09-20_atp_swing_audit_v2` and recorded the contract, QA,
+  and interpretation in
+  [`docs/runs/2026-09-20_atp_swing_audit_v2.md`](docs/runs/2026-09-20_atp_swing_audit_v2.md).
+
 ## 2026-09-20 — Terminal FLB-reversal audit
 
 - Added a reproducible exact-fill diagnostic for the apparent end-of-game reversal,
