@@ -164,7 +164,7 @@ def _support_table(support_rows: list[dict[str, Any]]) -> str:
     selected = {
         (row["sport"], row["segment"], row["tail"]): row
         for row in support_rows
-        if row["sample"] == "unified" and row["time_normalization"] == "realized_duration"
+        if row["sample"] == "all_pregame_live" and row["time_normalization"] == "realized_duration"
     }
     body = []
     for sport in SPORTS:
@@ -174,7 +174,7 @@ def _support_table(support_rows: list[dict[str, Any]]) -> str:
     return rf"""
 \begin{{table}}[!htbp]
 \centering
-\caption{{Primary tail support, $T\in[-1,1]$}}\label{{tab:primary-support}}
+\caption{{Primary tail support, all pregame and live}}\label{{tab:primary-support}}
 \small
 \begin{{tabular}}{{lrrrrl}}
 \toprule
@@ -185,7 +185,7 @@ Sport & Pregame D1 & Pregame D10 & Live D1 & Live D10 & Sport fit \\
 \end{{tabular}}
 \begin{{minipage}}{{0.94\linewidth}}\footnotesize
 D1 is the lowest bought-price bin, $[0,.1)$; D10 is the highest, $[.9,1)$. Pregame and live refer to trades before and after the recorded game start. A sport fit is reported only when every displayed segment-tail cell has at least 500 fills.
-\par\smallskip\textit{{Method and interpretation.}} Counts are unweighted numbers of D1 and D10 fills in the primary $T\in[-1,1]$ sample, classified as pregame when $T<0$ and live when $T\geq0$. A sport-specific pregame-and-live tail regression is reported only if each of its four segment-by-tail cells contains at least 500 fills. NBA, men's CBB, ATP, EPL, and college football pass this requirement. A withheld row therefore means that at least one required cell is too sparse for the planned regression, not that the corresponding effect is zero.
+\par\smallskip\textit{{Method and interpretation.}} Counts are unweighted numbers of D1 and D10 fills in the primary sample, which includes every retained pregame fill and live fills through $T=1$. A sport-specific fit is reported only if each pregame/live tail cell contains at least 500 fills. A withheld row means at least one required cell is too sparse, not that the effect is zero.
 \end{{minipage}}
 \end{{table}}
 """
@@ -200,10 +200,10 @@ def _sport_slope_table(estimands: list[dict[str, Any]]) -> str:
     }
     body = []
     variants = (
-        ("unified", "realized_duration"),
+        ("all_pregame_live", "realized_duration"),
         ("live_only", "realized_duration"),
-        ("wider_pregame", "realized_duration"),
-        ("unified", "sport_median_duration"),
+        ("bounded_pregame", "realized_duration"),
+        ("all_pregame_live", "sport_median_duration"),
     )
     for sport in SPORTS:
         cells = []
@@ -222,14 +222,14 @@ def _sport_slope_table(estimands: list[dict[str, Any]]) -> str:
 \setlength{{\tabcolsep}}{{4.5pt}}
 \begin{{tabular}}{{lrrrr}}
 \toprule
-Sport & Pregame + live & Live only & Wider window & Sport-median time \\
+Sport & All pregame + live & Live only & Bounded $[-1,1]$ & Sport-median time \\
 \midrule
 {chr(10).join(body)}
 \bottomrule
 \end{{tabular}}
 \begin{{minipage}}{{0.96\linewidth}}\footnotesize
-Coefficients are percentage-point changes in the D10--D1 spread per unit of normalized time; clustered standard errors are in parentheses. Pregame + live uses $T\in[-1,1]$; Live only uses $T\in[0,1]$; Wider window uses $T\in[-2,1]$; Sport-median time scales time by the sport's median game length rather than each game's realized length. Withheld means the 500-fill segment-tail minimum is not met.
-\par\smallskip\textit{{Method and interpretation.}} Each cell comes from a separate per-fill regression for one sport using only D1 and D10 fills, with the displayed coefficient equal to $\delta$ on $H_iT_i$. Pregame + live uses realized-duration time over $[-1,1]$, Live only uses $[0,1]$, Wider window uses $[-2,1]$, and Sport-median time divides clock time from game start by the median realized duration for that sport. Thus a coefficient is the spread change per one unit of the specified clock, while the fitted full-window changes are $2\delta$, $\delta$, and $3\delta$ for the first three realized-time windows. Standard errors use three-way clustering, and estimates are withheld when a required segment-tail cell has fewer than 500 fills. ATP has a large positive realized-time estimate, men's CBB has a negative estimate, and the other supported estimates are smaller or imprecise. The pooled relationship therefore masks substantial cross-sport heterogeneity and sensitivity to clock construction.
+Coefficients are percentage-point changes in the D10--D1 spread per unit of normalized time; clustered standard errors are in parentheses. All pregame + live imposes no pregame lower bound and includes live fills through $T=1$. Live only uses $T\in[0,1]$. Bounded $[-1,1]$ reproduces the former primary window as a comparability check. Sport-median time scales all retained times by the sport's median game length. Withheld means the 500-fill segment-tail minimum is not met.
+\par\smallskip\textit{{Method and interpretation.}} Each cell is a separate per-fill D1/D10 regression, and the displayed coefficient is $\delta$ on $H_iT_i$. It is a spread change per one normalized-duration unit, not a total change over the unbounded pregame sample. Standard errors use three-way clustering.
 \end{{minipage}}
 \end{{table}}
 """
@@ -250,7 +250,7 @@ def _pooled_estimand_table(estimands: list[dict[str, Any]]) -> str:
             and row["adjustment"] != "fully_interacted"
         )
     ]
-    order = {"unified": 1, "live_only": 2, "wider_pregame": 3}
+    order = {"all_pregame_live": 1, "live_only": 2, "bounded_pregame": 3}
     wanted.sort(key=lambda row: (
         order.get(row["sample"], 9), row["time_normalization"], row["scope"],
         row["adjustment"], row["weighting"], row["estimand"]
@@ -266,9 +266,9 @@ def _pooled_estimand_table(estimands: list[dict[str, Any]]) -> str:
         else:
             specification = "Sport baselines/trends"
         sample = {
-            "unified": "Pregame + live",
+            "all_pregame_live": "All pregame + live",
             "live_only": "Live only",
-            "wider_pregame": "Wider window",
+            "bounded_pregame": "Bounded [-1,1]",
         }[row["sample"]]
         if row["time_normalization"] == "sport_median_duration":
             sample = "Sport-median time"
@@ -296,8 +296,8 @@ Sample & Sport controls & Weighting & Sports & Coef. (pp) & SE & Est./SE & $p$ &
 \bottomrule
 \end{{longtable}}
 \begin{{minipage}}{{0.96\linewidth}}\footnotesize
-The coefficient is the percentage-point change in the D10-minus-D1 calibration spread per unit of normalized time. Pregame + live uses $T\in[-1,1]$; Live only excludes pregame trades; Wider window extends the lower bound to $T=-2$; Sport-median time uses the sport's median game length. No sport controls pools sports without sport terms; Sport intercepts adds sport indicators; Sport baselines/trends also allows sport-specific D10 baselines and general time slopes; Mean sport slopes is the arithmetic mean of separately estimated supported-sport slopes. Per fill gives every trade equal weight; Equal sports gives every included sport equal total weight; Per dollar weights trades by dollars. Sports is the number included. Est./SE is the estimate divided by its clustered standard error; $p$ and the 95\% interval use a normal reference.
-\par\smallskip\textit{{Method and interpretation.}} Each row reports either a fitted $H_iT_i$ coefficient or a linear contrast of such coefficients, expressed as the D10--D1 spread change per unit of the stated time scale. Rows vary one or more of the sample window, time normalization, sport adjustment, weighting, or sport set. Sport baselines/trends allows sport-specific intercepts, D10 baselines, and general time slopes while constraining the tail-spread slope to be common. Mean sport slopes instead fully interacts the tail slope by sport and reports their arithmetic mean with joint three-way clustered inference. All-nine-sport pooled rows do not require every sport to pass the individual support floor; supported-sport rows include only sports satisfying the relevant 500-fill cells. Live-only estimates are positive under both per-fill and equal-sport weighting, but sport-median-time estimates are negative and imprecise. Since the alternative clock also changes which fills fall inside the window, this comparison captures sensitivity to both normalization and sample composition.
+The coefficient is the percentage-point change in the D10-minus-D1 calibration spread per unit of normalized time. All pregame + live has no pregame lower bound; Live only uses $[0,1]$; Bounded $[-1,1]$ retains the former primary window as a comparability check. Sport-median time uses the sport's median game length. No sport controls pools sports without sport terms; Sport intercepts adds sport indicators; Sport baselines/trends also allows sport-specific D10 baselines and general time slopes; Mean sport slopes is the arithmetic mean of separately estimated supported-sport slopes. Per fill gives every trade equal weight; Equal sports gives every included sport equal total weight; Per dollar weights trades by dollars. Est./SE is the estimate divided by its clustered standard error; $p$ and the 95\% interval use a normal reference.
+\par\smallskip\textit{{Method and interpretation.}} Each row reports a fitted $H_iT_i$ coefficient or a linear contrast, expressed per unit of the stated time scale. Because the primary pregame interval is unbounded, its slope is not converted into a full-window change. Rows vary the sample, clock, sport adjustment, weighting, or included sport set.
 \end{{minipage}}
 \end{{landscape}}
 """
@@ -341,7 +341,7 @@ $T$ bin & \shortstack{{D1 mean\\$Y-P$}} & \shortstack{{D10 mean\\$Y-P$}} & D10--
 \end{{tabular}}
 \begin{{minipage}}{{0.98\linewidth}}\footnotesize
 Calibration error is eventual bought-contract outcome minus trade price, $Y-P$, in percentage points. D1 and D10 are the lowest and highest bought-price bins; D10--D1 subtracts the D1 mean from the D10 mean. Per fill gives every trade equal weight; Equal sports reweights trades so each sport has the same total weight within the displayed sample. Rows are raw weighted means, not regression-adjusted estimates; $N$ is the unweighted number of fills.
-\par\smallskip\textit{{Method and interpretation.}} This table reports the calculations underlying Figure~\ref{{fig:pooled-time-bins}}. For each fixed live-time bin and weighting scheme, D1 and D10 are weighted means of $Y-P$, the spread is $\bar R_{{D10}}-\bar R_{{D1}}$, and the interval is based on the three-way clustered variance of that difference. The displayed $N$ values are unweighted fill counts, so they are identical across weighting panels. The final bin, $T\in[.9,1]$, has a per-fill D1 mean of $-2.12$ points and D10 mean of $2.67$ points, yielding a spread of $4.80$ with a 95\% interval of $[3.45,6.14]$. Both tail means contribute arithmetically to the final-bin spread. This table begins at $T=0$ because it is a live-only diagnostic; negative pregame time remains included in the unified regressions.
+\par\smallskip\textit{{Method and interpretation.}} This table retains the former ten-bin live summary as a numerical audit alongside the continuous kernel figure. For each fixed live-time bin and weighting scheme, D1 and D10 are weighted means of $Y-P$, the spread is $\bar R_{{D10}}-\bar R_{{D1}}$, and the interval is based on the three-way clustered variance of that difference. The displayed $N$ values are unweighted fill counts. This table begins at $T=0$ because it is a live-only diagnostic; the primary regressions include all pregame trades.
 \end{{minipage}}
 \end{{table}}
 \end{{landscape}}
@@ -406,6 +406,134 @@ def _plot_sport_bins(rows: list[dict[str, Any]], output: Path) -> None:
     plt.close(fig)
 
 
+def _supported_segments(rows: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    ordered = sorted((row for row in rows if not row["suppressed"]), key=lambda row: row["grid_index"])
+    segments: list[list[dict[str, Any]]] = []
+    for row in ordered:
+        if not segments:
+            segments.append([row])
+            continue
+        previous = segments[-1][-1]
+        gap = float(row["time_value"]) - float(previous["time_value"])
+        if row["grid_index"] != previous["grid_index"] + 1 or gap > 2 * float(row["bandwidth"]):
+            segments.append([row])
+        else:
+            segments[-1].append(row)
+    return segments
+
+
+def _draw_kernel(
+    axis: plt.Axes, rows: list[dict[str, Any]], color: str, label: str | None = None
+) -> bool:
+    drawn = False
+    for segment_index, segment in enumerate(_supported_segments(rows)):
+        if len(segment) < 2:
+            continue
+        x = np.array([row["time_value"] for row in segment], dtype=float)
+        y = np.array([row["spread_d10_minus_d1"] * 100 for row in segment], dtype=float)
+        low = np.array([row["spread_ci95_low"] * 100 for row in segment], dtype=float)
+        high = np.array([row["spread_ci95_high"] * 100 for row in segment], dtype=float)
+        axis.plot(x, y, color=color, linewidth=1.25,
+                  label=label if segment_index == 0 else None)
+        axis.fill_between(x, low, high, color=color, alpha=0.14, linewidth=0)
+        drawn = True
+    return drawn
+
+
+def _plot_pooled_kernel(rows: list[dict[str, Any]], output: Path) -> None:
+    fig, axis = plt.subplots(figsize=(7.0, 3.4), constrained_layout=True)
+    styles = (
+        ("equal_fill", "Per fill", "#1f4e79"),
+        ("equal_sport", "Equal sports", "#b24a33"),
+    )
+    for weighting, label, color in styles:
+        selected = [
+            row for row in rows
+            if row["scope"] == "pooled" and row["phase"] == "live"
+            and row["weighting"] == weighting
+        ]
+        _draw_kernel(axis, selected, color, label)
+    axis.axhline(0, color="black", linewidth=0.8)
+    axis.axvline(0, color="#666666", linewidth=0.7)
+    axis.set_xlim(0, 1)
+    axis.set_xlabel("Normalized live time")
+    axis.set_ylabel("D10 - D1 calibration spread (pp)")
+    axis.grid(axis="y", color="#dddddd", linewidth=0.6)
+    axis.spines[["top", "right"]].set_visible(False)
+    axis.legend(frameon=False, ncol=2)
+    fig.savefig(output, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
+def _plot_sport_kernel(rows: list[dict[str, Any]], output: Path) -> None:
+    fig, axes = plt.subplots(6, 3, figsize=(8.0, 11.0), sharey=True, constrained_layout=True)
+    for phase_index, phase in enumerate(("pregame", "live")):
+        for sport_index, sport in enumerate(SPORTS):
+            axis = axes[phase_index * 3 + sport_index // 3, sport_index % 3]
+            selected = [
+                row for row in rows
+                if row["scope"] == "sport" and row["sport"] == sport
+                and row["phase"] == phase and row["weighting"] == "equal_fill"
+            ]
+            drawn = _draw_kernel(axis, selected, "#1f4e79")
+            axis.axhline(0, color="black", linewidth=0.6)
+            axis.axvline(0, color="#666666", linewidth=0.6)
+            axis.set_title(f"{SPORT_LABELS[sport]}: {phase}", fontsize=8.5)
+            if phase == "live":
+                axis.set_xlim(0, 1)
+                axis.set_xticks((0, 0.5, 1.0))
+            else:
+                supported = [row for row in selected if not row["suppressed"]]
+                if supported:
+                    axis.set_xlim(min(row["time_value"] for row in supported), 0)
+                if not drawn:
+                    axis.text(0.5, 0.5, "No locally supported estimate",
+                              transform=axis.transAxes, ha="center", va="center", fontsize=7)
+            axis.grid(axis="y", color="#e5e5e5", linewidth=0.5)
+            axis.spines[["top", "right"]].set_visible(False)
+            axis.tick_params(labelsize=6.5)
+    for column in range(3):
+        axes[2, column].set_xlabel("Pregame normalized time", fontsize=7.5)
+        axes[5, column].set_xlabel("Live normalized time", fontsize=7.5)
+    for row in range(6):
+        axes[row, 0].set_ylabel("D10 - D1 (pp)", fontsize=7.5)
+    fig.savefig(output, format="pdf", bbox_inches="tight")
+    plt.close(fig)
+
+
+def _pregame_time_table(rows: list[dict[str, Any]]) -> str:
+    lookup = {(row["sport"], row["tail"]): row for row in rows}
+    body = []
+    for sport in SPORTS:
+        d1, d10 = lookup[(sport, "D1")], lookup[(sport, "D10")]
+        body.append(" & ".join((
+            _tex(SPORT_LABELS[sport]), _count(d1["n_obs"]), _count(d10["n_obs"]),
+            _num(d1["minimum"], 1), _num(d10["minimum"], 1),
+            _num(d1["p01"], 1), _num(d10["p01"], 1),
+            _num(d1["median"], 1), _num(d10["median"], 1),
+        )) + r" \\")
+    return rf"""
+\begin{{table}}[!htbp]
+\centering
+\caption{{Retained pregame normalized-time distribution}}\label{{tab:pregame-time}}
+\small
+\setlength{{\tabcolsep}}{{4pt}}
+\begin{{tabular}}{{lrrrrrrrr}}
+\toprule
+& \multicolumn{{2}}{{c}}{{Fills}} & \multicolumn{{2}}{{c}}{{Minimum $T$}} & \multicolumn{{2}}{{c}}{{1st percentile}} & \multicolumn{{2}}{{c}}{{Median}} \\
+\cmidrule(lr){{2-3}}\cmidrule(lr){{4-5}}\cmidrule(lr){{6-7}}\cmidrule(lr){{8-9}}
+Sport & D1 & D10 & D1 & D10 & D1 & D10 & D1 & D10 \\
+\midrule
+{chr(10).join(body)}
+\bottomrule
+\end{{tabular}}
+\begin{{minipage}}{{0.96\linewidth}}\footnotesize
+All retained $T<0$ D1 and D10 fills are included. The minimum documents the extreme left tail; the first percentile and median show where ordinary pregame mass lies. These values are descriptive and do not impose a lower cutoff.
+\end{{minipage}}
+\end{{table}}
+"""
+
+
 def _data_decisions_table(duration_rows: list[dict[str, Any]]) -> str:
     durations = ", ".join(
         f"{SPORT_LABELS[row['sport']]} {_num(row['median_duration_minutes'], 1)}"
@@ -416,12 +544,13 @@ def _data_decisions_table(duration_rows: list[dict[str, Any]]) -> str:
         ("Sports", "MLB, NFL, NBA, NHL, men's CBB, ATP, EPL, college football, WNBA"),
         ("Trade filters", r"$0.01<P_i<0.99$; flagged outcome-token buyers excluded"),
         ("Primary time", r"$T_i=(t_i-s_m)/(e_m-s_m)$; exact block time, realized event duration"),
-        ("Primary window", r"$T\in[-1,1]$; pregame $T<0$, start $T=0$, end $T=1$"),
-        ("Variations", r"Live only $[0,1]$; wider window $[-2,1]$; sport-median time"),
+        ("Primary window", r"All retained $T<0$; start $T=0$; live through $T=1$"),
+        ("Variations", r"Live only $[0,1]$; former window $[-1,1]$; sport-median time"),
+        ("Kernel plots", r"Epanechnikov kernel; $h=.50$ pregame, $h=.10$ live; phases fit separately"),
         ("Tail bins", r"D1: $[0,.1)$; D10: $[.9,1)$ under the filtered price support"),
         ("Weighting", r"Per fill; equal sports ($w_i=1/N_s$ within the final fit sample); per dollar"),
         ("Inference", "Cameron--Gelbach--Miller clustering: UTC day, buyer wallet, event"),
-        ("Withholding", "500 fills per required tail-by-segment cell for sport-specific tail fits"),
+        ("Withholding", "500 fills per required regression cell or local kernel tail window"),
         ("Median minutes", durations),
     )
     body = "\n".join(f"{_tex(name)} & {value} \\\\" for name, value in rows)
@@ -449,13 +578,14 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
     input_names = (
         "coefficients.parquet", "model_summary.parquet", "estimands.parquet",
         "support.parquet", "duration_reference.parquet", "time_bin_spreads.parquet",
+        "kernel_time_spreads.parquet", "pregame_time_distribution.parquet",
     )
     inputs = tuple(estimator / name for name in input_names)
     if any(not path.is_file() for path in inputs):
         raise FileNotFoundError([str(path) for path in inputs if not path.is_file()])
     con = duckdb.connect()
     try:
-        coefficients, models, estimands, support, durations, time_bins = [
+        coefficients, models, estimands, support, durations, time_bins, kernel_rows, pregame_times = [
             _rows(con, path) for path in inputs
         ]
     finally:
@@ -466,27 +596,28 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
     with fresh_run(target, inputs) as staging:
         figures = staging / "figures"
         figures.mkdir()
-        _plot_pooled_bins(time_bins, figures / "pooled_live_time_bins.pdf")
-        _plot_sport_bins(time_bins, figures / "sport_live_time_bins.pdf")
+        _plot_pooled_kernel(kernel_rows, figures / "pooled_live_kernel.pdf")
+        _plot_sport_kernel(kernel_rows, figures / "sport_pregame_live_kernel.pdf")
 
         pooled_ids = (
-            "pooled_tail_unified_realized_duration_none_equal_fill",
-            "pooled_tail_unified_realized_duration_sport_intercepts_equal_fill",
-            "pooled_tail_unified_realized_duration_sport_composition_equal_fill",
-            "pooled_tail_unified_realized_duration_sport_composition_equal_sport",
-            "pooled_tail_unified_realized_duration_sport_composition_dollar",
+            "pooled_tail_all_pregame_live_realized_duration_none_equal_fill",
+            "pooled_tail_all_pregame_live_realized_duration_sport_intercepts_equal_fill",
+            "pooled_tail_all_pregame_live_realized_duration_sport_composition_equal_fill",
+            "pooled_tail_all_pregame_live_realized_duration_sport_composition_equal_sport",
+            "pooled_tail_all_pregame_live_realized_duration_sport_composition_dollar",
         )
         piecewise_ids = (
-            "pooled_supported_tail_piecewise_realized_duration_sport_composition_equal_fill",
-            "pooled_supported_tail_piecewise_realized_duration_sport_composition_equal_sport",
+            "pooled_supported_tail_piecewise_all_pregame_live_realized_duration_sport_composition_equal_fill",
+            "pooled_supported_tail_piecewise_all_pregame_live_realized_duration_sport_composition_equal_sport",
         )
         continuous_ids = (
-            "pooled_continuous_unified_realized_duration_none_equal_fill",
-            "pooled_continuous_unified_realized_duration_sport_composition_equal_fill",
-            "pooled_continuous_unified_realized_duration_sport_composition_equal_sport",
+            "pooled_continuous_all_pregame_live_realized_duration_none_equal_fill",
+            "pooled_continuous_all_pregame_live_realized_duration_sport_composition_equal_fill",
+            "pooled_continuous_all_pregame_live_realized_duration_sport_composition_equal_sport",
         )
         data_decisions_table = _data_decisions_table(durations)
         support_table = _support_table(support)
+        pregame_time_table = _pregame_time_table(pregame_times)
         pooled_stargazer = _stargazer_table(
             coefficients, models, pooled_ids,
             ("No controls", "Sport intercepts", "Sport-specific", "Equal sports", "Per dollar"),
@@ -495,22 +626,21 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
             "Pooled pregame-and-live tail regressions, realized-duration time",
             "tab:pooled-stargazer",
             definition_note=(
-                r"Pregame + live uses $T\in[-1,1]$. No controls pools sports without sport terms; "
+                r"The sample includes every retained pregame fill and live fills through $T=1$. "
+                r"No controls pools sports without sport terms; "
                 r"Sport intercepts adds sport indicators; Sport-specific also allows sport-specific "
                 r"D10-minus-D1 baselines and D1 time slopes. Per fill gives every trade equal weight; "
                 r"Equal sports gives every sport equal total weight; Per dollar weights trades by dollars. "
                 r"\par\smallskip\textit{Method and interpretation.} Weighted least squares is estimated "
-                r"on D1 and D10 fills with $T\in[-1,1]$. At $T=0$, the intercept is D1 calibration, D10 is "
+                r"on D1 and D10 fills with no pregame lower cutoff. At $T=0$, the intercept is D1 calibration, D10 is "
                 r"the D10--D1 spread, Time is the D1 time slope, and D10 $\times$ time is the change in that "
                 r"spread per unit of normalized time. No controls fully pools sports; Sport intercepts adds "
                 r"sport indicators; Sport-specific adds sport $\times$ D10 and sport $\times$ time terms "
                 r"while retaining a common D10 $\times$ time coefficient. In Sport intercepts, only the "
                 r"intercept is an MLB reference coefficient; in Sport-specific, Equal sports, and Per dollar, "
                 r"the first three displayed coefficients are MLB reference values and the tail-spread slope "
-                r"is common across sports. The sport-specific per-fill estimate $7.88$ implies a fitted "
-                r"spread change of $15.76$ points from $T=-1$ to $T=1$. Its reduction to $3.68$ under "
-                r"equal-sport weighting indicates that the per-fill magnitude partly reflects the sports "
-                r"contributing the most fills."
+                r"is common across sports. The primary coefficient is a change per one normalized-duration "
+                r"unit and is not a total change over the unbounded pregame interval."
             ),
         )
         sport_slope_table = _sport_slope_table(estimands)
@@ -518,28 +648,24 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
         pooled_estimand_table = _pooled_estimand_table(estimands)
         piecewise_stargazer = _stargazer_table(
             coefficients, models, piecewise_ids, ("Per fill", "Equal sports"),
-            (("D10", "NBA D10-D1 at T=0"),
+            (("D10", "Reference-sport D10-D1 at T=0"),
              ("D10 x pregame time", "Pregame D10-D1 slope"),
              ("D10 x live time", "Live D10-D1 slope")),
             "Piecewise pooled tail regressions at game start",
             "tab:piecewise-stargazer",
             definition_note=(
                 r"Piecewise estimates separate pregame and live changes joined at $T=0$. "
-                r"The sample contains the five sports meeting the 500-fill minimum in every required "
+                r"The sample contains the sports meeting the 500-fill minimum in every required "
                 r"pregame/live D1/D10 cell. Per fill gives every trade equal weight; Equal sports gives "
                 r"every included sport equal total weight. "
-                r"\par\smallskip\textit{Method and interpretation.} The five sports passing all four "
-                r"pregame/live tail support requirements are estimated jointly with $T_i^-=\min(T_i,0)$ "
+                r"\par\smallskip\textit{Method and interpretation.} Supported sports are estimated jointly "
+                r"with $T_i^-=\min(T_i,0)$ "
                 r"and $T_i^+=\max(T_i,0)$. The design includes sport-specific intercepts, game-start tail "
                 r"spreads, and D1 pregame and live slopes, while the D10 interactions with $T_i^-$ and "
                 r"$T_i^+$ are common pooled spread changes. Because both time variables equal zero at game "
-                r"start, the fitted segments join continuously at $T=0$. NBA is the reference sport, so "
-                r"$-12.39$ is its fitted game-start spread; the slope rows are common interactions, not NBA "
-                r"slopes or simple sport averages. Per-fill estimates imply that the spread falls by $19.57$ "
-                r"points per unit as start approaches, then rises by $13.38$ points over one unit of live time. "
-                r"For NBA, fitted spreads are $7.18$ at $T=-1$, $-12.39$ at $T=0$, and $0.99$ at $T=1$. "
-                r"The break is imposed at game start rather than estimated. These sport-adjusted associations "
-                r"are descriptive; the model has no event fixed effects."
+                r"start, the fitted segments join continuously at $T=0$. The displayed slope rows are common "
+                r"interactions, not reference-sport slopes or simple sport averages. The break is imposed at "
+                r"game start rather than estimated."
             ),
         )
         continuous_stargazer = _stargazer_table(
@@ -557,17 +683,16 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
                 r"intercepts, price gradients, and general time slopes. Per fill gives every trade "
                 r"equal weight; Equal sports gives every sport equal total weight. "
                 r"\par\smallskip\textit{Method and interpretation.} This regression uses all eligible "
-                r"prices over $T\in[-1,1]$, rather than restricting the sample to D1 and D10. With "
+                r"prices with no pregame lower cutoff and live fills through $T=1$, rather than restricting "
+                r"the sample to D1 and D10. With "
                 r"$X_i=P_i-.5$, the fitted model is $E[R_i\mid P_i,T_i,s]=\alpha_s+\beta_sX_i+\gamma_sT_i"
                 r"+\delta^pX_iT_i$. Thus $\alpha_s$ is calibration at $P=.5,T=0$, $\beta_s$ is the price "
                 r"gradient at game start, $\gamma_s$ is the time slope at $P=.5$, and $\delta^p$ is the "
                 r"cross-partial $\partial^2E[R]/(\partial P\,\partial T)$. Equivalently, the price gradient "
                 r"is $\beta_s+\delta^pT$ and the time slope is $\gamma_s+\delta^p(P-.5)$. The adjusted models "
                 r"allow sport-specific intercepts, price gradients, and general time slopes, with MLB as the "
-                r"reference and a common price-by-time interaction. The per-fill estimate $\delta^p=12.05$ "
-                r"moves the MLB price gradient from $-8.08$ at $T=0$ to $3.97$ at $T=1$; equal-sport weighting "
-                r"reduces the interaction to $5.97$ with standard error $3.90$. This is an all-price gradient "
-                r"estimand, not a literal D10--D1 contrast, and it imposes a linear calibration-price relation."
+                r"reference and a common price-by-time interaction. This is an all-price gradient estimand, "
+                r"not a literal D10--D1 contrast, and it imposes a linear calibration-price relation."
             ),
         )
         tex = rf"""\documentclass[10pt]{{article}}
@@ -581,7 +706,7 @@ def render_flb_decay(estimator_run: str | Path, run_dir: str | Path) -> dict[str
 \renewcommand{{\arraystretch}}{{0.96}}
 \title{{Favorite--Longshot Bias Over Normalized Game Time}}
 \author{{}}
-\date{{17 September 2026}}
+\date{{20 September 2026}}
 \begin{{document}}
 \maketitle
 \vspace{{-2em}}
@@ -599,7 +724,7 @@ The direct tail model, estimated on D1 and D10 only, is
 R_i=\alpha_s+\beta_sH_i+\gamma_sT_i+\delta_s(H_iT_i)+\varepsilon_i,
 \qquad \Delta_s(T)=\beta_s+\delta_sT.
 \]
-Thus $\delta_s$ is the D10--D1 spread change per normalized game duration; over $[-1,1]$ the fitted change is $2\delta_s$. The continuous-price model is
+Thus $\delta_s$ is the D10--D1 spread change per normalized game duration. The primary sample has no finite pregame lower endpoint, so $\delta_s$ is not converted into a whole-window change. The continuous-price model is
 \[
 R_i=\alpha_s+\beta_s(P_i-.5)+\gamma_sT_i+\delta_s^p((P_i-.5)T_i)+\varepsilon_i.
 \]
@@ -617,20 +742,25 @@ Per-fill models set $w_i=1$; equal-sport models set $w_i=1/N_s$ using the sport'
 \]
 No finite-sample covariance correction is applied. Reported standard errors are square roots of diagonal elements of $\widehat V$; $t=\widehat\theta/SE$, two-sided $p=2[1-\Phi(|t|)]$, and 95\% intervals are $\widehat\theta\pm1.96SE$. Displayed $p$-values are nominal and are not multiplicity-adjusted. Coefficients and calibration errors are displayed as percentage points, equal to 100 times their probability-scale values.
 
-Fixed bought-price bins are assigned as $D_i=\min(\lfloor10P_i\rfloor+1,10)$. The alternative sport-median clock is $T_i^{{\mathrm{{med}}}}=(t_i-s_m)/\widetilde D_s$, where $\widetilde D_s$ is the median realized duration among distinct observed events in sport $s$. Restricting this clock to $[-1,1]$ changes both the time denominator and which fills enter the sample.
+Fixed bought-price bins are assigned as $D_i=\min(\lfloor10P_i\rfloor+1,10)$. The alternative sport-median clock is $T_i^{{\mathrm{{med}}}}=(t_i-s_m)/\widetilde D_s$, where $\widetilde D_s$ is the median realized duration among distinct observed events in sport $s$.
 
 For a time bin $b$ and tail $h\in\{{D1,D10\}}$, the descriptive mean is
 \[
 \bar R_{{hb}}=\frac{{\sum_i w_iR_i\mathbf{{1}}\{{i\in(h,b)\}}}}{{\sum_i w_i\mathbf{{1}}\{{i\in(h,b)\}}}},
 \qquad \Delta_b=\bar R_{{D10,b}}-\bar R_{{D1,b}}.
 \]
-Bin-spread intervals apply the same three-way cluster inclusion-and-exclusion calculation to the joint influence score for $\Delta_b$. A positive spread means calibration is higher in D10 than D1; a classic FLB interpretation additionally requires the displayed tail profile to show negative D1 calibration and positive D10 calibration.
+Bin-spread intervals apply the same three-way cluster inclusion-and-exclusion calculation to the joint influence score for $\Delta_b$. The continuous figures replace bin membership with Epanechnikov weights $K(u)=.75(1-u^2)\mathbf{{1}}\{{|u|<1\}}$, using $h=.50$ before start and $h=.10$ live:
+\[
+\widehat\mu_h(x)=\frac{{\sum_i w_iK((T_i-x)/h)R_i\mathbf{{1}}\{{i\in h\}}}}{{\sum_i w_iK((T_i-x)/h)\mathbf{{1}}\{{i\in h\}}}},
+\qquad \widehat\Delta(x)=\widehat\mu_{{D10}}(x)-\widehat\mu_{{D1}}(x).
+\]
+Pregame and live observations are smoothed separately. Curves and pointwise clustered bands are withheld wherever either local tail window has fewer than 500 fills. A positive spread means calibration is higher in D10 than D1.
 
 \section{{Data decisions}}
 {data_decisions_table}
 {support_table}
+{pregame_time_table}
 
-\clearpage
 \section{{Regression results}}
 {pooled_stargazer}
 
@@ -638,11 +768,11 @@ Bin-spread intervals apply the same three-way cluster inclusion-and-exclusion ca
 
 \begin{{figure}}[!htbp]
 \centering
-\includegraphics[width=0.86\textwidth]{{figures/pooled_live_time_bins.pdf}}
-\caption{{Pooled live D10--D1 spreads in fixed normalized-time bins. Per fill weights every trade equally; Equal sports gives every sport equal total weight. Isolated points; 95\% three-way clustered intervals.}}
-\label{{fig:pooled-time-bins}}
+\includegraphics[width=0.86\textwidth]{{figures/pooled_live_kernel.pdf}}
+\caption{{Pooled live D10--D1 kernel averages. Shading is a pointwise 95\% three-way clustered interval.}}
+\label{{fig:pooled-live-kernel}}
 \begin{{minipage}}{{0.94\linewidth}}\footnotesize
-\textit{{Method and interpretation.}} Live fills with $T\in[0,1]$ are assigned to ten fixed-width time bins using $b_i=\min(\lfloor10T_i\rfloor+1,10)$, so the final bin includes $T=1$. Within each bin, the plotted value is the weighted D10 mean of $Y-P$ minus the weighted D1 mean. Per-fill points use $w_i=1$; equal-sport points use $w_i=1/N_s$, where $N_s$ is the sport's observation count across the complete live-tail sample, not within each bin. Whiskers are 95\% Cameron--Gelbach--Miller intervals for the difference of means, clustered by day, wallet, and event. These are raw bin means with no regression adjustment, and bins with fewer than 500 fills in either tail are omitted. The first nine point estimates are negative and the final-bin estimate is positive under both weighting schemes, visually suggesting a terminal change rather than a uniform linear progression.
+\textit{{Method and interpretation.}} At each live time $x$, the curve subtracts the Epanechnikov-kernel-weighted D1 mean calibration from the corresponding D10 mean using $h=.10$. Per fill uses $w_i=1$; Equal sports uses $w_i=1/N_s$ over the complete all-pregame-plus-live tail sample. Pregame observations never enter a live estimate. Bands are pointwise Cameron--Gelbach--Miller intervals clustered by day, wallet, and event. Curves break wherever either local tail has fewer than 500 fills.
 \end{{minipage}}
 \end{{figure}}
 
@@ -650,11 +780,11 @@ Bin-spread intervals apply the same three-way cluster inclusion-and-exclusion ca
 
 \begin{{figure}}[!htbp]
 \centering
-\includegraphics[width=0.96\textwidth]{{figures/sport_live_time_bins.pdf}}
-\caption{{Sport-specific live D10--D1 spreads in fixed normalized-time bins. Withheld bins are omitted.}}
-\label{{fig:sport-time-bins}}
+\includegraphics[height=0.82\textheight]{{figures/sport_pregame_live_kernel.pdf}}
+\caption{{Sport-specific pregame and live D10--D1 kernel averages. Unsupported portions are omitted.}}
+\label{{fig:sport-time-kernel}}
 \begin{{minipage}}{{0.94\linewidth}}\footnotesize
-\textit{{Method and interpretation.}} The calculation is the same raw D10--D1 live-bin contrast as in Figure~\ref{{fig:pooled-time-bins}}, but it is performed separately by sport using per-fill weights. Each point is the difference between sport-specific D10 and D1 mean calibration in one fixed $T$ bin, with a three-way clustered 95\% interval. A sport-bin is omitted when either tail has fewer than 500 fills. These descriptive conditional means are not fitted values from the linear sport regressions in Table~\ref{{tab:sport-slopes}}. Several sports have positive terminal-bin estimates, but earlier paths and precision vary materially. The pooled terminal shift is therefore not attributable to only one sport, although there is no common smooth trajectory across sports.
+\textit{{Method and interpretation.}} Each panel applies the same kernel calculation separately within a sport and phase using per-fill weights, with $h=.50$ pregame and $h=.10$ live. The wider pregame bandwidth reflects its much lower local density and was chosen from support counts, not from outcome values. The upper nine panels use every retained $T<0$ fill; the lower nine use $0\leq T\leq1$. Pregame grid points are empirical-time quantiles so the unbounded left tail is represented without imposing a cutoff, while the horizontal axis remains raw normalized time. Lines break across unsupported regions or gaps wider than two bandwidths. These are descriptive kernel-weighted means, not fitted values from the linear regressions.
 \end{{minipage}}
 \end{{figure}}
 
@@ -669,17 +799,18 @@ Bin-spread intervals apply the same three-way cluster inclusion-and-exclusion ca
         source = staging / "flb_time_regressions.tex"
         source.write_text(tex, encoding="utf-8")
         manifest = {
-            "schema_version": 1,
-            "stage": "flb_time_regression_latex_v3",
+            "schema_version": 2,
+            "stage": "flb_time_regression_latex_v4",
             "inputs": {path.name: fingerprint(path) for path in inputs},
             "outputs": {
                 "tex": artifact_fingerprint(source),
-                "figures": ["pooled_live_time_bins.pdf", "sport_live_time_bins.pdf"],
+                "figures": ["pooled_live_kernel.pdf", "sport_pregame_live_kernel.pdf"],
             },
             "counts": {
                 "coefficient_rows": len(coefficients), "model_rows": len(models),
                 "estimand_rows": len(estimands), "support_rows": len(support),
-                "time_bin_rows": len(time_bins),
+                "time_bin_rows": len(time_bins), "kernel_rows": len(kernel_rows),
+                "pregame_time_rows": len(pregame_times),
             },
         }
         write_json(staging / "report_manifest.json", manifest)

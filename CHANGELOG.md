@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-20 — All-pregame FLB regressions and continuous kernel profiles
+
+- Removed the primary `T=-1` pregame cutoff from multisport FLB regressions while
+  retaining `[-1,1]` as an explicit comparability specification; unbounded samples no
+  longer receive a misleading whole-window slope multiple.
+- Added immutable pregame time-distribution and continuous Epanechnikov kernel-spread
+  artifacts with phase separation, local 500-fill tail gates, three-way clustered
+  pointwise intervals, and pooled plus sport-specific views.
+- Rebuilt the LaTeX report with a pooled live kernel curve and sport pregame/live kernel
+  panels; added seven focused tests covering unbounded selection, retained extreme
+  times, and phase isolation.
+
 ## 2026-09-17 — FLB time-regression report methodology notes
 
 - Added complete calculation, measurement, and interpretation notes beside every table

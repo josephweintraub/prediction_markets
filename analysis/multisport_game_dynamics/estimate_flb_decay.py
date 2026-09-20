@@ -30,6 +30,8 @@ from analysis.sports_game_dynamics.artifacts import (
 
 SPORTS = ("mlb", "nfl", "nba", "nhl", "cbb", "atp", "epl", "cfb", "wnba")
 MIN_N = 500
+KERNEL_BANDWIDTHS = {"pregame": 0.50, "live": 0.10}
+KERNEL_GRID_POINTS = 101
 CLUSTERS = ("trade_day", "proxyWallet", "event_cluster")
 
 COEFFICIENT_SCHEMA = (
@@ -84,6 +86,23 @@ TIME_BIN_SCHEMA = (
     ("spread_d10_minus_d1", "DOUBLE"), ("spread_standard_error", "DOUBLE"),
     ("spread_ci95_low", "DOUBLE"), ("spread_ci95_high", "DOUBLE"),
     ("suppressed", "BOOLEAN"), ("status", "VARCHAR"),
+)
+KERNEL_SCHEMA = (
+    ("scope", "VARCHAR"), ("sport", "VARCHAR"), ("weighting", "VARCHAR"),
+    ("phase", "VARCHAR"), ("kernel", "VARCHAR"), ("bandwidth", "DOUBLE"),
+    ("grid_index", "INTEGER"), ("time_value", "DOUBLE"),
+    ("d1_n", "BIGINT"), ("d10_n", "BIGINT"),
+    ("d1_events", "BIGINT"), ("d10_events", "BIGINT"),
+    ("d1_mean_calibration", "DOUBLE"), ("d10_mean_calibration", "DOUBLE"),
+    ("spread_d10_minus_d1", "DOUBLE"), ("spread_standard_error", "DOUBLE"),
+    ("spread_ci95_low", "DOUBLE"), ("spread_ci95_high", "DOUBLE"),
+    ("suppressed", "BOOLEAN"), ("status", "VARCHAR"),
+)
+PREGAME_TIME_SCHEMA = (
+    ("sport", "VARCHAR"), ("tail", "VARCHAR"),
+    ("n_obs", "BIGINT"), ("n_events", "BIGINT"),
+    ("minimum", "DOUBLE"), ("p01", "DOUBLE"), ("p05", "DOUBLE"),
+    ("p25", "DOUBLE"), ("median", "DOUBLE"), ("p75", "DOUBLE"),
 )
 
 
@@ -350,11 +369,12 @@ def _fit_ols(
     )
 
 
-def _sample_clause(sample: str, time_column: str) -> tuple[str, float, float]:
+def _sample_clause(sample: str, time_column: str) -> tuple[str, float | None, float]:
+    if sample == "all_pregame_live":
+        return f"{time_column}<=1.0", None, 1.0
     windows = {
-        "unified": (-1.0, 1.0),
         "live_only": (0.0, 1.0),
-        "wider_pregame": (-2.0, 1.0),
+        "bounded_pregame": (-1.0, 1.0),
     }
     low, high = windows[sample]
     return f"{time_column}>={low} AND {time_column}<={high}", low, high
@@ -487,12 +507,13 @@ def _mean_sport_slope_contrast(
 def _support_rows(con: duckdb.DuckDBPyConnection) -> list[tuple[Any, ...]]:
     output: list[tuple[Any, ...]] = []
     definitions = (
-        ("unified", "realized_time", -1.0, 1.0),
-        ("live_only", "realized_time", 0.0, 1.0),
-        ("wider_pregame", "realized_time", -2.0, 1.0),
-        ("unified", "fixed_time", -1.0, 1.0),
+        ("all_pregame_live", "realized_time"),
+        ("live_only", "realized_time"),
+        ("bounded_pregame", "realized_time"),
+        ("all_pregame_live", "fixed_time"),
     )
-    for sample, time_column, low, high in definitions:
+    for sample, time_column in definitions:
+        clause, _, _ = _sample_clause(sample, time_column)
         rows = _rows(
             con,
             f"""
@@ -500,7 +521,7 @@ def _support_rows(con: duckdb.DuckDBPyConnection) -> list[tuple[Any, ...]]:
                    CASE WHEN price_decile=1 THEN 'D1' ELSE 'D10' END tail,
                    count(*)::BIGINT n_obs,count(DISTINCT event_cluster)::BIGINT n_events
             FROM weighted_observations
-            WHERE price_decile IN (1,10) AND {time_column}>={low} AND {time_column}<={high}
+            WHERE price_decile IN (1,10) AND {clause}
             GROUP BY 1,2,3
             """,
         )
@@ -616,6 +637,193 @@ def _time_bin_rows(con: duckdb.DuckDBPyConnection) -> list[tuple[Any, ...]]:
     return output
 
 
+def _pregame_time_rows(con: duckdb.DuckDBPyConnection) -> list[tuple[Any, ...]]:
+    rows = _rows(
+        con,
+        """
+        SELECT sport,CASE WHEN price_decile=1 THEN 'D1' ELSE 'D10' END tail,
+               count(*)::BIGINT n_obs,
+               count(DISTINCT event_cluster)::BIGINT n_events,
+               min(realized_time)::DOUBLE minimum,
+               quantile_cont(realized_time,0.01)::DOUBLE p01,
+               quantile_cont(realized_time,0.05)::DOUBLE p05,
+               quantile_cont(realized_time,0.25)::DOUBLE p25,
+               median(realized_time)::DOUBLE median,
+               quantile_cont(realized_time,0.75)::DOUBLE p75
+        FROM weighted_observations
+        WHERE price_decile IN (1,10) AND realized_time<0
+        GROUP BY 1,2 ORDER BY 1,2
+        """,
+    )
+    return [
+        tuple(row[name] for name, _ in PREGAME_TIME_SCHEMA)
+        for row in rows
+    ]
+
+
+def _kernel_grid_values(
+    con: duckdb.DuckDBPyConnection, sport: str | None, phase: str
+) -> list[float]:
+    if phase == "live":
+        return [index / (KERNEL_GRID_POINTS - 1) for index in range(KERNEL_GRID_POINTS)]
+    probabilities = ",".join(
+        f"{index / (KERNEL_GRID_POINTS - 1):.12g}"
+        for index in range(KERNEL_GRID_POINTS)
+    )
+    sport_clause = "" if sport is None else f" AND sport='{sport}'"
+    values = con.execute(
+        f"""
+        SELECT quantile_cont(realized_time,[{probabilities}])
+        FROM weighted_observations
+        WHERE price_decile IN (1,10) AND realized_time<0{sport_clause}
+        """
+    ).fetchone()[0]
+    # Quantile spacing keeps the full unbounded pregame history eligible while
+    # concentrating evaluation points where observations actually exist.
+    return sorted({round(float(value), 12) for value in values if value is not None} | {0.0})
+
+
+def _kernel_rows(con: duckdb.DuckDBPyConnection) -> list[tuple[Any, ...]]:
+    """Return phase-specific Epanechnikov kernel tail spreads.
+
+    These are tail-specific Nadaraya--Watson means.  Pregame and live are
+    estimated separately, so observations never smooth across game start.
+    """
+
+    grid_rows: list[tuple[Any, ...]] = []
+    specifications = (
+        ("pooled", "all", "equal_fill"),
+        ("pooled", "all", "equal_sport"),
+        *(("sport", sport, "equal_fill") for sport in SPORTS),
+    )
+    for scope, sport, weighting in specifications:
+        sport_filter = None if scope == "pooled" else sport
+        for phase in ("pregame", "live"):
+            for index, value in enumerate(_kernel_grid_values(con, sport_filter, phase)):
+                grid_rows.append(
+                    (scope, sport, weighting, phase, KERNEL_BANDWIDTHS[phase], index, value)
+                )
+
+    con.execute("DROP TABLE IF EXISTS kernel_grid")
+    con.execute(
+        """
+        CREATE TEMP TABLE kernel_grid(
+          scope VARCHAR,sport VARCHAR,weighting VARCHAR,phase VARCHAR,
+          bandwidth DOUBLE,grid_index INTEGER,time_value DOUBLE
+        )
+        """
+    )
+    con.executemany("INSERT INTO kernel_grid VALUES (?,?,?,?,?,?,?)", grid_rows)
+    con.execute("DROP TABLE IF EXISTS kernel_base")
+    con.execute(
+        """
+        CREATE TEMP TABLE kernel_base AS
+        SELECT *,
+               (1.0/count(*) OVER(PARTITION BY sport))::DOUBLE equal_sport_weight
+        FROM weighted_observations
+        WHERE price_decile IN (1,10) AND realized_time<=1
+        """
+    )
+    con.execute("DROP TABLE IF EXISTS kernel_tail")
+    con.execute(
+        """
+        CREATE TEMP TABLE kernel_tail AS
+        SELECT g.scope,g.sport,g.weighting,g.phase,g.bandwidth,g.grid_index,
+               g.time_value,o.event_cluster,o.trade_day,o.proxyWallet,
+               o.price_decile,o.calibration_error,
+               ((CASE WHEN g.weighting='equal_sport' THEN o.equal_sport_weight ELSE 1.0 END)
+                *0.75*(1.0-power((o.realized_time-g.time_value)/g.bandwidth,2)))::DOUBLE w
+        FROM kernel_grid g JOIN kernel_base o
+          ON (g.scope='pooled' OR o.sport=g.sport)
+         AND ((g.phase='pregame' AND o.realized_time<0)
+              OR (g.phase='live' AND o.realized_time>=0 AND o.realized_time<=1))
+         AND abs(o.realized_time-g.time_value)<g.bandwidth
+        """
+    )
+    keys = (
+        "scope", "sport", "weighting", "phase", "bandwidth",
+        "grid_index", "time_value",
+    )
+    key_sql = ",".join(keys)
+    con.execute("DROP TABLE IF EXISTS kernel_means")
+    con.execute(
+        f"""
+        CREATE TEMP TABLE kernel_means AS
+        SELECT {key_sql},
+               count(*) FILTER(WHERE price_decile=1)::BIGINT d1_n,
+               count(*) FILTER(WHERE price_decile=10)::BIGINT d10_n,
+               count(DISTINCT event_cluster) FILTER(WHERE price_decile=1)::BIGINT d1_events,
+               count(DISTINCT event_cluster) FILTER(WHERE price_decile=10)::BIGINT d10_events,
+               sum(w) FILTER(WHERE price_decile=1)::DOUBLE d1_weight,
+               sum(w) FILTER(WHERE price_decile=10)::DOUBLE d10_weight,
+               (sum(w*calibration_error) FILTER(WHERE price_decile=1) /
+                sum(w) FILTER(WHERE price_decile=1))::DOUBLE d1_mean,
+               (sum(w*calibration_error) FILTER(WHERE price_decile=10) /
+                sum(w) FILTER(WHERE price_decile=10))::DOUBLE d10_mean
+        FROM kernel_tail GROUP BY {key_sql}
+        """
+    )
+    variances: dict[tuple[Any, ...], float] = {}
+    for size in range(1, len(CLUSTERS) + 1):
+        sign = 1.0 if size % 2 else -1.0
+        for subset in itertools.combinations(CLUSTERS, size):
+            cluster_sql = ",".join(f"k.{name}" for name in subset)
+            rows = _rows(
+                con,
+                f"""
+                WITH cluster_scores AS (
+                  SELECT {','.join(f'k.{key}' for key in keys)},{cluster_sql},sum(
+                    CASE WHEN k.price_decile=10
+                      THEN k.w*(k.calibration_error-m.d10_mean)/m.d10_weight
+                      ELSE -k.w*(k.calibration_error-m.d1_mean)/m.d1_weight END
+                  )::DOUBLE score
+                  FROM kernel_tail k JOIN kernel_means m USING({key_sql})
+                  WHERE m.d1_n>0 AND m.d10_n>0
+                  GROUP BY {','.join(f'k.{key}' for key in keys)},{cluster_sql}
+                )
+                SELECT {key_sql},sum(score*score)::DOUBLE component
+                FROM cluster_scores GROUP BY {key_sql}
+                """,
+            )
+            for row in rows:
+                key = tuple(row[name] for name in keys)
+                variances[key] = variances.get(key, 0.0) + sign * float(row["component"])
+
+    means = {
+        tuple(row[name] for name in keys): row
+        for row in _rows(con, "SELECT * FROM kernel_means")
+    }
+    output: list[tuple[Any, ...]] = []
+    for scope, sport, weighting, phase, bandwidth, grid_index, time_value in grid_rows:
+        key = (scope, sport, weighting, phase, bandwidth, grid_index, time_value)
+        row = means.get(key)
+        d1_n = int(row["d1_n"]) if row else 0
+        d10_n = int(row["d10_n"]) if row else 0
+        suppressed = d1_n < MIN_N or d10_n < MIN_N
+        values: list[Any] = [None] * 6
+        if row and not suppressed:
+            d1 = float(row["d1_mean"])
+            d10 = float(row["d10_mean"])
+            spread = d10 - d1
+            standard_error = math.sqrt(max(variances.get(key, 0.0), 0.0))
+            values = [
+                d1, d10, spread, standard_error,
+                spread - 1.96 * standard_error,
+                spread + 1.96 * standard_error,
+            ]
+        output.append(
+            (
+                scope, sport, weighting, phase, "epanechnikov", bandwidth,
+                grid_index, time_value, d1_n, d10_n,
+                int(row["d1_events"]) if row else 0,
+                int(row["d10_events"]) if row else 0,
+                *values, suppressed,
+                f"withheld_tail_n_lt_{MIN_N}" if suppressed else "reported",
+            )
+        )
+    return output
+
+
 def _tail_supported(
     con: duckdb.DuckDBPyConnection,
     sport: str | None,
@@ -657,7 +865,7 @@ def _append_fit(
     sport: str,
     sample: str,
     time_normalization: str,
-    window_low: float,
+    window_low: float | None,
     window_high: float,
     weighting: str,
     adjustment: str,
@@ -733,13 +941,14 @@ def estimate_flb_decay(
                 for row in _rows(con, "SELECT * FROM duration_reference ORDER BY sport")
             ]
 
-            # Sport-specific tail models: primary, live-only, wider-window, fixed-duration, piecewise.
+            # Sport-specific tail models: all pregame, live-only, old bounded
+            # comparability window, fixed-duration time, and piecewise time.
             sport_variants = (
-                ("unified", "realized_time", "realized_duration", False),
+                ("all_pregame_live", "realized_time", "realized_duration", False),
                 ("live_only", "realized_time", "realized_duration", False),
-                ("wider_pregame", "realized_time", "realized_duration", False),
-                ("unified", "fixed_time", "sport_median_duration", False),
-                ("unified", "realized_time", "realized_duration", True),
+                ("bounded_pregame", "realized_time", "realized_duration", False),
+                ("all_pregame_live", "fixed_time", "sport_median_duration", False),
+                ("all_pregame_live", "realized_time", "realized_duration", True),
             )
             for sport in SPORTS:
                 for sample, time_column, time_name, piecewise in sport_variants:
@@ -766,8 +975,6 @@ def estimate_flb_decay(
                     else:
                         contrast = np.zeros(len(features)); contrast[3] = 1.0
                         estimands.append(("tail_spread_time_slope", contrast))
-                        if sample == "unified":
-                            estimands.append(("tail_spread_change_window", 2.0 * contrast))
                     _append_fit(
                         coefficient_rows, model_rows, estimand_rows, model_id=model_id,
                         family=family, scope="sport", sport=sport, sample=sample,
@@ -776,22 +983,22 @@ def estimate_flb_decay(
                         fit=fit, status=status, estimand_terms=estimands,
                     )
 
-            # Sport-specific continuous-price model for the primary unified window.
+            # Sport-specific continuous-price model for the all-pregame sample.
             for sport in SPORTS:
                 features = _continuous_features("realized_time")
                 fit = _fit_ols(
                     con,
-                    f"sport='{sport}' AND realized_time>=-1 AND realized_time<=1",
+                    f"sport='{sport}' AND realized_time<=1",
                     features,
                     "1.0",
                 )
                 contrast = np.zeros(len(features)); contrast[3] = 1.0
                 _append_fit(
                     coefficient_rows, model_rows, estimand_rows,
-                    model_id=f"sport_{sport}_continuous_unified_realized_duration",
+                    model_id=f"sport_{sport}_continuous_all_pregame_live_realized_duration",
                     family="continuous_price", scope="sport", sport=sport,
-                    sample="unified", time_normalization="realized_duration",
-                    window_low=-1.0, window_high=1.0, weighting="equal_fill",
+                    sample="all_pregame_live", time_normalization="realized_duration",
+                    window_low=None, window_high=1.0, weighting="equal_fill",
                     adjustment="none", features=features, fit=fit, status="reported",
                     estimand_terms=(("price_gradient_time_slope", contrast),),
                 )
@@ -799,17 +1006,17 @@ def estimate_flb_decay(
             # Pooled tail variants.  The fully interacted model identifies the literal
             # equal-weight average of sport-specific slopes with joint clustered inference.
             pooled_variants = (
-                ("unified", "realized_time", "realized_duration", "none", "1.0", "equal_fill"),
-                ("unified", "realized_time", "realized_duration", "sport_intercepts", "1.0", "equal_fill"),
-                ("unified", "realized_time", "realized_duration", "sport_composition", "1.0", "equal_fill"),
-                ("unified", "realized_time", "realized_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
-                ("unified", "realized_time", "realized_duration", "sport_composition", "usdc", "dollar"),
+                ("all_pregame_live", "realized_time", "realized_duration", "none", "1.0", "equal_fill"),
+                ("all_pregame_live", "realized_time", "realized_duration", "sport_intercepts", "1.0", "equal_fill"),
+                ("all_pregame_live", "realized_time", "realized_duration", "sport_composition", "1.0", "equal_fill"),
+                ("all_pregame_live", "realized_time", "realized_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
+                ("all_pregame_live", "realized_time", "realized_duration", "sport_composition", "usdc", "dollar"),
                 ("live_only", "realized_time", "realized_duration", "sport_composition", "1.0", "equal_fill"),
                 ("live_only", "realized_time", "realized_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
-                ("wider_pregame", "realized_time", "realized_duration", "sport_composition", "1.0", "equal_fill"),
-                ("wider_pregame", "realized_time", "realized_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
-                ("unified", "fixed_time", "sport_median_duration", "sport_composition", "1.0", "equal_fill"),
-                ("unified", "fixed_time", "sport_median_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
+                ("bounded_pregame", "realized_time", "realized_duration", "sport_composition", "1.0", "equal_fill"),
+                ("bounded_pregame", "realized_time", "realized_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
+                ("all_pregame_live", "fixed_time", "sport_median_duration", "sport_composition", "1.0", "equal_fill"),
+                ("all_pregame_live", "fixed_time", "sport_median_duration", "sport_composition", "equal_sport_sample", "equal_sport"),
             )
             for sample, time_column, time_name, adjustment, weight_expression, weighting in pooled_variants:
                 features = _pooled_tail_features(time_column, adjustment)
@@ -822,8 +1029,6 @@ def estimate_flb_decay(
                 base_index = next(index for index, item in enumerate(features) if item[0] == "D10 x time")
                 contrast = np.zeros(len(features)); contrast[base_index] = 1.0
                 estimands.append(("tail_spread_time_slope", contrast))
-                if sample == "unified":
-                    estimands.append(("tail_spread_change_window", 2.0 * contrast))
                 _append_fit(
                     coefficient_rows, model_rows, estimand_rows, model_id=model_id,
                     family="tail_linear", scope="pooled", sport="all", sample=sample,
@@ -835,10 +1040,10 @@ def estimate_flb_decay(
             # Balanced-support pools enforce the 500-fill floor separately for D1 and
             # D10 on every segment needed by the requested time window.
             balanced_variants = (
-                ("unified", "realized_time", "realized_duration"),
+                ("all_pregame_live", "realized_time", "realized_duration"),
                 ("live_only", "realized_time", "realized_duration"),
-                ("wider_pregame", "realized_time", "realized_duration"),
-                ("unified", "fixed_time", "sport_median_duration"),
+                ("bounded_pregame", "realized_time", "realized_duration"),
+                ("all_pregame_live", "fixed_time", "sport_median_duration"),
             )
             for sample, time_column, time_name in balanced_variants:
                 active_sports = tuple(
@@ -879,11 +1084,11 @@ def estimate_flb_decay(
                     )
 
             # Piecewise pooled models use the same per-sport tail support gate as the
-            # unified linear fit, avoiding weakly identified sport interactions.
+            # all-pregame linear fit, avoiding weakly identified sport interactions.
             piecewise_sports = tuple(
                 sport for sport in SPORTS
                 if _tail_supported(
-                    con, sport, "unified", "realized_time", piecewise=True
+                    con, sport, "all_pregame_live", "realized_time", piecewise=True
                 )[0]
             )
             if len(piecewise_sports) < 2:
@@ -894,7 +1099,7 @@ def estimate_flb_decay(
                 fit = _fit_ols(
                     con,
                     f"sport IN ({piecewise_sport_sql}) AND price_decile IN (1,10) "
-                    "AND realized_time>=-1 AND realized_time<=1",
+                    "AND realized_time<=1",
                     features,
                     weight_expression,
                 )
@@ -908,10 +1113,10 @@ def estimate_flb_decay(
                     estimands.append((label, contrast))
                 _append_fit(
                     coefficient_rows, model_rows, estimand_rows,
-                    model_id=f"pooled_supported_tail_piecewise_realized_duration_sport_composition_{weighting}",
+                    model_id=f"pooled_supported_tail_piecewise_all_pregame_live_realized_duration_sport_composition_{weighting}",
                     family="tail_piecewise", scope="pooled_supported",
-                    sport="+".join(piecewise_sports), sample="unified",
-                    time_normalization="realized_duration", window_low=-1.0, window_high=1.0,
+                    sport="+".join(piecewise_sports), sample="all_pregame_live",
+                    time_normalization="realized_duration", window_low=None, window_high=1.0,
                     weighting=weighting, adjustment="sport_composition", features=features,
                     fit=fit, status="reported", estimand_terms=estimands,
                 )
@@ -924,15 +1129,15 @@ def estimate_flb_decay(
             ):
                 features = _pooled_continuous_features("realized_time", adjustment)
                 fit = _fit_ols(
-                    con, "realized_time>=-1 AND realized_time<=1", features, weight_expression
+                    con, "realized_time<=1", features, weight_expression
                 )
                 contrast = np.zeros(len(features))
                 contrast[next(index for index, item in enumerate(features) if item[0] == "Price x time")] = 1.0
                 _append_fit(
                     coefficient_rows, model_rows, estimand_rows,
-                    model_id=f"pooled_continuous_unified_realized_duration_{adjustment}_{weighting}",
-                    family="continuous_price", scope="pooled", sport="all", sample="unified",
-                    time_normalization="realized_duration", window_low=-1.0, window_high=1.0,
+                    model_id=f"pooled_continuous_all_pregame_live_realized_duration_{adjustment}_{weighting}",
+                    family="continuous_price", scope="pooled", sport="all", sample="all_pregame_live",
+                    time_normalization="realized_duration", window_low=None, window_high=1.0,
                     weighting=weighting, adjustment=adjustment, features=features,
                     fit=fit, status="reported",
                     estimand_terms=(("price_gradient_time_slope", contrast),),
@@ -941,6 +1146,8 @@ def estimate_flb_decay(
                 con.execute("SELECT sport,count(*)::BIGINT FROM observations GROUP BY 1 ORDER BY 1").fetchall()
             )
             time_bin_rows = _time_bin_rows(con)
+            pregame_time_rows = _pregame_time_rows(con)
+            kernel_rows = _kernel_rows(con)
         finally:
             con.close()
 
@@ -950,19 +1157,36 @@ def estimate_flb_decay(
         write_parquet(staging / "support.parquet", SUPPORT_SCHEMA, support_rows, ("sample", "time_normalization", "sport", "segment", "tail"))
         write_parquet(staging / "duration_reference.parquet", DURATION_SCHEMA, duration_rows, ("sport",))
         write_parquet(staging / "time_bin_spreads.parquet", TIME_BIN_SCHEMA, time_bin_rows, ("scope", "sport", "weighting", "time_bin"))
+        write_parquet(
+            staging / "kernel_time_spreads.parquet", KERNEL_SCHEMA, kernel_rows,
+            ("scope", "sport", "weighting", "phase", "bandwidth", "grid_index"),
+        )
+        write_parquet(
+            staging / "pregame_time_distribution.parquet", PREGAME_TIME_SCHEMA,
+            pregame_time_rows, ("sport", "tail"),
+        )
         manifest = {
-            "schema_version": 1,
-            "stage": "multisport_flb_time_regressions_v1",
+            "schema_version": 2,
+            "stage": "multisport_flb_time_regressions_v2",
             "estimand": "change in bought-contract D10-minus-D1 calibration spread over normalized event time",
             "sports": list(SPORTS),
             "observation_unit": "eligible BUY fill",
             "calibration": "eventual bought-contract outcome minus purchase price",
             "time": {
                 "primary": "(exact trade timestamp - event start) / realized event duration",
-                "primary_window": [-1.0, 1.0],
+                "primary_window": {"lower": None, "upper": 1.0, "meaning": "all pregame and live through event end"},
                 "live_only_window": [0.0, 1.0],
-                "wider_pregame_window": [-2.0, 1.0],
+                "bounded_comparability_window": [-1.0, 1.0],
                 "fixed_duration_sensitivity": "sport-specific median realized duration",
+            },
+            "kernel": {
+                "estimator": "tail-specific Nadaraya-Watson weighted mean",
+                "kernel": "Epanechnikov",
+                "bandwidths": KERNEL_BANDWIDTHS,
+                "grid": "101 fixed live points; 101 empirical-quantile pregame points plus game start",
+                "phases": "pregame and live estimated separately",
+                "support": f"at least {MIN_N} fills in both D1 and D10 inside the compact-support window",
+                "intervals": "pointwise 95 percent three-way clustered",
             },
             "support_floor": MIN_N,
             "uncertainty": "Cameron-Gelbach-Miller three-way clustered by UTC trade day, buyer wallet, and event",
@@ -973,6 +1197,7 @@ def estimate_flb_decay(
                 for name in (
                     "coefficients.parquet", "model_summary.parquet", "estimands.parquet",
                     "support.parquet", "duration_reference.parquet", "time_bin_spreads.parquet",
+                    "kernel_time_spreads.parquet", "pregame_time_distribution.parquet",
                 )
             },
         }

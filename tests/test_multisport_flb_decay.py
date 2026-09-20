@@ -5,14 +5,18 @@ from pathlib import Path
 
 import duckdb
 import numpy as np
+import analysis.multisport_game_dynamics.estimate_flb_decay as flb_decay
 
 from analysis.multisport_game_dynamics.estimate_flb_decay import (
     SPORTS,
     _create_observations,
     _fit_ols,
     _linear_result,
+    _kernel_rows,
     _mean_sport_slope_contrast,
     _pooled_tail_features,
+    _pregame_time_rows,
+    _sample_clause,
     _tail_features,
 )
 
@@ -113,6 +117,83 @@ def test_equal_sport_weights_are_defined_on_final_fit_sample() -> None:
         )
         assert np.isclose(equal_fill.beta[0], 0.75)
         assert np.isclose(equal_sport.beta[0], 0.5)
+    finally:
+        con.close()
+
+
+def test_all_pregame_clause_has_no_lower_bound() -> None:
+    clause, low, high = _sample_clause("all_pregame_live", "realized_time")
+    assert clause == "realized_time<=1.0"
+    assert low is None
+    assert high == 1.0
+    bounded, bounded_low, bounded_high = _sample_clause(
+        "bounded_pregame", "realized_time"
+    )
+    assert bounded == "realized_time>=-1.0 AND realized_time<=1.0"
+    assert (bounded_low, bounded_high) == (-1.0, 1.0)
+
+
+def test_pregame_distribution_retains_extreme_negative_time() -> None:
+    con = duckdb.connect()
+    try:
+        con.execute(
+            """
+            CREATE TABLE weighted_observations(
+              sport VARCHAR,price_decile INTEGER,realized_time DOUBLE,
+              event_cluster VARCHAR
+            )
+            """
+        )
+        con.executemany(
+            "INSERT INTO weighted_observations VALUES (?,?,?,?)",
+            [("mlb", 1, -100.0, "a"), ("mlb", 1, -0.5, "b"),
+             ("mlb", 10, -20.0, "c"), ("mlb", 10, -0.25, "d")],
+        )
+        rows = _pregame_time_rows(con)
+        lookup = {(row[0], row[1]): row for row in rows}
+        assert lookup[("mlb", "D1")][2] == 2
+        assert lookup[("mlb", "D1")][4] == -100.0
+        assert lookup[("mlb", "D10")][4] == -20.0
+    finally:
+        con.close()
+
+
+def test_kernel_means_do_not_cross_game_start(monkeypatch) -> None:
+    monkeypatch.setattr(flb_decay, "MIN_N", 1)
+    con = duckdb.connect()
+    try:
+        con.execute(
+            """
+            CREATE TABLE weighted_observations(
+              sport VARCHAR,event_cluster VARCHAR,trade_day DATE,
+              proxyWallet VARCHAR,price_decile INTEGER,calibration_error DOUBLE,
+              realized_time DOUBLE
+            )
+            """
+        )
+        rows = []
+        for sport_index, sport in enumerate(SPORTS):
+            day = date(2025, 1, sport_index + 1)
+            rows.extend((
+                (sport, f"{sport}-pre", day, f"{sport}-w1", 1, 0.10, -0.05),
+                (sport, f"{sport}-pre", day, f"{sport}-w2", 10, 0.30, -0.05),
+                (sport, f"{sport}-live", day, f"{sport}-w3", 1, -0.10, 0.00),
+                (sport, f"{sport}-live", day, f"{sport}-w4", 10, 0.20, 0.00),
+            ))
+        con.executemany("INSERT INTO weighted_observations VALUES (?,?,?,?,?,?,?)", rows)
+        output = _kernel_rows(con)
+        lookup = {
+            (row[0], row[1], row[2], row[3], row[7]): row
+            for row in output
+        }
+        pregame = lookup[("sport", "mlb", "equal_fill", "pregame", 0.0)]
+        live = lookup[("sport", "mlb", "equal_fill", "live", 0.0)]
+        assert np.isclose(pregame[12], 0.10)
+        assert np.isclose(pregame[13], 0.30)
+        assert np.isclose(pregame[14], 0.20)
+        assert np.isclose(live[12], -0.10)
+        assert np.isclose(live[13], 0.20)
+        assert np.isclose(live[14], 0.30)
     finally:
         con.close()
 
