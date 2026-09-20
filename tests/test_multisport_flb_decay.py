@@ -10,6 +10,7 @@ import analysis.multisport_game_dynamics.estimate_flb_decay as flb_decay
 from analysis.multisport_game_dynamics.estimate_flb_decay import (
     SPORTS,
     _create_observations,
+    _create_exact_observations,
     _fit_ols,
     _linear_result,
     _kernel_rows,
@@ -273,5 +274,106 @@ def test_observation_normalization_uses_exact_bought_contract_outcome(tmp_path: 
         assert con.execute(
             "SELECT realized_time,fixed_time FROM observations WHERE sport='mlb'"
         ).fetchone() == (0.0, 0.0)
+    finally:
+        con.close()
+
+
+def test_exact_observation_samples_apply_canonical_filters(tmp_path: Path) -> None:
+    start = datetime(2025, 1, 2, 20, tzinfo=timezone.utc)
+    end = datetime(2025, 1, 3, 0, tzinfo=timezone.utc)
+    timestamp = int(start.timestamp())
+    trade_day = date(2025, 1, 2)
+
+    new_exact = tmp_path / "new_exact.parquet"
+    new_schema = (
+        ("sport", "VARCHAR"), ("event_slug", "VARCHAR"),
+        ("market_id", "VARCHAR"), ("market_date", "DATE"),
+        ("timestamp", "BIGINT"), ("price", "DOUBLE"), ("won", "BOOLEAN"),
+        ("usdc", "DOUBLE"), ("proxyWallet", "VARCHAR"),
+        ("buyer_is_flagged_nonhuman", "BOOLEAN"),
+        ("actual_start_utc", "TIMESTAMPTZ"), ("actual_end_utc", "TIMESTAMPTZ"),
+    )
+    new_rows = []
+    for sport in SPORTS[3:]:
+        new_rows.append((sport, f"{sport}-event", f"{sport}-market", trade_day,
+                         timestamp, 0.95, True, 1.0, f"{sport}-human", False,
+                         start, end))
+    new_rows.append(("nhl", "nhl-event", "nhl-market", trade_day, timestamp,
+                     0.999, True, 1.0, "nhl-bot", True, start, end))
+    _write_parquet(new_exact, new_schema, new_rows)
+
+    mlb_phase = tmp_path / "mlb_phase.parquet"
+    _write_parquet(
+        mlb_phase,
+        (("market_id", "VARCHAR"), ("game_pk", "BIGINT"),
+         ("official_date", "DATE"), ("winning_outcome", "VARCHAR"),
+         ("actual_start_utc", "TIMESTAMPTZ"), ("actual_end_utc", "TIMESTAMPTZ")),
+        [("mlb-market", 1, trade_day, "Yes", start, end)],
+    )
+    mlb_exact = tmp_path / "mlb_exact.parquet"
+    _write_parquet(
+        mlb_exact,
+        (("market_id", "VARCHAR"), ("timestamp", "BIGINT"),
+         ("price", "DOUBLE"), ("outcome", "VARCHAR"), ("usdcSize", "DOUBLE"),
+         ("proxyWallet", "VARCHAR")),
+        [("mlb-market", timestamp, 0.05, "No", 1.0, "mlb-human"),
+         ("mlb-market", timestamp, 0.001, "Yes", 1.0, "mlb-bot")],
+    )
+    wallet_flags = tmp_path / "wallet_flags.parquet"
+    _write_parquet(
+        wallet_flags,
+        (("proxyWallet", "VARCHAR"), ("is_nonhuman", "BOOLEAN")),
+        [("mlb-bot", True)],
+    )
+
+    legacy_exact_paths = []
+    legacy_phase_paths = []
+    for sport in ("nfl", "nba"):
+        phase = tmp_path / f"{sport}_phase.parquet"
+        _write_parquet(
+            phase,
+            (("market_id", "VARCHAR"), ("game_id", "VARCHAR"),
+             ("official_date", "DATE"), ("winning_token_id", "VARCHAR"),
+             ("actual_start_utc", "TIMESTAMPTZ"),
+             ("actual_end_utc", "TIMESTAMPTZ")),
+            [(f"{sport}-market", f"{sport}-event", trade_day, "winner", start, end)],
+        )
+        exact = tmp_path / f"{sport}_exact.parquet"
+        _write_parquet(
+            exact,
+            (("market_id", "VARCHAR"), ("timestamp", "BIGINT"),
+             ("price", "DOUBLE"), ("token_id", "VARCHAR"), ("usdc", "DOUBLE"),
+             ("proxyWallet", "VARCHAR"),
+             ("buyer_is_flagged_nonhuman", "BOOLEAN")),
+            [(f"{sport}-market", timestamp, 0.95, "winner", 1.0,
+              f"{sport}-human", False),
+             (f"{sport}-market", timestamp, 0.999, "loser", 1.0,
+              f"{sport}-bot", True)],
+        )
+        legacy_exact_paths.append(exact)
+        legacy_phase_paths.append(phase)
+
+    arguments = (
+        new_exact, mlb_exact, mlb_phase,
+        legacy_exact_paths[0], legacy_phase_paths[0],
+        legacy_exact_paths[1], legacy_phase_paths[1], wallet_flags,
+    )
+    con = duckdb.connect()
+    try:
+        _create_exact_observations(con, *arguments, "filtered_trades")
+        assert con.execute("SELECT count(*) FROM observations").fetchone()[0] == 9
+        assert con.execute(
+            "SELECT count(*) FROM observations WHERE proxyWallet LIKE '%bot'"
+        ).fetchone()[0] == 0
+    finally:
+        con.close()
+
+    con = duckdb.connect()
+    try:
+        _create_exact_observations(con, *arguments, "all_trades")
+        assert con.execute("SELECT count(*) FROM observations").fetchone()[0] == 13
+        assert con.execute(
+            "SELECT count(*) FROM observations WHERE proxyWallet LIKE '%bot'"
+        ).fetchone()[0] == 4
     finally:
         con.close()

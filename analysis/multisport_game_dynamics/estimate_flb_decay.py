@@ -251,6 +251,203 @@ def _create_observations(
     )
 
 
+def _create_exact_observations(
+    con: duckdb.DuckDBPyConnection,
+    new_exact: Path,
+    mlb_exact: Path,
+    mlb_phase: Path,
+    nfl_exact: Path,
+    nfl_phase: Path,
+    nba_exact: Path,
+    nba_phase: Path,
+    wallet_flags: Path,
+    trade_sample: str,
+) -> None:
+    """Normalize one exact-fill universe under a declared trade-sample rule.
+
+    The frozen phase artifacts supply only the accepted event cohort, outcome,
+    and start/end metadata for MLB/NFL/NBA.  Every estimated fill comes from an
+    exact pre-filter artifact.  This makes the filtered/all comparison differ
+    only by the declared buyer and price-support rules.
+    """
+
+    if trade_sample not in {"filtered_trades", "all_trades"}:
+        raise ValueError(f"Unknown trade sample: {trade_sample}")
+    con.execute("SET TimeZone='UTC'")
+    retained = ",".join(f"'{sport}'" for sport in SPORTS[3:])
+    price_filter = (
+        "price>0.01 AND price<0.99"
+        if trade_sample == "filtered_trades"
+        else "price>0 AND price<1"
+    )
+    new_buyer_filter = (
+        " AND NOT buyer_is_flagged_nonhuman"
+        if trade_sample == "filtered_trades"
+        else ""
+    )
+    legacy_buyer_filter = (
+        " AND NOT e.buyer_is_flagged_nonhuman"
+        if trade_sample == "filtered_trades"
+        else ""
+    )
+    mlb_buyer_filter = (
+        " AND NOT coalesce(w.is_nonhuman,false)"
+        if trade_sample == "filtered_trades"
+        else ""
+    )
+
+    # The accepted timing/outcome record must be unique per market.  Failing
+    # here prevents a join from silently multiplying exact fills.
+    metadata_specs = (
+        (
+            "mlb_metadata",
+            mlb_phase,
+            "market_id,game_pk,official_date,winning_outcome,"
+            "actual_start_utc,actual_end_utc",
+        ),
+        (
+            "nfl_metadata",
+            nfl_phase,
+            "market_id,game_id,official_date,winning_token_id,"
+            "actual_start_utc,actual_end_utc",
+        ),
+        (
+            "nba_metadata",
+            nba_phase,
+            "market_id,game_id,official_date,winning_token_id,"
+            "actual_start_utc,actual_end_utc",
+        ),
+    )
+    for table, path, columns in metadata_specs:
+        con.execute(
+            f"CREATE TEMP TABLE {table} AS SELECT DISTINCT {columns} "
+            f"FROM read_parquet('{quoted(path)}')"
+        )
+        duplicate_markets = con.execute(
+            f"SELECT count(*) FROM (SELECT market_id FROM {table} "
+            "GROUP BY 1 HAVING count(*)<>1)"
+        ).fetchone()[0]
+        if duplicate_markets:
+            raise ValueError(f"Non-unique timing metadata in {table}: {duplicate_markets}")
+
+    con.execute(
+        f"""
+        CREATE TEMP TABLE observations AS
+        SELECT e.sport,e.event_slug::VARCHAR event_id,e.market_id::VARCHAR market_id,
+               e.market_date::DATE market_date,e."timestamp"::BIGINT trade_timestamp,
+               e.price::DOUBLE price,e.won::DOUBLE won,
+               (e.won::DOUBLE-e.price)::DOUBLE calibration_error,e.usdc::DOUBLE usdc,
+               e.proxyWallet::VARCHAR proxyWallet,
+               timezone('UTC',to_timestamp(e."timestamp"))::DATE trade_day,
+               e.actual_start_utc,e.actual_end_utc
+        FROM read_parquet('{quoted(new_exact)}') e
+        WHERE e.sport IN ({retained})
+          AND e."timestamp"<=epoch(e.actual_end_utc)
+          AND {price_filter}{new_buyer_filter}
+        UNION ALL
+        SELECT 'mlb',m.game_pk::VARCHAR,e.market_id::VARCHAR,m.official_date::DATE,
+               e."timestamp"::BIGINT,e.price::DOUBLE,
+               (e.outcome=m.winning_outcome)::DOUBLE,
+               ((e.outcome=m.winning_outcome)::DOUBLE-e.price)::DOUBLE,
+               e.usdcSize::DOUBLE,e.proxyWallet::VARCHAR,
+               timezone('UTC',to_timestamp(e."timestamp"))::DATE,
+               m.actual_start_utc,m.actual_end_utc
+        FROM read_parquet('{quoted(mlb_exact)}') e
+        JOIN mlb_metadata m USING(market_id)
+        LEFT JOIN read_parquet('{quoted(wallet_flags)}') w
+          ON lower(e.proxyWallet)=lower(w.proxyWallet)
+        WHERE e."timestamp"<=epoch(m.actual_end_utc)
+          AND e.{price_filter}{mlb_buyer_filter}
+        UNION ALL
+        SELECT 'nfl',m.game_id::VARCHAR,e.market_id::VARCHAR,m.official_date::DATE,
+               e."timestamp"::BIGINT,e.price::DOUBLE,
+               (e.token_id=m.winning_token_id)::DOUBLE,
+               ((e.token_id=m.winning_token_id)::DOUBLE-e.price)::DOUBLE,
+               e.usdc::DOUBLE,e.proxyWallet::VARCHAR,
+               timezone('UTC',to_timestamp(e."timestamp"))::DATE,
+               m.actual_start_utc,m.actual_end_utc
+        FROM read_parquet('{quoted(nfl_exact)}') e
+        JOIN nfl_metadata m USING(market_id)
+        WHERE e."timestamp"<=epoch(m.actual_end_utc)
+          AND e.{price_filter}{legacy_buyer_filter}
+        UNION ALL
+        SELECT 'nba',m.game_id::VARCHAR,e.market_id::VARCHAR,m.official_date::DATE,
+               e."timestamp"::BIGINT,e.price::DOUBLE,
+               (e.token_id=m.winning_token_id)::DOUBLE,
+               ((e.token_id=m.winning_token_id)::DOUBLE-e.price)::DOUBLE,
+               e.usdc::DOUBLE,e.proxyWallet::VARCHAR,
+               timezone('UTC',to_timestamp(e."timestamp"))::DATE,
+               m.actual_start_utc,m.actual_end_utc
+        FROM read_parquet('{quoted(nba_exact)}') e
+        JOIN nba_metadata m USING(market_id)
+        WHERE e."timestamp"<=epoch(m.actual_end_utc)
+          AND e.{price_filter}{legacy_buyer_filter}
+        """
+    )
+    con.execute("ALTER TABLE observations ADD COLUMN price_decile INTEGER")
+    con.execute("ALTER TABLE observations ADD COLUMN event_cluster VARCHAR")
+    con.execute("ALTER TABLE observations ADD COLUMN realized_time DOUBLE")
+    con.execute(
+        """
+        UPDATE observations SET
+          price_decile=least(floor(price*10)::INTEGER+1,10),
+          event_cluster=sport || ':' || event_id,
+          realized_time=(trade_timestamp-epoch(actual_start_utc)) /
+                        (epoch(actual_end_utc)-epoch(actual_start_utc))
+        """
+    )
+    price_invalid = (
+        "price<=0.01 OR price>=0.99"
+        if trade_sample == "filtered_trades"
+        else "price<=0 OR price>=1"
+    )
+    invalid = con.execute(
+        f"""
+        SELECT count(*) FROM observations
+        WHERE sport NOT IN ('mlb','nfl','nba','nhl','cbb','atp','epl','cfb','wnba')
+           OR event_id IS NULL OR trim(event_id)='' OR market_id IS NULL
+           OR trade_timestamp IS NULL OR proxyWallet IS NULL OR trim(proxyWallet)=''
+           OR trade_day IS NULL OR {price_invalid}
+           OR won NOT IN (0,1) OR usdc<=0 OR NOT isfinite(usdc)
+           OR abs(calibration_error-(won-price))>1e-12
+           OR actual_end_utc<=actual_start_utc
+           OR NOT isfinite(realized_time) OR realized_time>1+1e-9
+        """
+    ).fetchone()[0]
+    if invalid:
+        raise ValueError(f"Invalid normalized exact observations: {invalid}")
+    observed_sports = tuple(
+        row[0] for row in con.execute(
+            "SELECT DISTINCT sport FROM observations ORDER BY sport"
+        ).fetchall()
+    )
+    if set(observed_sports) != set(SPORTS):
+        raise ValueError(f"Sport domain mismatch: {observed_sports}")
+    con.execute(
+        """
+        CREATE TEMP TABLE duration_reference AS
+        SELECT sport,count(*)::BIGINT event_count,
+               median(duration_seconds)::DOUBLE median_duration_seconds
+        FROM (
+          SELECT DISTINCT sport,event_cluster,
+                 epoch(actual_end_utc)-epoch(actual_start_utc) AS duration_seconds
+          FROM observations
+        ) GROUP BY sport
+        """
+    )
+    con.execute("ALTER TABLE observations ADD COLUMN fixed_time DOUBLE")
+    con.execute(
+        """
+        UPDATE observations AS o
+        SET fixed_time=(o.trade_timestamp-epoch(o.actual_start_utc))/d.median_duration_seconds
+        FROM duration_reference d WHERE d.sport=o.sport
+        """
+    )
+    con.execute(
+        "CREATE TEMP VIEW weighted_observations AS SELECT * FROM observations"
+    )
+
+
 def _feature_sql(feature_expressions: Sequence[tuple[str, str]]) -> str:
     return ",".join(f"({expression})::DOUBLE x{index}" for index, (_, expression) in enumerate(feature_expressions))
 
@@ -922,8 +1119,28 @@ def estimate_flb_decay(
     nfl_phase: str | Path,
     nba_phase: str | Path,
     run_dir: str | Path,
+    *,
+    trade_sample: str = "filtered_trades",
+    new_exact: str | Path | None = None,
+    mlb_exact: str | Path | None = None,
+    nfl_exact: str | Path | None = None,
+    nba_exact: str | Path | None = None,
+    wallet_flags: str | Path | None = None,
 ) -> dict[str, Any]:
-    paths = [Path(value).expanduser().resolve() for value in (new_phase, mlb_phase, nfl_phase, nba_phase)]
+    phase_paths = [
+        Path(value).expanduser().resolve()
+        for value in (new_phase, mlb_phase, nfl_phase, nba_phase)
+    ]
+    exact_values = (new_exact, mlb_exact, nfl_exact, nba_exact, wallet_flags)
+    if any(value is None for value in exact_values):
+        raise ValueError(
+            "new_exact, mlb_exact, nfl_exact, nba_exact, and wallet_flags are required"
+        )
+    exact_paths = [
+        Path(value).expanduser().resolve()  # type: ignore[arg-type]
+        for value in exact_values
+    ]
+    paths = [*phase_paths, *exact_paths]
     if any(not path.is_file() for path in paths):
         raise FileNotFoundError([str(path) for path in paths if not path.is_file()])
     target = Path(run_dir).expanduser().resolve()
@@ -933,7 +1150,18 @@ def estimate_flb_decay(
     with fresh_run(target, paths) as staging:
         con = duckdb.connect()
         try:
-            _create_observations(con, *paths)
+            _create_exact_observations(
+                con,
+                exact_paths[0],
+                exact_paths[1],
+                phase_paths[1],
+                exact_paths[2],
+                phase_paths[2],
+                exact_paths[3],
+                phase_paths[3],
+                exact_paths[4],
+                trade_sample,
+            )
             support_rows = _support_rows(con)
             duration_rows = [
                 (row["sport"], int(row["event_count"]), float(row["median_duration_seconds"]),
@@ -1166,11 +1394,17 @@ def estimate_flb_decay(
             pregame_time_rows, ("sport", "tail"),
         )
         manifest = {
-            "schema_version": 2,
-            "stage": "multisport_flb_time_regressions_v2",
+            "schema_version": 3,
+            "stage": "multisport_flb_time_regressions_v3",
             "estimand": "change in bought-contract D10-minus-D1 calibration spread over normalized event time",
             "sports": list(SPORTS),
-            "observation_unit": "eligible BUY fill",
+            "trade_sample": trade_sample,
+            "trade_filter": (
+                "0.01 < price < 0.99; flagged outcome-token buyers excluded"
+                if trade_sample == "filtered_trades"
+                else "0 < price < 1; flagged outcome-token buyers included"
+            ),
+            "observation_unit": "resolved moneyline BUY fill from exact pre-filter artifacts",
             "calibration": "eventual bought-contract outcome minus purchase price",
             "time": {
                 "primary": "(exact trade timestamp - event start) / realized event duration",
@@ -1208,6 +1442,11 @@ def estimate_flb_decay(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("new_phase", "mlb_phase", "nfl_phase", "nba_phase", "run_dir"):
+        parser.add_argument("--" + name.replace("_", "-"), required=True)
+    parser.add_argument(
+        "--trade-sample", choices=("filtered_trades", "all_trades"), required=True
+    )
+    for name in ("new_exact", "mlb_exact", "nfl_exact", "nba_exact", "wallet_flags"):
         parser.add_argument("--" + name.replace("_", "-"), required=True)
     return parser.parse_args(argv)
 

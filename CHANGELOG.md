@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-20 — Filtered-versus-all FLB time-regression appendix
+
+- Rebuilt the nine-sport filtered and all-trades samples from common frozen exact-fill
+  sources, with explicit canonical price and flagged-buyer rules and immutable sample
+  manifests.
+- Corrected the inherited MLB filtered normalization by applying the frozen wallet
+  flags to outcome-token buyers; the prior `analysis_eligible` field removed post-end
+  fills but did not perform the claimed buyer exclusion.
+- Appended a complete all-trades section to the LaTeX report with the same tables,
+  regressions, continuous kernel figures, support gates, weighting, and clustered
+  inference as the corrected filtered section; added exact-sample test coverage and a
+  58-test multisport production check.
+- Recorded the contract and production run in
+  [`docs/analysis_specs/flb_time_regressions_v3.md`](docs/analysis_specs/flb_time_regressions_v3.md)
+  and
+  [`docs/runs/2026-09-20_flb_time_regressions_filtered_all_v1.md`](docs/runs/2026-09-20_flb_time_regressions_filtered_all_v1.md).
+
 ## 2026-09-20 — All-pregame FLB regressions and continuous kernel profiles
 
 - Removed the primary `T=-1` pregame cutoff from multisport FLB regressions while
