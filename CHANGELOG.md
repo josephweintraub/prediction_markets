@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-20 — Terminal FLB-reversal audit
+
+- Added a reproducible exact-fill diagnostic for the apparent end-of-game reversal,
+  separating the final normalized 20%, 10%, 5%, 1%, and 0.1% windows and the final
+  30 to 600 wall-clock seconds.
+- Decomposed D1 and D10 calibration into price, realized win rate, event and wallet
+  support, concentration, price mass, and equal-event prevalence under filtered,
+  interior-price all-buyer, and all-trade samples.
+- Preserved the published estimator unchanged and saved an immutable compact audit run
+  under `/mnt/data/runs/2026-09-20_multisport_terminal_reversal_audit_v2`; recorded the
+  contract, QA, and findings in
+  [`docs/runs/2026-09-20_multisport_terminal_reversal_audit_v2.md`](docs/runs/2026-09-20_multisport_terminal_reversal_audit_v2.md).
+
 ## 2026-09-20 — Filtered-versus-all FLB time-regression appendix
 
 - Rebuilt the nine-sport filtered and all-trades samples from common frozen exact-fill
