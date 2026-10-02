@@ -15,6 +15,7 @@ from analysis.diagnostics.tennis_timing_cohort import (
     grand_slam_name,
     kernel_rows,
     match_archive_metadata,
+    match_grand_slam_metadata,
     provider_record_exclusion,
     strict_clock_evidence,
     summary_rows,
@@ -59,6 +60,34 @@ def test_archive_match_requires_unique_pair_result_and_frozen_duration() -> None
     assert match_archive_metadata(date(2026, 1, 20), "Beta Two", record, [row], 7200)[1] == "missing_archive_match"
     assert match_archive_metadata(date(2026, 1, 20), "Alpha One", record, [row, row], 7200)[1] == "ambiguous_archive_match"
     assert match_archive_metadata(date(2026, 1, 20), "Alpha One", record, [row], 7260)[1] == "archive_duration_frozen_clock_disagreement"
+
+
+def test_slam_identity_uses_provider_local_date_and_exact_tournament_not_listing_date() -> None:
+    record = CompetitionRecord(
+        event_id="ao", competition_id="m1", event_name="Australian Open",
+        scheduled_start_utc=datetime(2026, 1, 20, tzinfo=timezone.utc),
+        competitors=(CompetitorRecord("1", "Alpha One", None, True), CompetitorRecord("2", "Beta Two", None, False)),
+        status_state="post", status_detail="Final", grouping_name="Men's Singles")
+    base = {"winner_name": "Alpha One", "loser_name": "Beta Two", "score": "6-4 6-4 6-4"}
+    cup = {**base, "tournament_date": date(2026, 1, 5), "tourney_name": "United Cup", "tourney_level": "A", "minutes": 82}
+    ao = {**base, "tournament_date": date(2026, 1, 19), "tourney_name": "Australian Open", "tourney_level": "G", "minutes": 180}
+    archive = [cup, ao]
+    # The market was listed before the Slam week; the legacy join borrowed a prior match.
+    assert match_archive_metadata(date(2026, 1, 18), "Alpha One", record, archive, 82*60) == (cup, None)
+    assert match_grand_slam_metadata(record, archive) == (ao, None)
+    sunday = record.__class__(**{field: getattr(record, field) for field in record.__dataclass_fields__
+                                if field != "scheduled_start_utc"},
+                              scheduled_start_utc=datetime(2026, 1, 17, 23, tzinfo=timezone.utc))
+    assert match_grand_slam_metadata(sunday, archive) == (ao, None)
+    rg = record.__class__(**{field: getattr(record, field) for field in record.__dataclass_fields__
+                            if field not in ("event_name", "scheduled_start_utc")}, event_name="Roland Garros",
+                          scheduled_start_utc=datetime(2026, 5, 24, 10, tzinfo=timezone.utc))
+    rome = {**base, "tournament_date": date(2026, 5, 11), "tourney_name": "Rome Masters", "tourney_level": "M", "minutes": 82}
+    slam = {**base, "tournament_date": date(2026, 5, 25), "tourney_name": "Roland Garros", "tourney_level": "G", "minutes": 200}
+    assert match_grand_slam_metadata(rg, [rome, slam]) == (slam, None)
+    assert match_grand_slam_metadata(rg, [rome])[1] == "missing_exact_grand_slam_match"
+    assert match_grand_slam_metadata(rg, [slam, slam])[1] == "ambiguous_exact_grand_slam_match"
+    assert match_grand_slam_metadata(rg, [{**slam, "score": "6-4 RET"}])[1] == "grand_slam_irregular_completion"
 
 
 def test_paired_equal_event_contrast_and_tail_suppression() -> None:
@@ -167,6 +196,35 @@ def test_frozen_exact_clock_disagreement_prevents_publication(tmp_path) -> None:
     with pytest.raises(ValueError, match="timing lineage"):
         build_audit(*inputs[:-1], tmp_path/"bad_buys.parquet", run)
     assert not run.exists()
+
+
+def test_correct_slam_membership_preserves_bad_legacy_clock_and_exposes_assignment(tmp_path) -> None:
+    inputs = _frozen_fixture(tmp_path)
+    (inputs[2]/"2026.csv").write_text(
+        "tourney_id,tourney_name,tourney_level,tourney_date,match_num,winner_name,loser_name,minutes,round,best_of,score\n"
+        "2026-580,Australian Open,G,20260119,1,Alpha One,Beta Two,180,R128,5,6-4 6-4 6-4\n"
+        "2026-9900,United Cup,A,20260105,2,Alpha One,Beta Two,120,RR,3,6-4 6-4\n", encoding="utf-8")
+    (inputs[3]/"20260120.json").rename(inputs[3]/"20260118.json")
+    con = duckdb.connect()
+    try:
+        for source, target in ((inputs[0], tmp_path/"early_timing.parquet"), (inputs[4], tmp_path/"early_buys.parquet")):
+            con.execute(f"COPY (SELECT * REPLACE(DATE '2026-01-18' AS market_date) FROM read_parquet('{source}')) "
+                        f"TO '{target}' (FORMAT PARQUET)")
+    finally:
+        con.close()
+    run = tmp_path/"correct_identity"
+    result = build_audit(tmp_path/"early_timing.parquet", inputs[1], inputs[2], inputs[3], tmp_path/"early_buys.parquet", run)
+    assert result["counts"]["provider_labelled_grand_slam_events"] == result["counts"]["grand_slam_events"] == 1
+    assert result["counts"]["legacy_archive_duration_mismatches"] == 1
+    con = duckdb.connect()
+    try:
+        row = con.execute("SELECT archive_tourney_name,legacy_archive_tourney_name,legacy_matching_audit_reason," 
+                          "archive_duration_diff_seconds,archive_duration_mismatch," 
+                          "epoch(synthetic_end_utc)-epoch(scheduled_start_utc) FROM read_parquet(?)",
+                          [str(run/"event_cohort.parquet")]).fetchone()
+        assert row == ("Australian Open", "United Cup", "grand_slam_level_name_disagreement", 3600., True, 7200.)
+    finally:
+        con.close()
 
 
 def _provider_fixture(tmp_path):

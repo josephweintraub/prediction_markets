@@ -16,6 +16,7 @@ from collections import Counter
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import duckdb
 
@@ -56,6 +57,10 @@ SLAM_ALIASES = {
     "us open": "US Open",
     "u s open": "US Open",
 }
+SLAM_TIMEZONES = {
+    "Australian Open": "Australia/Melbourne", "Roland-Garros": "Europe/Paris",
+    "Wimbledon": "Europe/London", "US Open": "America/New_York",
+}
 EVENT_SCHEMA = (
     ("event_slug", "VARCHAR"), ("market_date", "DATE"),
     ("provider_competition_id", "VARCHAR"), ("provider_event_name", "VARCHAR"),
@@ -76,6 +81,10 @@ PROVIDER_EVENT_SCHEMA = EVENT_SCHEMA + (
     ("provider_actual_end_utc", "TIMESTAMP WITH TIME ZONE"),
     ("start_precision_seconds", "INTEGER"), ("end_precision_seconds", "INTEGER"),
     ("provider_actual_qualification", "VARCHAR"),
+    ("legacy_archive_tourney_id", "VARCHAR"), ("legacy_archive_tourney_name", "VARCHAR"),
+    ("legacy_archive_tourney_level", "VARCHAR"), ("legacy_archive_minutes", "INTEGER"),
+    ("legacy_matching_audit_reason", "VARCHAR"),
+    ("archive_duration_diff_seconds", "DOUBLE"), ("archive_duration_mismatch", "BOOLEAN"),
 )
 PROFILE_SCHEMA = (
     ("cohort", "VARCHAR"), ("sample", "VARCHAR"), ("clock_basis", "VARCHAR"),
@@ -148,14 +157,15 @@ def load_archive(paths: list[Path]) -> list[dict[str, Any]]:
                 row = dict(raw)
                 try:
                     row["tournament_date"] = datetime.strptime(row["tourney_date"], "%Y%m%d").date()
-                    raw_minutes = float(row["minutes"] or "")
-                    if not raw_minutes.is_integer() or raw_minutes <= 0:
-                        continue
-                    row["minutes"] = int(raw_minutes)
                 except (ValueError, TypeError):
                     continue
-                if any(marker in str(row["score"]).upper() for marker in ("RET", "W/O", "DEF", "ABD")):
-                    continue
+                try:
+                    raw_minutes = float(row["minutes"] or "")
+                    if not raw_minutes.is_integer() or raw_minutes <= 0:
+                        raise ValueError("missing or nonpositive duration")
+                    row["minutes"] = int(raw_minutes)
+                except (ValueError, TypeError):
+                    row["minutes"] = None
                 rows.append(row)
     return rows
 
@@ -167,6 +177,8 @@ def match_archive_metadata(
     pair = tuple(item.name for item in record.competitors)
     possible = [row for row in archive
                 if 0 <= (market_date-row["tournament_date"]).days <= 21
+                and row.get("minutes") is not None
+                and not any(marker in str(row.get("score") or "").upper() for marker in ("RET", "W/O", "DEF", "ABD"))
                 and match_name_pair(pair, (row["winner_name"], row["loser_name"])) is not None
                 and names_match(result, row["winner_name"])]
     if len(possible) > 1:
@@ -182,6 +194,40 @@ def match_archive_metadata(
     if selected["minutes"]*60 != duration_seconds:
         return None, "archive_duration_frozen_clock_disagreement"
     return selected, None
+
+
+def match_grand_slam_metadata(
+    record: CompetitionRecord, archive: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Recover Slam identity independently of the legacy duration assignment.
+
+    The archive date is generally tournament-week Monday; Sunday opening-day
+    matches can occur one local calendar day before it.  Market listing dates
+    and legacy duration equality do not determine tournament membership.
+    """
+    slam = grand_slam_name(record.event_name)
+    if slam is None:
+        return None, "unrecognized_provider_grand_slam"
+    match_date = record.scheduled_start_utc.astimezone(ZoneInfo(SLAM_TIMEZONES[slam])).date()
+    pair = tuple(item.name for item in record.competitors)
+    winners = [item for item in record.competitors if item.winner is True]
+    if record.status_state != "post" or len(winners) != 1:
+        return None, "provider_result_mismatch_or_nonfinal"
+    possible = [row for row in archive
+                if str(row.get("tourney_level") or "").upper() == "G"
+                and grand_slam_name(row["tourney_name"]) == slam
+                and row["tournament_date"].year == match_date.year
+                and -1 <= (match_date-row["tournament_date"]).days <= 21
+                and match_name_pair(pair, (row["winner_name"], row["loser_name"])) is not None
+                and names_match(winners[0].name, row["winner_name"])]
+    if len(possible) != 1:
+        return None, "missing_exact_grand_slam_match" if not possible else "ambiguous_exact_grand_slam_match"
+    score = str(possible[0].get("score") or "").upper()
+    if not score.strip():
+        return possible[0], "grand_slam_regular_completion_unverified"
+    if any(marker in score for marker in ("RET", "W/O", "DEF", "ABD")):
+        return possible[0], "grand_slam_irregular_completion"
+    return possible[0], None
 
 
 def _rows(con: duckdb.DuckDBPyConnection, query: str) -> list[dict[str, Any]]:
@@ -221,7 +267,6 @@ def provider_record_exclusion(evidence: Mapping[str, Any], frozen: Mapping[str, 
     if not isinstance(official_date, date) or official_date.year != 2026:
         return "unsupported_official_tournament_year"
     # The official actual date may disagree with the frozen scheduled date.
-    from zoneinfo import ZoneInfo
     if start.astimezone(ZoneInfo("Australia/Melbourne")).date() != official_date:
         return "official_actual_start_date_disagreement"
     for key in ("ao_match_id", "actual_start_literal", "terminal_point_id",
@@ -300,7 +345,8 @@ def _event_rows(
         records = [record for record in cache[day]
                    if record.competition_id == str(event["game_id"])
                    and (record.grouping_name or "").casefold() == "men's singles"]
-        selected, reason = None, None
+        selected, reason, legacy_selected, legacy_reason = None, None, None, None
+        seconds = (event["actual_end_utc"]-event["actual_start_utc"]).total_seconds()
         if len(records) != 1:
             reason = "missing_or_ambiguous_frozen_scoreboard_competition"
         else:
@@ -315,10 +361,15 @@ def _event_rows(
                   or record.event_name != event["provider_event_name"]):
                 reason = "frozen_provider_clock_or_tournament_disagreement"
             else:
-                seconds = (event["actual_end_utc"]-event["actual_start_utc"]).total_seconds()
-                selected, reason = match_archive_metadata(day, event["result_label"], record, archives, seconds)
+                legacy_selected, legacy_reason = match_archive_metadata(day, event["result_label"], record, archives, seconds)
+                if legacy_selected is not None:
+                    _, legacy_reason = classify_grand_slam(legacy_selected, event["provider_event_name"])
+                if grand_slam_name(record.event_name) is not None:
+                    selected, reason = match_grand_slam_metadata(record, archives)
+                else:
+                    selected, reason = legacy_selected, legacy_reason
         is_slam = None
-        if selected is not None:
+        if selected is not None and reason is None:
             is_slam, reason = classify_grand_slam(selected, event["provider_event_name"])
         strict, strict_reason = strict_clock_evidence(event)
         actual = evidence.get(event["event_slug"])
@@ -342,7 +393,12 @@ def _event_rows(
                      actual.get("actual_end_utc") if actual and actual_reason is None else None,
                      actual.get("start_precision_seconds") if actual else None,
                      actual.get("end_precision_seconds") if actual else None,
-                     actual.get("qualification") if actual else None))
+                     actual.get("qualification") if actual else None,
+                     *[legacy_selected.get(key) if legacy_selected else None
+                       for key in ("tourney_id", "tourney_name", "tourney_level", "minutes")],
+                     legacy_reason,
+                     selected["minutes"]*60-seconds if selected and selected["minutes"] is not None else None,
+                     selected["minutes"]*60 != seconds if selected and selected["minutes"] is not None else None))
     return rows, sorted(scoreboard_paths)
 
 
@@ -593,7 +649,8 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
             _write_clock_comparisons(con, staging)
             for table, condition in (("classification_exclusions", "classification_exclusion_reason IS NOT NULL"),
                                      ("exact_firstserve_exclusions", "NOT exact_firstserve_verified"),
-                                     ("provider_actual_exclusions", "NOT provider_actual_eligible")):
+                                     ("provider_actual_exclusions", "NOT provider_actual_eligible"),
+                                     ("legacy_duration_mismatches", "archive_duration_mismatch")):
                 con.execute(f"COPY (SELECT * FROM event_cohort WHERE {condition} ORDER BY event_slug) "
                             f"TO '{quoted(staging/(table+'.parquet'))}' (FORMAT PARQUET, COMPRESSION ZSTD)")
             coverage = []
@@ -624,7 +681,7 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                 if con.execute(f"SELECT count(*) FROM read_parquet('{quoted(staging/name)}')").fetchone()[0] != expected:
                     raise ValueError(f"Incomplete output grid: {name}")
             manifest = {
-                "schema_version": 2, "stage": "atp_timing_cohort_audit_v2", "status": "complete",
+                "schema_version": 3, "stage": "atp_timing_cohort_audit_v3", "status": "complete",
                 "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 "command": [sys.executable, "-m", "analysis.diagnostics.tennis_timing_cohort",
                             "--event-timing", str(timing_path), "--match-audit", str(match_path),
@@ -638,7 +695,8 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                     "provider_actual_quality_gate": "all competitive point IDs unique, logical point order and timestamps nondecreasing, terminal point last; exact source chronology gate required",
                     "exact_firstserve_verification": "unavailable; no second-exact first serve or quantified provider latency",
                     "same_cohort_comparison": "ao_provider_actual and ao_same_cohort_scheduled use identical events and source fills before phase assignment",
-                    "grand_slam": "unique archived completed match with tourney_level G and agreed tournament identity",
+                    "grand_slam": "unique archived completed G-level match with canonical provider tournament/year/pair/winner and local provider-date tournament-week check; membership independent of legacy duration",
+                    "legacy_duration_audit": "original clocks preserved; new archive metadata duration minus original synthetic duration saved, with legacy assignment evidence",
                     "bins": "10 fixed live-time bins and 10 fixed bought-price bins; endpoints 0 and 1 included",
                     "suppression": "fewer than 500 fills in a price cell or either tail",
                     "paired_equal_event": "average event-specific D10 minus D1 among events with both tails in the time bin",
@@ -646,9 +704,11 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                     "uncertainty": "point estimates only; no inferential claim", "resolved_market_censoring": "inherited",
                 },
                 "counts": {"accepted_atp_events": len(events),
+                           "provider_labelled_grand_slam_events": sum(grand_slam_name(row[3]) is not None for row in events),
                            "grand_slam_events": sum(row[13] is True for row in events),
                            "exact_firstserve_verified_events": sum(row[18] is True for row in events),
                            "provider_actual_events": sum(row[20] is True for row in events),
+                           "legacy_archive_duration_mismatches": sum(row[34] is True for row in events),
                            "classification_exclusions": dict(Counter(row[14] for row in events if row[14])),
                            "exact_firstserve_exclusions": dict(Counter(row[19] for row in events)),
                            "provider_actual_exclusions": dict(Counter(row[21] for row in events if row[21])),
