@@ -123,7 +123,14 @@ def validate_tennis(data: dict) -> None:
         if not support[(sample,)]["same_scoped_fill_membership"]:
             raise ValueError("AO phase comparison changed scoped fill membership")
     indexed(data["clock_phase_assignments"], ("sample", "scheduled_phase", "provider_phase"))
-    indexed(data["tail_contrasts"], ("cohort", "sample", "weighting", "time_bin"))
+    tails = indexed(data["tail_contrasts"], ("cohort", "sample", "weighting", "time_bin"))
+    for cohort in COHORTS:
+        for sample in SAMPLES:
+            fill, dollar = [tails[(cohort, sample, weighting, 10)] for weighting in ("equal_fill", "dollar")]
+            if any(fill[k] != dollar[k] for k in ("d1_n", "d10_n")):
+                raise ValueError("Dollar and count tennis tails changed fill support")
+            check_estimate(dollar, ("d1_error", "d10_error", "spread_d10_minus_d1"),
+                           dollar["d1_n"] < FLOOR or dollar["d10_n"] < FLOOR)
     profile = indexed(data["calibration_profile"], ("cohort", "sample", "weighting", "time_bin", "price_bin"))
     for cohort in COHORTS:
         for sample in SAMPLES:
@@ -150,7 +157,7 @@ def validate_wallet(wallet: dict, reader: dict) -> None:
     profiles = indexed(wallet["linked_buy_profile"], ("sample", "window_id", "sport", "buy_group", "price_bin"),
                        ("n_fills", "suppressed", "calibration_equal_fill"))
     tails = indexed(wallet["linked_buy_tails"], ("sample", "window_id", "sport", "buy_group"),
-                    ("d1_n", "d10_n", "suppressed", "spread_equal_fill"))
+                    ("d1_n", "d10_n", "suppressed", "spread_equal_fill", "spread_dollar"))
     shares = indexed(reader["conditional_shares"], ("sample", "window_id", "sport", "measure"),
                      ("numerator_fills", "denominator_fills", "fill_share", "support_status"))
     comparisons = indexed(reader["phase_comparisons"], ("sample", "sport", "measure"))
@@ -161,7 +168,7 @@ def validate_wallet(wallet: dict, reader: dict) -> None:
                     row = profiles[(sample, "t99_100", sport, group, bin_id)]
                     check_estimate(row, ("calibration_equal_fill",), row["n_fills"] < FLOOR)
                 row = tails[(sample, "t99_100", sport, group)]
-                check_estimate(row, ("spread_equal_fill",), row["d1_n"] < FLOOR or row["d10_n"] < FLOOR)
+                check_estimate(row, ("spread_equal_fill", "spread_dollar"), row["d1_n"] < FLOOR or row["d10_n"] < FLOOR)
             for measure in MEASURES:
                 row = shares[(sample, "t99_100", sport, measure)]
                 n, d, ratio = row["numerator_fills"], row["denominator_fills"], row["fill_share"]
@@ -305,12 +312,15 @@ def tennis_tail_table(rows: list[dict]) -> str:
     for cohort in COHORTS:
         for sample, label in zip(SAMPLES, ("Filtered", "All")):
             r = look[(cohort, sample, "equal_fill", 10)]
+            dollar = look[(cohort, sample, "dollar", 10)]
             body.append([tex(COHORT_LABELS[cohort]), label, count(r["d1_n"]), count(r["d10_n"]),
                          number(r["d1_error"], scale=100, signed=True), number(r["d10_error"], scale=100, signed=True),
-                         number(r["spread_d10_minus_d1"], scale=100, signed=True)])
-    return table(r"Tennis final 10\%: discrete tail support and calibration", "llrrrrr",
-                 ["Scope", "Sample", "$n_1$", "$n_{10}$", "D1 (pp)", "D10 (pp)", "Spread (pp)"], body,
+                         number(r["spread_d10_minus_d1"], scale=100, signed=True),
+                         number(dollar["spread_d10_minus_d1"], scale=100, signed=True)])
+    return table(r"Tennis final 10\%: discrete tail support and calibration", "llrrrrrr",
+                 ["Scope", "Sample", "$n_1$", "$n_{10}$", "D1", "D10", "Spread", r"\$ spread"], body,
                  r"Equal-fill estimates in $0.9\leq T\leq1$. Each tail must contain at least 500 fills; otherwise estimates are withheld. "
+                 "D1, D10, and spreads are percentage points; the final column uses gross-collateral-dollar weighting with the same fill support. "
                  "These fixed-bin contrasts are distinct from the kernel endpoint. Descriptive point estimates only.")
 
 
@@ -393,7 +403,19 @@ def wallet_tables(wallet: dict, reader: dict) -> tuple[str, str]:
                     ["Sport", "Sample", "$n_1$ before", "$n_{10}$ before", "Spread", "$n_1$ after", "$n_{10}$ after", "Spread"], body,
                     "Spread is equal-fill D10 minus D1 calibration, in percentage points. After removes BUYs linked to an earlier BUY of the eventual winning complement "
                     "by the same maker in the same binary market; the focal transaction is excluded from prior history. At least 500 fills in each tail are required. "
-                    "This sequence exclusion is descriptive, not a balance or causal adjustment.")
+                    "A prior winning-complement link retrospectively selects focal losing-side BUYs; removal is not causal evidence of exits or a balance adjustment.")
+    dollar_body = []
+    for sport in SPORTS:
+        for sample, label in zip(SAMPLES, ("Filtered", "All")):
+            a, b = [tails[(sample, "t99_100", sport, group)] for group in GROUPS]
+            dollar_body.append([tex(SPORT_LABELS[sport]), label,
+                                count(a["d1_n"]) + " / " + count(a["d10_n"]),
+                                count(b["d1_n"]) + " / " + count(b["d10_n"]),
+                                number(a["spread_dollar"], scale=100, signed=True), number(b["spread_dollar"], scale=100, signed=True)])
+    tail_table += table(r"Final 1\% maker BUYs: dollar-weighted before/after spread", "llrrrr",
+                        ["Sport", "Sample", "$n_1/n_{10}$ before", "$n_1/n_{10}$ after", "Before (pp)", "After (pp)"], dollar_body,
+                        "Saved gross-collateral-dollar-weighted D10 minus D1 calibration. Same fills, prior-link exclusion, and 500-fill-per-tail support gate as the count-weighted table. "
+                        "Weighting can change the sign; a spread alone does not establish the full favorite--longshot pattern. Descriptive point estimates only.")
     return result, tail_table
 
 
@@ -453,6 +475,7 @@ Saved evidence from accepted resolved sports markets; tennis timing comparisons 
 
 Calibration is $Y-P$, eventual contract outcome minus executed price, before fees. Tennis retains the frozen exposure-normalized fills and inferred direction; clock comparisons hold those inputs fixed. Wallet results use verified own-maker BUY/SELL actions. All effects below are descriptive point estimates; no intervals were computed.
 Fixed price bins have width 0.1 (D1 lowest, D10 highest). Filtered fills exclude flagged nonhuman actors and require $0.01<p<0.99$; all fills require $0<p<1$.
+Classic favorite--longshot bias has D1 $<0$ and D10 $>0$; the signed spread alone does not establish that pattern.
 Normalized time is $T=(\text{trade UTC}-\text{start UTC})/(\text{end UTC}-\text{start UTC})$; live fills satisfy $0\leq T\leq1$.
 {\footnotesize Sources: \texttt{collect\_ao\_actual\_timing} produces \texttt{actual\_timing}; \texttt{tennis\_timing\_cohort} produces the coverage, clock, calibration-profile and kernel artifacts. \texttt{wallet\_exit\_audit} produces maker profiles; \texttt{summarize\_wallet\_exit\_audit} produces conditional shares and early/late comparisons.}
 \section*{Tennis scope and clock comparison}
@@ -501,8 +524,8 @@ def render(args: argparse.Namespace) -> dict:
     rm, reader, ri = load_stage(reader_dir, ("conditional_shares.parquet", "phase_comparisons.parquet"))
     validate_tennis(tennis)
     validate_wallet(wallet, reader)
-    if tm.get("schema_version") != 3 or tm.get("stage") != "atp_timing_cohort_audit_v3":
-        raise ValueError("Report requires corrected Grand Slam identity publication")
+    if tm.get("schema_version") != 4 or tm.get("stage") != "atp_timing_cohort_audit_v4":
+        raise ValueError("Report requires corrected identity and saved dollar-weighted tennis publication")
     if len(tennis["legacy_duration_mismatches"]) != tm["counts"]["legacy_archive_duration_mismatches"]:
         raise ValueError("Legacy duration audit count disagrees")
     if len(source["actual_timing"]) != sm["counts"]["actual_timing_events"]:
@@ -528,7 +551,7 @@ def render(args: argparse.Namespace) -> dict:
         write_json(staging / "displayed_evidence.json", evidence)
         outputs = ("tennis_wallet_investigation.tex", "tennis_kernel.pdf", "tennis_price_bins.pdf", "wallet_price_bins.pdf", "displayed_evidence.json")
         manifest = {
-            "status": "complete", "schema_version": 2, "stage": "tennis_wallet_report_v2", "command": sys.argv,
+            "status": "complete", "schema_version": 3, "stage": "tennis_wallet_report_v3", "command": sys.argv,
             "inputs": {"tennis": ti, "ao_source": si, "wallet": wi, "wallet_reader": ri},
             "outputs": {name: artifact_fingerprint(staging / name) for name in outputs},
             "code": {"script": fingerprint(script), "tests": fingerprint(tests)},

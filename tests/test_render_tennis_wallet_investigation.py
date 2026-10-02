@@ -21,6 +21,9 @@ def tennis_data():
     tails = [dict(cohort=c, sample=s, weighting="equal_fill", time_bin=10, d1_n=500, d10_n=501,
                   d1_error=-.02, d10_error=.03, spread_d10_minus_d1=.05, suppressed=False)
              for c in report.COHORTS for s in report.SAMPLES]
+    tails += [dict(cohort=c, sample=s, weighting="dollar", time_bin=10, d1_n=500, d10_n=501,
+                   d1_error=.04, d10_error=-.02, spread_d10_minus_d1=-.06, suppressed=False)
+              for c in report.COHORTS for s in report.SAMPLES]
     phases = [dict(sample=s, scheduled_phase=a, provider_phase=b, n_fills=600 if a == b == "live" else 0)
               for s in report.SAMPLES for a in ("pregame", "live", "post") for b in ("pregame", "live", "post")]
     profiles = [dict(cohort=c, sample=s, weighting="equal_fill", time_bin=10, price_bin=b,
@@ -41,7 +44,7 @@ def wallet_data():
                      n_fills=500, n_events=1, suppressed=False, calibration_equal_fill=.01)
                 for s in report.SAMPLES for sport in report.SPORTS for g in report.GROUPS for b in range(1, 11)]
     tails = [dict(sample=s, window_id="t99_100", sport=sport, buy_group=g, d1_n=500,
-                  d10_n=500, spread_equal_fill=.02, suppressed=False)
+                  d10_n=500, spread_equal_fill=.02, spread_dollar=-.03, suppressed=False)
              for s in report.SAMPLES for sport in report.SPORTS for g in report.GROUPS]
     shares = [dict(sample=s, window_id="t99_100", sport=sport, measure=m, numerator_fills=10,
                    denominator_fills=100, fill_share=.1, support_status="descriptive_counts_no_minimum")
@@ -65,7 +68,7 @@ def publish_fixture(directory, data, counts=None, manifest_name="manifest.json")
         outputs[path.name] = artifact_fingerprint(path)
     con.close()
     (directory / manifest_name).write_text(json.dumps(dict(status="complete", outputs=outputs, counts=counts or {},
-                                                          schema_version=3, stage="atp_timing_cohort_audit_v3")))
+                                                          schema_version=4, stage="atp_timing_cohort_audit_v4")))
 
 
 def test_formatting_never_turns_missing_into_zero():
@@ -147,6 +150,27 @@ def test_saved_phase_change_must_reconcile():
     reader["phase_comparisons"][0]["change_in_fill_share"] = .5
     with pytest.raises(ValueError, match="phase change"):
         report.validate_wallet(wallet, reader)
+
+
+def test_dollar_spread_is_saved_and_uses_same_support_gate():
+    wallet, reader = wallet_data()
+    _, table = report.wallet_tables(wallet, reader)
+    assert "dollar-weighted before/after spread" in table
+    assert "-3.00" in table and "+2.00" in table
+    assert "retrospectively selects focal losing-side BUYs" in table
+    row = wallet["linked_buy_tails"][0]
+    row.update(d1_n=499, suppressed=True, spread_equal_fill=None, spread_dollar=None)
+    report.validate_wallet(wallet, reader)
+    row["spread_dollar"] = 0
+    with pytest.raises(ValueError, match="must be null"):
+        report.validate_wallet(wallet, reader)
+    tennis = tennis_data()
+    table = report.tennis_tail_table(tennis["tail_contrasts"])
+    assert r"\$ spread" in table and "-6.00" in table
+    dollar = next(r for r in tennis["tail_contrasts"] if r["weighting"] == "dollar")
+    dollar["d1_n"] = 501
+    with pytest.raises(ValueError, match="changed fill support"):
+        report.validate_tennis(tennis)
     wallet, reader = wallet_data()
     row = wallet["linked_buy_profile"][0]
     row.update(n_fills=499, suppressed=True, calibration_equal_fill=None)
