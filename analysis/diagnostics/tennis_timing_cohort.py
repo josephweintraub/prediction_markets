@@ -414,7 +414,10 @@ def summary_rows(con: duckdb.DuckDBPyConnection) -> tuple[list[tuple[Any, ...]],
                 (r["time_bin"], r["price_bin"]): r for r in _rows(con, """
                 SELECT time_bin,price_bin,count(*)::BIGINT n,count(DISTINCT event_slug)::BIGINT events,
                        sum(usdc)::DOUBLE dollars,avg(price)::DOUBLE mean_price,
-                       avg(won)::DOUBLE win_rate,avg(won-price)::DOUBLE calibration
+                       avg(won)::DOUBLE win_rate,avg(won-price)::DOUBLE calibration,
+                       (sum(usdc*price)/sum(usdc))::DOUBLE dollar_mean_price,
+                       (sum(usdc*won)/sum(usdc))::DOUBLE dollar_win_rate,
+                       (sum(usdc*(won-price))/sum(usdc))::DOUBLE dollar_calibration
                 FROM sample_fills GROUP BY 1,2
                 """)
             }
@@ -445,21 +448,23 @@ def summary_rows(con: duckdb.DuckDBPyConnection) -> tuple[list[tuple[Any, ...]],
                 for price_bin in range(1, 11):
                     raw = aggregates.get((time_bin, price_bin), {})
                     n, events = int(raw.get("n", 0)), int(raw.get("events", 0))
-                    for weighting in ("equal_fill", "equal_event"):
-                        estimate = raw if weighting == "equal_fill" else equal.get((time_bin, price_bin), {})
+                    for weighting in ("equal_fill", "equal_event", "dollar"):
+                        estimate = equal.get((time_bin, price_bin), {}) if weighting == "equal_event" else raw
                         suppressed = n < MIN_CELL_N
-                        means = tuple(None if suppressed else estimate[key] for key in
+                        prefix = "dollar_" if weighting == "dollar" else ""
+                        means = tuple(None if suppressed else estimate[prefix+key] for key in
                                       ("mean_price", "win_rate", "calibration"))
                         profiles.append((cohort, sample, clock, weighting, time_bin, low, high,
                                          price_bin, n, events, float(raw.get("dollars", 0)), *means,
                                          suppressed, "point_estimate_only"))
                 d1, d10 = aggregates.get((time_bin, 1), {}), aggregates.get((time_bin, 10), {})
                 pair = paired.get(time_bin, {})
-                for weighting in ("equal_fill", "paired_equal_event"):
-                    if weighting == "equal_fill":
+                for weighting in ("equal_fill", "paired_equal_event", "dollar"):
+                    if weighting != "paired_equal_event":
                         n1, n10 = int(d1.get("n", 0)), int(d10.get("n", 0))
                         e1, e10 = int(d1.get("events", 0)), int(d10.get("events", 0))
-                        err1, err10 = d1.get("calibration"), d10.get("calibration")
+                        error_key = "dollar_calibration" if weighting == "dollar" else "calibration"
+                        err1, err10 = d1.get(error_key), d10.get(error_key)
                     else:
                         n1, n10 = int(pair.get("d1_n", 0)), int(pair.get("d10_n", 0))
                         e1 = e10 = int(pair.get("events", 0))
@@ -677,11 +682,11 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                 ("n_live", "BIGINT"), ("n_post_end", "BIGINT"),
                 ("exact_firstserve_verified_events", "BIGINT"),
             ), coverage, ("cohort", "sample"))
-            for name, expected in (("calibration_profile.parquet", 1600), ("tail_contrasts.parquet", 160)):
+            for name, expected in (("calibration_profile.parquet", 2400), ("tail_contrasts.parquet", 240)):
                 if con.execute(f"SELECT count(*) FROM read_parquet('{quoted(staging/name)}')").fetchone()[0] != expected:
                     raise ValueError(f"Incomplete output grid: {name}")
             manifest = {
-                "schema_version": 3, "stage": "atp_timing_cohort_audit_v3", "status": "complete",
+                "schema_version": 4, "stage": "atp_timing_cohort_audit_v4", "status": "complete",
                 "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 "command": [sys.executable, "-m", "analysis.diagnostics.tennis_timing_cohort",
                             "--event-timing", str(timing_path), "--match-audit", str(match_path),
@@ -700,6 +705,7 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                     "bins": "10 fixed live-time bins and 10 fixed bought-price bins; endpoints 0 and 1 included",
                     "suppression": "fewer than 500 fills in a price cell or either tail",
                     "paired_equal_event": "average event-specific D10 minus D1 among events with both tails in the time bin",
+                    "dollar": "sum(usdc*(Y-P))/sum(usdc) over the same fills as equal_fill; exact_buys.usdc is gross collateral filled amount/1e6 in dollar units, not fee-net proceeds; full profiles also dollar-weight price and outcome",
                     "kernel": "Epanechnikov, live h=.10, 51 grid points; only 0<=T<=1 fills; 500 positive-weight fills in each tail",
                     "uncertainty": "point estimates only; no inferential claim", "resolved_market_censoring": "inherited",
                 },

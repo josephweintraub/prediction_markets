@@ -118,8 +118,40 @@ def test_paired_equal_event_contrast_and_tail_suppression() -> None:
     assert sparse[7:9] == (500, 499)
     assert sparse[12:16] == (None, None, None, True)
     strict = [row for row in profiles if row[0] == "ao_provider_actual"]
-    assert len(profiles) == 1600 and len(tails) == 160
+    assert len(profiles) == 2400 and len(tails) == 240
     assert all(row[8:10] == (0, 0) and row[11:15] == (None, None, None, True) for row in strict)
+
+
+def test_dollar_profile_and_tails_use_gross_collateral_not_fill_counts() -> None:
+    con = duckdb.connect()
+    try:
+        con.execute("""CREATE TABLE observations AS
+            SELECT 'all_atp' cohort,'a' event_slug,.02::DOUBLE price,0::DOUBLE won,
+                   1::DOUBLE usdc,false buyer_is_flagged_nonhuman,.05::DOUBLE live_time,1 time_bin,1 price_bin
+            FROM range(250)
+            UNION ALL SELECT 'all_atp','b',.08,1,9,false,.05,1,1 FROM range(250)
+            UNION ALL SELECT 'all_atp','a',.92,1,1,false,.05,1,10 FROM range(250)
+            UNION ALL SELECT 'all_atp','b',.98,0,9,false,.05,1,10 FROM range(250)
+            UNION ALL SELECT 'all_atp','c',.05,0,1000,false,.15,2,1 FROM range(500)
+            UNION ALL SELECT 'all_atp','c',.95,1,1000,false,.15,2,10 FROM range(499)""")
+        profiles, tails = summary_rows(con)
+    finally:
+        con.close()
+    dollar = [row for row in profiles if row[0] == "all_atp" and row[1] == "filtered_trades"
+              and row[3] == "dollar" and row[4] == 1 and row[7] in (1, 10)]
+    assert dollar[0][8:11] == (500, 2, 2500.)
+    assert dollar[0][11:14] == pytest.approx((.074, .9, .826))
+    assert dollar[1][8:11] == (500, 2, 2500.)
+    assert dollar[1][11:14] == pytest.approx((.974, .1, -.874))
+    fill = next(row for row in tails if row[:5] == ("all_atp", "filtered_trades", CLOCK, "equal_fill", 1))
+    weighted = next(row for row in tails if row[:5] == ("all_atp", "filtered_trades", CLOCK, "dollar", 1))
+    assert fill[14] == pytest.approx(-.9)
+    assert weighted[7:11] == fill[7:11] == (500, 500, 2, 2)
+    assert weighted[12:15] == pytest.approx((.826, -.874, -1.7))
+    assert weighted[15] is False
+    sparse = next(row for row in tails if row[:5] == ("all_atp", "filtered_trades", CLOCK, "dollar", 2))
+    assert sparse[7:9] == (500, 499)
+    assert sparse[12:16] == (None, None, None, True)
 
 
 def _frozen_fixture(tmp_path):
@@ -164,6 +196,9 @@ def test_immutable_build_publishes_empty_strict_clock_and_exact_boundaries(tmp_p
     assert result["counts"]["grand_slam_events"] == 1
     assert result["counts"]["exact_firstserve_verified_events"] == 0
     assert result["counts"]["provider_actual_events"] == 0
+    assert result["schema_version"] == 4
+    assert result["counts"]["calibration_profile"] == 2400
+    assert result["counts"]["tail_contrasts"] == 240
     con = duckdb.connect()
     try:
         coverage = con.execute("SELECT accepted_events,n_fills,n_live FROM read_parquet(?) "
@@ -181,6 +216,37 @@ def test_immutable_build_publishes_empty_strict_clock_and_exact_boundaries(tmp_p
         con.close()
     with pytest.raises(FileExistsError, match="Immutable run already exists"):
         build_audit(*inputs, run)
+
+
+@pytest.mark.parametrize("replacement", ["NULL::DOUBLE", "0::DOUBLE", "-1::DOUBLE", "'NaN'::DOUBLE", "'Infinity'::DOUBLE"])
+def test_invalid_gross_dollar_weights_prevent_publication(tmp_path, replacement) -> None:
+    inputs = _frozen_fixture(tmp_path)
+    con = duckdb.connect()
+    try:
+        invalid = tmp_path/"bad_dollars.parquet"
+        con.execute(f"COPY (SELECT * REPLACE({replacement} AS usdc) FROM read_parquet('{inputs[-1]}')) "
+                    f"TO '{invalid}' (FORMAT PARQUET)")
+    finally:
+        con.close()
+    run = tmp_path/"rejected_dollars"
+    with pytest.raises(ValueError, match="Invalid exact ATP fills"):
+        build_audit(*inputs[:-1], invalid, run)
+    assert not run.exists()
+
+
+def test_unavailable_gross_dollar_weights_prevent_publication(tmp_path) -> None:
+    inputs = _frozen_fixture(tmp_path)
+    con = duckdb.connect()
+    try:
+        missing = tmp_path/"missing_dollars.parquet"
+        con.execute(f"COPY (SELECT * EXCLUDE(usdc) FROM read_parquet('{inputs[-1]}')) "
+                    f"TO '{missing}' (FORMAT PARQUET)")
+    finally:
+        con.close()
+    run = tmp_path/"rejected_missing_dollars"
+    with pytest.raises(ValueError, match="missing required columns.*usdc"):
+        build_audit(*inputs[:-1], missing, run)
+    assert not run.exists()
 
 
 def test_frozen_exact_clock_disagreement_prevents_publication(tmp_path) -> None:
