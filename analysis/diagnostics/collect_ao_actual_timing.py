@@ -75,6 +75,13 @@ SCHEMA = (
     ("official_minus_scheduled_date_days", "INTEGER"),
     ("official_minus_market_date_days", "INTEGER"),
     ("official_full_participants", "VARCHAR"), ("official_winner", "VARCHAR"),
+    ("competitive_chronology_valid", "BOOLEAN"), ("competitive_point_count", "INTEGER"),
+    ("competitive_timestamp_reversal_count", "INTEGER"),
+    ("competitive_duplicate_id_count", "INTEGER"),
+    ("competitive_conflicting_duplicate_id_count", "INTEGER"),
+    ("terminal_is_last_logical_point", "BOOLEAN"),
+    ("competitive_max_reversal_seconds", "DOUBLE"),
+    ("competitive_missing_timestamp_count", "INTEGER"),
 )
 
 
@@ -202,6 +209,44 @@ def select_result(frozen: Mapping[str, Any], records: list[dict[str, Any]]) -> d
     return result
 
 
+def chronology_summary(detail: Mapping[str, Any]) -> dict[str, Any]:
+    """Check recorded timestamps against literal numeric competitive point IDs."""
+    commentary = detail.get("commentary")
+    _require(isinstance(commentary, list), "missing_competitive_commentary")
+    match_id = str(detail.get("match_id"))
+    competitive = [point for point in commentary if point.get("type") in COMPETITIVE_TYPES]
+    by_id: dict[str, list[Mapping[str, Any]]] = {}
+    pattern = re.compile(re.escape(match_id) + r"-([0-9]{3})-([0-9]{3})-([0-9]{3})")
+    ordered = []
+    for point in competitive:
+        point_id = str(point.get("id"))
+        parsed = pattern.fullmatch(point_id)
+        _require(parsed is not None, "competitive_point_identity_conflict")
+        by_id.setdefault(point_id, []).append(point)
+        if point.get("timestamp") is not None:
+            _timestamp(point["timestamp"])
+            ordered.append((tuple(map(int, parsed.groups())), point))
+    ordered.sort(key=lambda value: value[0])
+    points = [value[1] for value in ordered]
+    reversals = [a["timestamp"] - b["timestamp"] for a, b in zip(points, points[1:])
+                 if a["timestamp"] > b["timestamp"]]
+    duplicate_count = sum(len(values) > 1 for values in by_id.values())
+    conflicting_count = sum(len({point.get("timestamp") for point in values}) > 1
+                            for values in by_id.values())
+    terminals = [point for point in competitive if point.get("type") == "match"]
+    last = bool(points) and len(terminals) == 1 and terminals[0]["id"] == points[-1]["id"]
+    return {
+        "competitive_chronology_valid": bool(points) and not reversals and duplicate_count == 0 and last,
+        "competitive_point_count": len(competitive),
+        "competitive_timestamp_reversal_count": len(reversals),
+        "competitive_duplicate_id_count": duplicate_count,
+        "competitive_conflicting_duplicate_id_count": conflicting_count,
+        "terminal_is_last_logical_point": last,
+        "competitive_max_reversal_seconds": float(max(reversals, default=0)),
+        "competitive_missing_timestamp_count": len(competitive) - len(points),
+    }
+
+
 def verify_clock(frozen: Mapping[str, Any], result: Mapping[str, Any], detail: Mapping[str, Any],
                  year: int, timezone_verified: bool) -> dict[str, Any]:
     """Validate literal provider boundaries; elapsed duration is never a clock."""
@@ -270,6 +315,11 @@ def verify_clock(frozen: Mapping[str, Any], result: Mapping[str, Any], detail: M
     _require(first[0]["timestamp"] == min(point["timestamp"] for point in observed),
              "first_point_timestamp_conflict")
     _require(start <= first_time < end and end.year == year, "actual_clock_order_or_year_conflict")
+    chronology = chronology_summary(detail)
+    _require(chronology["competitive_duplicate_id_count"] == 0, "duplicate_competitive_point_id")
+    _require(chronology["terminal_is_last_logical_point"], "terminal_not_last_logical_point")
+    _require(chronology["competitive_timestamp_reversal_count"] == 0,
+             "internal_competitive_timestamp_reversal")
     delta = (first_time - start).total_seconds()
     scheduled = frozen.get("provider_start_utc")
     scheduled_day = scheduled.astimezone(ZoneInfo(SOURCE_TIMEZONE)).date() if scheduled else None
@@ -285,6 +335,7 @@ def verify_clock(frozen: Mapping[str, Any], result: Mapping[str, Any], detail: M
         "official_minus_scheduled_date_days": (official_date - scheduled_day).days if scheduled_day else None,
         "official_minus_market_date_days": (official_date - frozen["market_date"]).days,
         "official_full_participants": " | ".join(names), "official_winner": names[winner_index],
+        **chronology,
     }
 
 
@@ -387,6 +438,7 @@ def build_collection(match_audit: str | Path, run_dir: str | Path, *, year: int 
                 raw = detail_cache[match_id]
                 _require(raw is not None, "match_detail_collection_failed")
                 detail = json.loads(raw)
+                audit.update(chronology_summary(detail))
                 audit.update(verify_clock(frozen, result, detail, year, timezone_verified))
             except (ValueError, KeyError, TypeError, AttributeError) as exc:
                 audit["exclusion_reason"] = str(exc) if isinstance(exc, TimingError) else f"malformed_source_{type(exc).__name__}"
@@ -412,7 +464,7 @@ def build_collection(match_audit: str | Path, run_dir: str | Path, *, year: int 
         index = {"schema_version": 1, "files": sorted(inventory, key=lambda row: row["path"])}
         write_json(staging/"source_index.json", index)
         manifest = {
-            "schema_version": 1, "stage": "ao_provider_actual_timing_v1",
+            "schema_version": 2, "stage": "ao_provider_actual_timing_v2",
             "status": "complete", "completed": True, "collection_complete": results_valid and not errors,
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
             "command": [sys.executable, "-m", "analysis.diagnostics.collect_ao_actual_timing",
@@ -428,11 +480,17 @@ def build_collection(match_audit: str | Path, run_dir: str | Path, *, year: int 
                          "identity": "unique normalized full provider-name pair and frozen winner; official results/detail year/date/score agreement",
                          "first_point_near_start": "delta<=300 seconds diagnostic only; never an acceptance filter",
                          "old_schedule": "date differences are diagnostic only; never an acceptance filter",
+                         "competitive_chronology": "unique literal competitive IDs in numeric set/game/point order; recorded timestamps nondecreasing; terminal last logical point",
                          "duration": "retained in raw evidence; never used to infer start or end"},
             "counts": {"accepted_frozen_ao_events": len(candidates), "official_mens_matches": len(by_id),
                        "actual_timing_events": len(accepted), "excluded_events": len(audits)-len(accepted),
+                       "passed_boundary_gates_events": len(accepted) + sum(row["exclusion_reason"] in
+                            {"duplicate_competitive_point_id", "terminal_not_last_logical_point",
+                             "internal_competitive_timestamp_reversal"} for row in audits),
                        "exclusion_reasons": dict(sorted(Counter(row["exclusion_reason"] for row in audits if row["exclusion_reason"]).items())),
-                       "first_point_not_near_start": sum(row["first_point_near_start"] is False for row in accepted)},
+                       "first_point_not_near_start": sum(row["first_point_near_start"] is False for row in accepted),
+                       "first_point_delta_min_seconds": min((row["first_point_start_delta_seconds"] for row in accepted), default=None),
+                       "first_point_delta_max_seconds": max((row["first_point_start_delta_seconds"] for row in accepted), default=None)},
             "inputs": {"match_audit": fingerprint(source)}, "source_cache": index,
             "code": {"collector": fingerprint(Path(__file__))},
             "environment": {"python": platform.python_version(), "python_executable": sys.executable,

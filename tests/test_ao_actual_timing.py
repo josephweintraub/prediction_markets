@@ -14,6 +14,7 @@ from analysis.diagnostics.collect_ao_actual_timing import (
     TIMEZONE_EVIDENCE_URL,
     TimingError,
     build_collection,
+    chronology_summary,
     result_records,
     select_result,
     verify_clock,
@@ -123,6 +124,50 @@ def test_timezone_missing_ambiguous_pair_or_wrong_winner_rejected():
     payload["year"]["year"] = "2027"
     with pytest.raises(TimingError, match="results_year_conflict"):
         result_records(payload, 2026, "cache", "url")
+
+
+def test_full_chronology_rejects_internal_reversals_even_when_extrema_pass():
+    frozen, _, result, detail = _fixture()
+    detail["commentary"].extend([
+        {"id": "MS701-002-001-001", "timestamp": 1769940000, "type": "point"},
+        {"id": "MS701-002-001-002", "timestamp": 1769939000, "type": "point"},
+    ])
+    summary = chronology_summary(detail)
+    assert summary["competitive_chronology_valid"] is False
+    assert summary["competitive_timestamp_reversal_count"] == 1
+    assert summary["competitive_max_reversal_seconds"] == 1000
+    assert summary["terminal_is_last_logical_point"] is True
+    with pytest.raises(TimingError, match="internal_competitive_timestamp_reversal"):
+        verify_clock(frozen, result, detail, 2026, True)
+
+
+def test_full_chronology_rejects_duplicate_ids_and_terminal_logical_conflict():
+    frozen, _, result, detail = _fixture()
+    duplicate = copy.deepcopy(detail["commentary"][1])
+    detail["commentary"].append(duplicate)
+    summary = chronology_summary(detail)
+    assert summary["competitive_duplicate_id_count"] == 1
+    assert summary["competitive_conflicting_duplicate_id_count"] == 0
+    assert summary["competitive_chronology_valid"] is False
+    detail["commentary"][-1]["timestamp"] += 1
+    assert chronology_summary(detail)["competitive_conflicting_duplicate_id_count"] == 1
+    detail["commentary"].pop()
+    detail["commentary"].append({"id": "MS701-005-001-001", "timestamp": 1769946481, "type": "point"})
+    assert chronology_summary(detail)["terminal_is_last_logical_point"] is False
+    with pytest.raises(TimingError, match="terminal_not_last_logical_point"):
+        verify_clock(frozen, result, detail, 2026, True)
+
+
+def test_numeric_point_order_accepts_equal_timestamps_and_ignores_untimed_serve():
+    _, _, _, detail = _fixture()
+    detail["commentary"].extend([
+        {"id": "MS701-002-001-001", "timestamp": 1769940000, "type": "point"},
+        {"id": "MS701-002-001-002", "timestamp": 1769940000, "type": "game"},
+    ])
+    summary = chronology_summary(detail)
+    assert summary["competitive_chronology_valid"] is True
+    assert summary["competitive_timestamp_reversal_count"] == 0
+    assert summary["competitive_missing_timestamp_count"] == 0
 
 
 def _audit_file(tmp_path, frozen):
