@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-02 - Tennis timing and terminal wallet-sequence investigation
+
+- Added a frozen-source Australian Open timing collector with player/result,
+  literal-boundary, complete-score and competitive-chronology gates; retained raw
+  evidence and qualified the provider timestamps' precision and latency.
+- Added Grand Slam and same-match clock comparisons, descriptive kernel curves,
+  count- and dollar-weighted fixed-bin calibration profiles, support gates and
+  phase reconciliation.
+- Added a verified own-maker trading-sequence audit and compact reader summaries,
+  preserving prior history without inferring balances or counterparty direction.
+- Documented the maker/counterparty direction distinction in the methods reference
+  and the scoped contract in
+  [`docs/analysis_specs/tennis_timing_wallet_exits_v1.md`](docs/analysis_specs/tennis_timing_wallet_exits_v1.md).
+- Added a compact LaTeX report with native tables, deterministic isolated-bin
+  figures, explicit clock/sequence definitions and weight-specific contrasts.
+
 ## 2026-09-20 — ATP normalized-time swing audit
 
 - Added a reproducible exact-fill audit of ATP's unusually large live
