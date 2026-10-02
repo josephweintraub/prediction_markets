@@ -116,9 +116,9 @@ def _frozen_fixture(tmp_path):
         con.execute("""CREATE TABLE matches AS SELECT 'atp' sport,'e1' event_slug,true eligible,
             'Alpha One' participant_1,'Beta Two' participant_2,'Alpha One' result_label""")
         con.execute("""CREATE TABLE buys AS SELECT t.*,epoch(t.actual_start_utc)::BIGINT AS "timestamp",
-            .05::DOUBLE price,0::DOUBLE won,1::DOUBLE usdc,false buyer_is_flagged_nonhuman
+            .05::DOUBLE price,false won,1::DOUBLE usdc,false buyer_is_flagged_nonhuman
             FROM timing t CROSS JOIN range(500)
-            UNION ALL SELECT t.*,epoch(t.actual_end_utc)::BIGINT,.95::DOUBLE,1::DOUBLE,1::DOUBLE,false
+            UNION ALL SELECT t.*,epoch(t.actual_end_utc)::BIGINT,.95::DOUBLE,true,1::DOUBLE,false
             FROM timing t CROSS JOIN range(500)""")
         for name in ("timing", "matches", "buys"):
             con.execute(f"COPY {name} TO '{tmp_path/(name+'.parquet')}' (FORMAT PARQUET)")

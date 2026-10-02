@@ -563,7 +563,7 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                            "OR buyer_is_flagged_nonhuman IS NULL").fetchone()[0]:
                 raise ValueError("Invalid exact ATP fills")
             con.execute("""CREATE VIEW observations AS
-                SELECT c.cohort,b.event_slug,b.price,b.won,b.usdc,b.buyer_is_flagged_nonhuman,
+                SELECT c.cohort,b.event_slug,b.price,b.won::DOUBLE won,b.usdc,b.buyer_is_flagged_nonhuman,
                        (b.timestamp-epoch(CASE WHEN c.cohort='ao_provider_actual'
                            THEN e.provider_actual_start_utc ELSE e.scheduled_start_utc END))/
                        (epoch(CASE WHEN c.cohort='ao_provider_actual' THEN e.provider_actual_end_utc
