@@ -418,13 +418,27 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             create_market_clocks(con, sources)
             _progress(f"accepted market clocks built: {_n(con, 'SELECT count(*) FROM market_clocks')} markets")
             counts = build_maker_actions(con, raw_path, tokens_path, timestamps_path, flags_path)
-            create_prior_links(con)
-            _progress("partial maker-history predecessor links validated")
-            create_summaries(con)
-            _progress("terminal action and supported calibration summaries built")
+            # These materialized intermediates duplicate the full scoped source.
+            # Preserve excluded rows, then release consumed tables before sorting
+            # the wide history artifact. Parquet-backed relations remain views.
+            con.execute("CREATE TEMP TABLE excluded_source_rows AS SELECT * FROM source_exclusions WHERE exclusion_reason IS NOT NULL")
+            for table in ("scoped_source", "source_fills", "source_exclusions", "valid_source",
+                          "scoped_blocks", "exact_blocks", "scoped_tokens", "winners", "flags"):
+                con.execute(f"DROP TABLE {table}")
+            for view in ("source", "tokens_source", "block_cache", "flags_source"):
+                con.execute(f"DROP VIEW {view}")
             counts["pre_start_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time<0")
             counts["live_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time>=0 AND realized_time<=1")
             counts["post_end_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time>1")
+            create_prior_links(con)
+            for table in ("maker_actions", "wallet_transactions", "transaction_tokens", "history_by_transaction"):
+                con.execute(f"DROP TABLE {table}")
+            _progress("partial maker-history predecessor links validated")
+            create_summaries(con)
+            for table in ("focal", "focal_buys", "denominators", "focal_sport_grid",
+                          "buy_moments", "buy_grid", "paired_event_tails"):
+                con.execute(f"DROP TABLE {table}")
+            _progress("terminal action and supported calibration summaries built")
             con.execute("CREATE TEMP TABLE reconciliation(metric VARCHAR,value BIGINT)")
             con.executemany("INSERT INTO reconciliation VALUES (?,?)", list(counts.items()))
             relations = ("market_clocks", "market_tokens", "maker_prior_links",
@@ -441,7 +455,7 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
                 name = relation + ".parquet"
                 con.execute(f"COPY (SELECT * FROM {relation} ORDER BY {unique_keys[relation]}) TO '{quoted(staging/name)}' (FORMAT PARQUET,COMPRESSION ZSTD)")
                 outputs.append(name)
-            con.execute(f"""COPY (SELECT * FROM source_exclusions WHERE exclusion_reason IS NOT NULL
+            con.execute(f"""COPY (SELECT * FROM excluded_source_rows
                 ORDER BY transaction_hash,log_index,exchange_address)
                 TO '{quoted(staging/'source_exclusions.parquet')}' (FORMAT PARQUET,COMPRESSION ZSTD)""")
             outputs.append("source_exclusions.parquet")

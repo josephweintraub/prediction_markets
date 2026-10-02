@@ -11,6 +11,7 @@ from analysis.diagnostics.wallet_exit_audit import (
     build_maker_actions, create_prior_links, create_summaries,
     parse_args, run_audit, sources_from_manifest,
 )
+from analysis.diagnostics.summarize_wallet_exit_audit import summarize_wallet_audit
 from analysis.sports_game_dynamics.artifacts import write_parquet
 
 
@@ -236,7 +237,24 @@ def test_manifest_resolution_and_atomic_full_run(tmp_path: Path) -> None:
     result = run_audit(args)
     assert result["completion_status"] == "complete"
     assert result["counts"]["all_history_maker_actions"] == 2
+    assert result["counts"]["pre_start_actions"] == 0
+    assert result["counts"]["live_actions"] == 2
+    assert result["counts"]["post_end_actions"] == 0
     assert result["output_rows"]["linked_buy_tails"] == 3 * 5 * 3
     assert (tmp_path/"run"/"manifest.json").is_file()
+    con = duckdb.connect()
+    try:
+        assert con.execute(f"SELECT block_number,linked_prior_winner_buy FROM read_parquet('{tmp_path/'run'/'maker_prior_links.parquet'}') ORDER BY block_number").fetchall() == [(1, False), (2, True)]
+        assert con.execute(f"SELECT n_fills FROM read_parquet('{tmp_path/'run'/'linked_buy_profile.parquet'}') WHERE sample='all_trades' AND window_id='t99_100' AND buy_group='all_maker_buys' AND price_bin=1").fetchone()[0] == 1
+    finally:
+        con.close()
+    summary = summarize_wallet_audit(tmp_path/"run", tmp_path/"summary")
+    assert summary["counts"] == {"conditional_shares": 60, "phase_comparisons": 12}
+    con = duckdb.connect()
+    try:
+        assert con.execute(f"SELECT numerator_fills,denominator_fills,fill_share FROM read_parquet('{tmp_path/'summary'/'conditional_shares.parquet'}') WHERE sample='all_trades' AND window_id='t99_100' AND measure='longshot_buy_prior_winner_buy'").fetchone() == (1, 1, 1.0)
+        assert con.execute(f"SELECT fill_share FROM read_parquet('{tmp_path/'summary'/'conditional_shares.parquet'}') WHERE sample='all_trades' AND window_id='t99_100' AND measure='winner_sell_prior_buy'").fetchone()[0] is None
+    finally:
+        con.close()
     with pytest.raises(FileExistsError):
         run_audit(args)
