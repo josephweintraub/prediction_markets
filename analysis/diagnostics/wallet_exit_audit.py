@@ -79,6 +79,10 @@ def _n(con: duckdb.DuckDBPyConnection, query: str) -> int:
     return int(con.execute(query).fetchone()[0])
 
 
+def _progress(message: str) -> None:
+    print(f"{datetime.now(timezone.utc).isoformat()} {message}", file=sys.stderr, flush=True)
+
+
 def create_market_clocks(con: duckdb.DuckDBPyConnection, sources: dict[str, Path]) -> None:
     """Use accepted metadata only; do not reuse the estimator's inferred BUY actors."""
     con.execute("SET TimeZone='UTC'")
@@ -118,6 +122,7 @@ def build_maker_actions(
              r.exchange_address,r.condition_id,r.outcome,r.winning_outcome
       FROM source r JOIN market_clocks m ON r.condition_id=m.market_id""")
     counts = {"scoped_source_rows": _n(con, "SELECT count(*) FROM scoped_source")}
+    _progress(f"scoped resolved source: {counts['scoped_source_rows']} rows")
     con.execute("CREATE TEMP TABLE source_fills AS SELECT DISTINCT * FROM scoped_source")
     counts["distinct_source_fills"] = _n(con, "SELECT count(*) FROM source_fills")
     counts["exact_replay_rows_removed"] = counts["scoped_source_rows"] - counts["distinct_source_fills"]
@@ -127,6 +132,7 @@ def build_maker_actions(
                      FROM source_fills GROUP BY 1,2,3 HAVING count(*)<>1)""")
     if conflicts:
         raise ValueError(f"Contradictory original EVM identities: {conflicts}")
+    _progress(f"original identities validated: {counts['distinct_source_fills']} distinct fills")
     if _n(con, """SELECT count(*) FROM source_fills WHERE maker IS NULL OR trim(maker)=''
           OR transaction_hash IS NULL OR trim(transaction_hash)='' OR log_index IS NULL OR log_index<0
           OR exchange_address IS NULL OR trim(exchange_address)='' OR block_number IS NULL OR block_number<0"""):
@@ -148,6 +154,7 @@ def build_maker_actions(
        (SELECT market_id,count(*) n,count(DISTINCT outcome) outcomes FROM scoped_tokens GROUP BY 1) t
        USING(market_id) WHERE coalesce(t.n,0)<>2 OR t.outcomes<>2"""):
         raise ValueError("Each accepted binary market needs two unique mapped tokens/outcomes")
+    _progress("canonical two-token maps validated")
     con.execute("""CREATE TEMP TABLE winners AS SELECT DISTINCT condition_id::VARCHAR market_id,
                    winning_outcome::VARCHAR winning_outcome FROM source_fills""")
     if _n(con, """SELECT count(*) FROM (SELECT market_id FROM winners GROUP BY 1 HAVING count(*)<>1)"""):
@@ -173,6 +180,7 @@ def build_maker_actions(
             WHEN fee IS NULL OR fee<0 OR fee>taker_amount_filled THEN 'invalid_fee'
             ELSE NULL END exclusion_reason FROM source_fills""")
     counts["excluded_asset_or_amount_rows"] = _n(con, "SELECT count(*) FROM source_exclusions WHERE exclusion_reason IS NOT NULL")
+    _progress(f"source asset/amount exclusions: {counts['excluded_asset_or_amount_rows']} rows")
     con.execute("""CREATE TEMP TABLE valid_source AS SELECT *,
        CASE WHEN maker_asset_id='0' THEN taker_asset_id ELSE maker_asset_id END::VARCHAR token_id,
        CASE WHEN maker_asset_id='0' THEN 'BUY' ELSE 'SELL' END side,
@@ -188,6 +196,7 @@ def build_maker_actions(
         raise ValueError("Resolved source contradicts canonical token map")
     if _n(con, "SELECT count(*) FROM valid_source WHERE NOT isfinite(usdc/quantity) OR usdc/quantity>1"):
         raise ValueError("Invalid own-maker execution price")
+    _progress("own-maker token identities, outcomes and execution prices validated")
     con.execute(f"CREATE TEMP VIEW block_cache AS SELECT * FROM read_parquet('{quoted(timestamp_path)}')")
     require_columns(con, "block_cache", ("block_number", "timestamp"), "Exact block timestamps")
     con.execute("CREATE TEMP TABLE scoped_blocks AS SELECT DISTINCT block_number FROM source_fills")
@@ -197,7 +206,8 @@ def build_maker_actions(
         raise ValueError("Duplicate scoped block timestamps")
     counts["missing_exact_blocks"] = _n(con, "SELECT count(*) FROM scoped_blocks ANTI JOIN exact_blocks USING(block_number)")
     if counts["missing_exact_blocks"]:
-        raise ValueError("Missing exact block timestamps")
+        raise ValueError(f"Missing exact block timestamps: {counts['missing_exact_blocks']} scoped blocks")
+    _progress(f"exact block timestamps validated: {_n(con, 'SELECT count(*) FROM scoped_blocks')} blocks")
     con.execute(f"CREATE TEMP VIEW flags_source AS SELECT * FROM read_parquet('{quoted(wallet_flags)}')")
     require_columns(con, "flags_source", ("proxyWallet", "is_nonhuman"), "Wallet flags")
     con.execute("""CREATE TEMP TABLE flags AS SELECT DISTINCT lower(proxyWallet) wallet,
@@ -206,6 +216,7 @@ def build_maker_actions(
         raise ValueError("Wallet flags need nonempty wallets and nonnull actor flags")
     if _n(con, "SELECT count(*) FROM (SELECT wallet FROM flags GROUP BY 1 HAVING count(*)<>1)"):
         raise ValueError("Conflicting flags for a normalized wallet")
+    _progress("wallet flag uniqueness validated")
     con.execute("""CREATE TEMP TABLE maker_actions AS SELECT m.sport,m.event_id,
        m.sport||':'||m.event_id event_cluster,m.market_id,m.market_date,t.token_id,t.outcome,t.won,
        t.complement_token_id,t.complement_won,lower(s.maker)::VARCHAR wallet,s.side,
@@ -232,6 +243,7 @@ def build_maker_actions(
         raise ValueError("Own-maker expansion did not reconcile to source fills")
     if _n(con, "SELECT count(*) FROM maker_actions WHERE trade_timestamp IS NULL OR NOT isfinite(realized_time)"):
         raise ValueError("Invalid exact action timestamp")
+    _progress(f"maker actions built and reconciled: {counts['all_history_maker_actions']} rows")
     return counts
 
 
@@ -404,9 +416,12 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             if args.temp_directory:
                 con.execute(f"SET temp_directory='{quoted(args.temp_directory)}'")
             create_market_clocks(con, sources)
+            _progress(f"accepted market clocks built: {_n(con, 'SELECT count(*) FROM market_clocks')} markets")
             counts = build_maker_actions(con, raw_path, tokens_path, timestamps_path, flags_path)
             create_prior_links(con)
+            _progress("partial maker-history predecessor links validated")
             create_summaries(con)
+            _progress("terminal action and supported calibration summaries built")
             counts["pre_start_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time<0")
             counts["live_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time>=0 AND realized_time<=1")
             counts["post_end_actions"] = _n(con, "SELECT count(*) FROM maker_actions WHERE realized_time>1")
@@ -442,6 +457,7 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
                     raise ValueError(f"Publication uniqueness failed: {relation}")
         finally:
             con.close()
+        _progress("published parquet staging passed reopen checks; fingerprinting inputs")
         manifest = {
             "schema_version": 1, "stage": "terminal_maker_wallet_sequences_v1",
             "created_at_utc": datetime.now(timezone.utc).isoformat(), "command": sys.argv,
