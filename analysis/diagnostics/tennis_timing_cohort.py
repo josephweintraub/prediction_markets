@@ -198,6 +198,9 @@ def provider_record_exclusion(evidence: Mapping[str, Any], frozen: Mapping[str, 
         "end_source_field": "commentary[type=match].timestamp", "source_timezone": "Australia/Melbourne",
         "start_precision_seconds": 60, "end_precision_seconds": 1,
         "qualification": ACTUAL_QUALIFICATION,
+        "competitive_chronology_valid": True, "terminal_is_last_logical_point": True,
+        "competitive_timestamp_reversal_count": 0, "competitive_duplicate_id_count": 0,
+        "competitive_conflicting_duplicate_id_count": 0, "competitive_missing_timestamp_count": 0,
     }
     if any(evidence.get(key) != value for key, value in required_values.items()):
         return "unsupported_provider_clock_contract"
@@ -252,6 +255,8 @@ def _load_provider_evidence(
         "end_source_field", "source_timezone", "start_precision_seconds", "end_precision_seconds", "qualification",
         "actual_start_literal", "terminal_point_id", "terminal_point_timestamp", "results_source_url", "match_source_url",
         "evidence_results_cache", "evidence_match_cache", "exclusion_reason",
+        "competitive_chronology_valid", "terminal_is_last_logical_point", "competitive_timestamp_reversal_count",
+        "competitive_duplicate_id_count", "competitive_conflicting_duplicate_id_count", "competitive_missing_timestamp_count",
     ), "Provider actual evidence")
     if con.execute("SELECT count(*)-count(DISTINCT event_slug),count(*)-count(DISTINCT ao_match_id) "
                    "FROM provider_evidence").fetchone() != (0, 0):
@@ -630,6 +635,7 @@ def build_audit(event_timing: str | Path, match_audit: str | Path, archive_dir: 
                     "calibration": "eventual bought-contract outcome minus purchase price",
                     "clock_basis": CLOCK, "provider_actual_clock": ACTUAL_CLOCK,
                     "provider_actual_qualification": ACTUAL_QUALIFICATION,
+                    "provider_actual_quality_gate": "all competitive point IDs unique, logical point order and timestamps nondecreasing, terminal point last; exact source chronology gate required",
                     "exact_firstserve_verification": "unavailable; no second-exact first serve or quantified provider latency",
                     "same_cohort_comparison": "ao_provider_actual and ao_same_cohort_scheduled use identical events and source fills before phase assignment",
                     "grand_slam": "unique archived completed match with tourney_level G and agreed tournament identity",

@@ -188,12 +188,15 @@ def _provider_fixture(tmp_path):
         "results_source_url": "https://example.invalid/official/results", "match_source_url": "https://example.invalid/official/match",
         "evidence_results_cache": "source_cache/results.json", "evidence_match_cache": "source_cache/match.json",
         "exclusion_reason": None,
+        "competitive_chronology_valid": True, "terminal_is_last_logical_point": True,
+        "competitive_timestamp_reversal_count": 0, "competitive_duplicate_id_count": 0,
+        "competitive_conflicting_duplicate_id_count": 0, "competitive_missing_timestamp_count": 0,
     }
     con = duckdb.connect()
     try:
         columns = []
         for key, value in accepted.items():
-            kind = "TIMESTAMPTZ" if isinstance(value, datetime) else "DATE" if isinstance(value, date) else "BIGINT" if isinstance(value, int) else "VARCHAR"
+            kind = "TIMESTAMPTZ" if isinstance(value, datetime) else "DATE" if isinstance(value, date) else "BOOLEAN" if isinstance(value, bool) else "BIGINT" if isinstance(value, int) else "VARCHAR"
             columns.append(f"{key} {kind}")
         con.execute("CREATE TABLE evidence("+",".join(columns)+")")
         con.execute("INSERT INTO evidence VALUES ("+",".join("?" for _ in accepted)+")", list(accepted.values()))
@@ -214,6 +217,8 @@ def test_provider_clock_contract_preserves_precision_and_rejects_bad_identity(tm
               "result_label": "Alpha One", "is_grand_slam": True, "grand_slam_name": "Australian Open"}
     assert provider_record_exclusion(accepted, frozen) is None
     assert provider_record_exclusion({**accepted, "start_precision_seconds": 1}, frozen) == "unsupported_provider_clock_contract"
+    assert provider_record_exclusion({**accepted, "competitive_chronology_valid": False}, frozen) == "unsupported_provider_clock_contract"
+    assert provider_record_exclusion({**accepted, "competitive_timestamp_reversal_count": 1}, frozen) == "unsupported_provider_clock_contract"
     assert provider_record_exclusion({**accepted, "participant_2": "Gamma Three"}, frozen) == "provider_evidence_frozen_identity_disagreement"
     assert provider_record_exclusion({**accepted, "terminal_point_timestamp": 0}, frozen) == "terminal_literal_timestamp_disagreement"
     assert provider_record_exclusion({**accepted, "actual_end_utc": accepted["actual_start_utc"]}, frozen) == "invalid_provider_actual_boundaries"
