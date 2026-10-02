@@ -97,6 +97,9 @@ def validate_tennis(data: dict) -> None:
             row = coverage[(cohort, sample)]
             if row["n_fills"] != row["n_pregame"] + row["n_live"] + row["n_post_end"]:
                 raise ValueError("Phase support fails to reconcile")
+    slam_counts = grand_slam_coverage(data["event_cohort"])
+    if any(sum(slam_counts.values()) != coverage[("grand_slam", sample)]["accepted_events"] for sample in SAMPLES):
+        raise ValueError("Grand Slam metadata count disagrees with saved coverage")
     for sample in SAMPLES:
         a, b = [coverage[(c, sample)] for c in COHORTS[2:]]
         if a["accepted_events"] != b["accepted_events"] or a["n_fills"] != b["n_fills"]:
@@ -194,6 +197,20 @@ def table(caption: str, columns: str, header: list[str], body: list[list[str]], 
     ])
 
 
+def grand_slam_coverage(rows: list[dict]) -> dict[str, int]:
+    metadata = indexed(rows, ("event_slug",), ("grand_slam_name", "is_grand_slam"))
+    result = {"Australian Open": 0, "Roland-Garros": 0}
+    for row in metadata.values():
+        if not isinstance(row["is_grand_slam"], bool):
+            raise ValueError("Missing saved Grand Slam membership flag")
+        if row["is_grand_slam"]:
+            name = row["grand_slam_name"]
+            if name not in result:
+                raise ValueError(f"Unexpected saved Grand Slam tournament: {name}")
+            result[name] += 1
+    return result
+
+
 def tennis_tables(data: dict, source_manifest: dict) -> str:
     coverage = indexed(data["cohort_coverage"], ("cohort", "sample"))
     body = []
@@ -203,9 +220,11 @@ def tennis_tables(data: dict, source_manifest: dict) -> str:
                      count(filtered["n_live"]), count(all_rows["n_live"]),
                      "Provider recorded" if cohort == "ao_provider_actual" else "Legacy synthetic"])
     c = source_manifest["counts"]
+    slam_counts = grand_slam_coverage(data["event_cohort"])
     result = table("Tennis coverage and live-fill support", "lrrrl",
                    ["Scope", "Events", "Filtered live", "All live", "Clock"], body,
                    "Filtered: $0.01<p<0.99$, flagged nonhuman buyers removed. All: $0<p<1$. "
+                   f"Grand Slam membership: {count(slam_counts['Australian Open'])} Australian Open and {count(slam_counts['Roland-Garros'])} Roland-Garros matches. "
                    "Legacy clocks use scheduled start plus archived duration. AO source gates: "
                    f"{count(c['accepted_frozen_ao_events'])} matched, {count(c['passed_boundary_gates_events'])} boundary-valid, "
                    f"{count(c['actual_timing_events'])} competitive-chronology-valid. "
@@ -423,7 +442,7 @@ def report_tex(tennis: dict, source_manifest: dict, wallet: dict, reader: dict) 
     return r"""\documentclass[10pt]{article}
 \usepackage[letterpaper,margin=0.7in]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage{booktabs,threeparttable,graphicx}
+\usepackage{booktabs,threeparttable,graphicx,amsmath}
 \usepackage{microtype}
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{4pt}
@@ -434,6 +453,7 @@ Saved evidence from accepted resolved sports markets; tennis timing comparisons 
 
 Calibration is $Y-P$, eventual contract outcome minus executed price, before fees. Tennis retains the frozen exposure-normalized fills and inferred direction; clock comparisons hold those inputs fixed. Wallet results use verified own-maker BUY/SELL actions. All effects below are descriptive point estimates; no intervals were computed.
 Fixed price bins have width 0.1 (D1 lowest, D10 highest). Filtered fills exclude flagged nonhuman actors and require $0.01<p<0.99$; all fills require $0<p<1$.
+Normalized time is $T=(\text{trade UTC}-\text{start UTC})/(\text{end UTC}-\text{start UTC})$; live fills satisfy $0\leq T\leq1$.
 {\footnotesize Sources: \texttt{collect\_ao\_actual\_timing} produces \texttt{actual\_timing}; \texttt{tennis\_timing\_cohort} produces the coverage, clock, calibration-profile and kernel artifacts. \texttt{wallet\_exit\_audit} produces maker profiles; \texttt{summarize\_wallet\_exit\_audit} produces conditional shares and early/late comparisons.}
 \section*{Tennis scope and clock comparison}
 """ + tennis_tables(tennis, source_manifest) + r"""
@@ -473,7 +493,9 @@ def render(args: argparse.Namespace) -> dict:
     tm, tennis, ti = load_stage(tennis_dir, ("cohort_coverage.parquet", "clock_offset_summary.parquet",
                                            "clock_phase_assignments.parquet", "clock_comparison_support.parquet",
                                            "kernel_tail_curves.parquet", "tail_contrasts.parquet", "calibration_profile.parquet",
-                                           "legacy_duration_mismatches.parquet"))
+                                           "legacy_duration_mismatches.parquet", "event_cohort.parquet"))
+    tennis["event_cohort"] = [{key: row[key] for key in ("event_slug", "grand_slam_name", "is_grand_slam")}
+                              for row in tennis["event_cohort"]]
     sm, source, si = load_stage(source_dir, ("actual_timing.parquet",), "actual_timing_manifest.json")
     wm, wallet, wi = load_stage(wallet_dir, ("linked_buy_profile.parquet", "linked_buy_tails.parquet"))
     rm, reader, ri = load_stage(reader_dir, ("conditional_shares.parquet", "phase_comparisons.parquet"))
@@ -506,7 +528,7 @@ def render(args: argparse.Namespace) -> dict:
         write_json(staging / "displayed_evidence.json", evidence)
         outputs = ("tennis_wallet_investigation.tex", "tennis_kernel.pdf", "tennis_price_bins.pdf", "wallet_price_bins.pdf", "displayed_evidence.json")
         manifest = {
-            "status": "complete", "schema_version": 1, "stage": "tennis_wallet_report_v1", "command": sys.argv,
+            "status": "complete", "schema_version": 2, "stage": "tennis_wallet_report_v2", "command": sys.argv,
             "inputs": {"tennis": ti, "ao_source": si, "wallet": wi, "wallet_reader": ri},
             "outputs": {name: artifact_fingerprint(staging / name) for name in outputs},
             "code": {"script": fingerprint(script), "tests": fingerprint(tests)},
@@ -518,6 +540,7 @@ def render(args: argparse.Namespace) -> dict:
                          "wallet_plots": "isolated fixed-bin marks; no point-connecting paths",
                          "publication": "immutable atomic stage; portable primary LaTeX source"},
             "counts": {"atp_events": tm["counts"]["accepted_atp_events"], "grand_slam_events": tm["counts"]["grand_slam_events"],
+                       "grand_slam_tournaments": grand_slam_coverage(tennis["event_cohort"]),
                        "ao_events": len(source["actual_timing"]), "wallet_sports": len(SPORTS)},
         }
         write_json(staging / "manifest.json", manifest)

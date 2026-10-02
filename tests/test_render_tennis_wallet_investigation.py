@@ -30,6 +30,7 @@ def tennis_data():
     offsets.update({f"p90_absolute_{key}_offset_seconds": 60. for key in ("start", "end")})
     return dict(cohort_coverage=coverage, kernel_tail_curves=curves, tail_contrasts=tails,
                 calibration_profile=profiles,
+                event_cohort=[dict(event_slug="ao", grand_slam_name="Australian Open", is_grand_slam=True)],
                 clock_phase_assignments=phases, clock_offset_summary=[offsets],
                 legacy_duration_mismatches=[dict(event_slug="audit", archive_duration_mismatch=True)],
                 clock_comparison_support=[dict(sample=s, same_scoped_fill_membership=True, n_phase_changed=0) for s in report.SAMPLES])
@@ -102,6 +103,21 @@ def test_tennis_saved_contract():
     data["kernel_tail_curves"].pop()
     with pytest.raises(ValueError, match="grid"):
         report.validate_tennis(data)
+
+
+def test_slam_coverage_is_derived_from_saved_membership():
+    rows = [dict(event_slug="ao1", grand_slam_name="Australian Open", is_grand_slam=True),
+            dict(event_slug="ao2", grand_slam_name="Australian Open", is_grand_slam=True),
+            dict(event_slug="rg1", grand_slam_name="Roland-Garros", is_grand_slam=True),
+            dict(event_slug="excluded", grand_slam_name="Roland-Garros", is_grand_slam=False)]
+    assert report.grand_slam_coverage(rows) == {"Australian Open": 2, "Roland-Garros": 1}
+    data = tennis_data()
+    data["event_cohort"] = rows
+    with pytest.raises(ValueError, match="metadata count"):
+        report.validate_tennis(data)
+    rows[0]["grand_slam_name"] = "Other tournament"
+    with pytest.raises(ValueError, match="Unexpected"):
+        report.grand_slam_coverage(rows)
 
 
 @pytest.mark.parametrize("mutation, message", [
@@ -185,6 +201,9 @@ def test_end_to_end_portable_atomic_report(tmp_path):
     assert "No event has a certified second-exact first serve" in source
     assert "Tennis retains the frozen exposure-normalized fills and inferred direction" in source
     assert r"80--90\% versus final 1\%" in source
+    assert r"T=(\text{trade UTC}-\text{start UTC})/(\text{end UTC}-\text{start UTC})" in source
+    assert r"live fills satisfy $0\leq T\leq1$" in source
+    assert "Grand Slam membership: 1 Australian Open and 0 Roland-Garros matches" in source
     for name, expected in manifest["outputs"].items():
         assert artifact_fingerprint(output / name) == expected
     with pytest.raises(FileExistsError):
