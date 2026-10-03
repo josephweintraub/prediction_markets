@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-03 - Terminal-pattern alternatives diagnostics
+
+- Added a frozen exploratory diagnostic stage reusing the verified two-grain
+  source and full-history ledger, without changing the completed estimator.
+- Added outcome/price accounting, one-cent tail composition, sequential filter
+  contrasts, event influence, balanced-market support and literal end-clock
+  checks, with inherited support gates and explicit descriptive status.
+- Kept market/event membership outputs on EC2 and required exact baseline
+  reproduction and cross-grain exposure conservation before publication.
+
 ## 2026-10-03 - Completed two-grain profit-taking run
 
 - Completed native-gated source recovery, full-history FIFO and serialized
