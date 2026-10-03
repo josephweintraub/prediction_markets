@@ -31,7 +31,7 @@ from analysis.diagnostics.profit_taking_actions import (
     reconcile_reserved_match_batch,
 )
 from analysis.sports_game_dynamics.artifacts import (
-    artifact_fingerprint, fingerprint, fresh_run, write_json,
+    artifact_fingerprint, fingerprint, fresh_run, quoted, write_json,
 )
 from production_guard import require_production_host
 
@@ -280,6 +280,165 @@ def inspect_batches(rows: Sequence[Mapping[str, Any]], complements: Mapping[str,
     return audits, dict(sorted(counts.items()))
 
 
+def full_source_support(source_dir: Path, market_tokens: Path, maximum: int
+                        ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Audit saved complete-scan artifacts, never manufacture partial support."""
+    if not 1 <= maximum <= 20:
+        raise ValueError("MERGE receipt pilot must use one to twenty transactions")
+    manifest=json.loads((source_dir/"manifest.json").read_text())
+    summary=json.loads((source_dir/"summary.json").read_text())
+    if manifest.get('inputs',{}).get('market_tokens') != fingerprint(market_tokens):
+        raise ValueError('Audit token spine differs from the parent source input fingerprint')
+    if manifest["status"] != summary["status"] or manifest["counts"] != summary["counts"]:
+        raise ValueError("Full source summary and manifest disagree")
+    for name in ("summary.json","batch_audit.parquet","batch_links.parquet",
+                 "orphan_logs.parquet","source_exclusions.parquet"):
+        observed=artifact_fingerprint(source_dir/name)
+        if observed != manifest["outputs"][name]:
+            raise ValueError("Full source audit input changed: "+name)
+    con=duckdb.connect()
+    try:
+        con.execute("SET threads=2")
+        con.execute("SET memory_limit='8GB'")
+        con.execute("SET max_temp_directory_size='0GB'")
+        for relation,name in (("batches","batch_audit.parquet"),("links","batch_links.parquet"),
+                              ("orphans","orphan_logs.parquet"),("exclusions","source_exclusions.parquet")):
+            con.execute(f"CREATE VIEW {relation} AS SELECT * FROM read_parquet('{quoted(source_dir/name)}')")
+        con.execute(f"CREATE VIEW tokens AS SELECT token_id FROM read_parquet('{quoted(market_tokens)}')")
+        def records(sql: str) -> list[dict[str, Any]]:
+            result=con.execute(sql)
+            names=[column[0] for column in result.description]
+            return [dict(zip(names,row)) for row in result.fetchall()]
+        statuses=records("""SELECT exchange_address,source_contract_version,status,count(*)::BIGINT batches
+            FROM batches GROUP BY ALL ORDER BY exchange_address,status""")
+        reasons=records("""SELECT exclusion_reason,count(*)::BIGINT original_logs FROM exclusions
+            GROUP BY exclusion_reason ORDER BY exclusion_reason""")
+        orphans=records("""SELECT exchange_address,source_contract_version,
+            t.token_id IS NOT NULL scoped,count(*)::BIGINT original_logs
+            FROM orphans o LEFT JOIN tokens t USING(token_id) GROUP BY ALL ORDER BY exchange_address,scoped""")
+        counts=summary["counts"]
+        if sum(s["batches"] for s in statuses) != counts["aggregate_batches"]:
+            raise ValueError("Full source aggregate counts do not reconcile")
+        if sum(s["batches"] for s in statuses if s["status"] not in ('accepted','unscoped_batch')) != counts["rejected_relevant_batches"]:
+            raise ValueError("Full source rejected counts do not reconcile")
+        if sum(o["original_logs"] for o in orphans if o["scoped"]) != counts["orphan_scoped_logs"]:
+            raise ValueError("Full source scoped orphan counts do not reconcile")
+        complete=summary["status"]=='complete' and not counts["rejected_relevant_batches"] and not counts["orphan_scoped_logs"]
+        result={"analysis":"full_source_reconciliation_and_merge_readiness",
+                "source_status":summary["status"],"counts":counts,
+                "batch_status_counts":statuses,"excluded_original_log_reasons":reasons,
+                "orphan_log_counts":orphans,"accepted_match_support":[],
+                "support_population":"No mechanism profiles from a blocked accepted subset.",
+                "source_resource_limits":{"threads":2,"memory_limit":"8GB","spill_limit":"0GB"}}
+        if not complete:
+            result["status"]="blocked_source_reconciliation"
+            return result,[]
+        result["support_population"]="All accepted source batches; complete scan has no relevant rejection or scoped orphan."
+        result["accepted_match_support"]=records("""SELECT b.exchange_address,b.source_contract_version,l.kind,
+            count(*)::BIGINT legs,sum(l.quantity_micro)::HUGEINT gross_quantity_micro
+            FROM links l JOIN batches b ON l.active_execution_id=b.active_execution_id
+            WHERE b.status='accepted' GROUP BY ALL ORDER BY b.exchange_address,l.kind""")
+        if sum(s["legs"] for s in result["accepted_match_support"]) != counts["accepted_links"]:
+            raise ValueError("Full source match-kind population does not reconcile")
+        candidates=records("""WITH merge_batches AS (SELECT DISTINCT active_execution_id FROM links WHERE kind='MERGE')
+            SELECT b.* FROM batches b JOIN merge_batches m USING(active_execution_id)
+            WHERE b.status='accepted'
+            QUALIFY row_number() OVER (PARTITION BY exchange_address ORDER BY block_number,log_index,active_execution_id)=1
+            ORDER BY exchange_address""")
+        if len({r["transaction_hash"] for r in candidates}) > maximum:
+            raise ValueError("Receipt cap cannot cover every observed MERGE exchange address")
+        result["status"]="pending_native_merge_receipts" if candidates else "complete_no_merge_native_gate_not_applicable"
+        result["merge_observed_addresses"]=sorted({r["exchange_address"] for r in candidates})
+        result["merge_selected_transactions"]=len({r["transaction_hash"] for r in candidates})
+        return result,candidates
+    finally:
+        con.close()
+
+
+def retrieve_complete_transaction_groups(raw_events: Path, groups: Sequence[Mapping[str, Any]],
+        candidates: Sequence[Mapping[str, Any]], max_complete_groups: int, max_wide_bytes: int
+        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Read every raw log in bounded selected tx/exchange groups, not scoped legs."""
+    blocks=sorted({int(r["block_number"]) for r in candidates})
+    selected={(r["transaction_hash"],r["exchange_address"].lower()) for r in candidates}
+    indices=complete_group_indices(groups,blocks,max_complete_groups)
+    source=pq.ParquetFile(raw_events)
+    block_array=pa.array(blocks,type=source.schema_arrow.field("block_number").type)
+    tx_array=pa.array(sorted({tx for tx,_ in selected}))
+    rows: list[dict[str, Any]]=[]
+    wide_indices: list[int]=[]
+    wide_bytes=0
+    for index in indices:
+        numbers=source.read_row_group(index,columns=["block_number"])
+        if not pc.any(pc.is_in(numbers["block_number"],value_set=block_array)).as_py():
+            continue
+        wide_bytes+=int(groups[index]["compressed_bytes"])
+        if wide_bytes > max_wide_bytes:
+            raise ValueError("MERGE complete-group wide-column reads exceed the compressed byte cap")
+        wide_indices.append(index)
+        table=source.read_row_group(index)
+        mask=pc.and_(pc.is_in(table["block_number"],value_set=block_array),
+                     pc.is_in(table["transaction_hash"],value_set=tx_array))
+        rows.extend(r for r in table.filter(mask).to_pylist()
+                    if (r["transaction_hash"],r["exchange_address"].lower()) in selected)
+    if {(r["transaction_hash"],r["exchange_address"].lower()) for r in rows} != selected:
+        raise ValueError("Selected MERGE transaction/exchange group is absent from raw source")
+    return rows,{"selected_blocks":blocks,"complete_block_row_groups":indices,
+                 "complete_wide_row_groups":wide_indices,"compressed_wide_read_bytes":wide_bytes}
+
+
+def run_full_source_audit(args: argparse.Namespace) -> dict[str, Any]:
+    """Save full-scan coverage; prepare a tiny complete MERGE native pilot only after all gates pass."""
+    result,candidates=full_source_support(args.full_source,args.market_tokens,args.receipt_limit)
+    inputs=[args.full_source,args.market_tokens]
+    pilot: list[dict[str, Any]]=[]
+    selected_audits: list[dict[str, Any]]=[]
+    if candidates:
+        metadata,groups=parquet_metadata(args.raw_events)
+        prior=json.loads((args.full_source/"summary.json").read_text())["raw_source"]
+        if any(metadata[k] != prior[k] for k in ("bytes","rows","row_groups","footer_sha256","block_min","block_max")):
+            raise ValueError("MERGE pilot raw source differs from complete-scan source footer")
+        complements=validate_complements(pq.read_table(args.market_tokens,
+            columns=["token_id","market_id","complement_token_id"]).to_pylist())
+        pilot,budget=retrieve_complete_transaction_groups(args.raw_events,groups,candidates,
+                                                        args.max_complete_groups,args.max_wide_bytes)
+        audits,pilot_counts=inspect_batches(pilot,complements)
+        by_identity={(a["transaction_hash"],a["exchange_address"],a["aggregate_log_index"]):a for a in audits}
+        for candidate in candidates:
+            key=(candidate["transaction_hash"],candidate["exchange_address"].lower(),candidate["log_index"])
+            audit=by_identity.get(key)
+            if not audit or audit["status"]!='accepted' or not audit["merge_legs"]:
+                raise ValueError("Selected full-source MERGE batch did not reconcile in complete raw group")
+            if any(audit[k] != candidate[k] for k in ("effective_quantity_micro","effective_cash_micro",
+                                                     "refund_making_micro","source_contract_version")):
+                raise ValueError("MERGE raw pilot and full-source effective amounts disagree")
+            selected_audits.append(audit)
+        # Every selected MERGE address is retained in the chooser input. Raw
+        # pilot includes ALL logs, including unrelated sibling batches.
+        result.update(merge_pilot_counts=pilot_counts,raw_source=metadata,read_budget=budget)
+        inputs.append(args.raw_events)
+    with fresh_run(args.run_dir,inputs) as staging:
+        if candidates:
+            pq.write_table(pa.Table.from_pylist(pilot,schema=pq.ParquetFile(args.raw_events).schema_arrow),
+                           staging/"raw_pilot.parquet",compression="zstd")
+            pq.write_table(pa.Table.from_pylist(selected_audits),staging/"batch_audit.parquet",compression="zstd")
+        write_json(staging/"summary.json",result)
+        write_json(staging/"manifest.json",{
+            "status":result["status"],"created_utc":datetime.now(timezone.utc).isoformat(),
+            "environment":{"python":sys.version,"platform":platform.platform(),
+                           "duckdb":duckdb.__version__,"pyarrow":pa.__version__},
+            "code":{"commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
+                    "dirty_status":subprocess.check_output(["git","status","--porcelain"],text=True)},
+            "producing_script":"analysis/diagnostics/profit_taking_source_audit.py",
+            "inputs":{"source_manifest":fingerprint(args.full_source/"manifest.json"),
+                      "market_tokens":fingerprint(args.market_tokens)},
+            "command_arguments":{k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
+            "outputs":{p.name:artifact_fingerprint(p) for p in sorted(staging.iterdir())},
+            "native_gate":("Pending: compare exact native normalized log sets for every observed MERGE address; no RPC in this stage."
+                           if candidates else result["status"])})
+    return result
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     metadata, groups = parquet_metadata(args.raw_events)
     token_rows = pq.read_table(args.market_tokens,columns=["token_id","market_id","complement_token_id"]).to_pylist()
@@ -375,6 +534,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
 LEGACY_TOPIC = "0xd0a08e8c493f9c94f29311604c9de1b4e8c8d4c06bd0c789af57f2d65bfec0f6"
 V2_TOPIC = "0xd543adfd945773f1a62f74f0ee55a5e3b9b1a28262980ba90b1a89f2ea84d8ee"
+ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+ERC1155_SINGLE_TOPIC = "0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62"
+ERC1155_BATCH_TOPIC = "0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb"
+GET_COLLATERAL_SELECTOR = "0x5c1548fb"
+GET_CTF_SELECTOR = "0x3b521d78"
 
 
 def normalize_receipt_log(log: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -409,6 +573,208 @@ def normalize_receipt_log(log: Mapping[str, Any]) -> dict[str, Any] | None:
         int(log["logIndex"],16),address)))
 
 
+def decode_asset_transfers(receipt: Mapping[str, Any], collateral: str, ctf: str
+                          ) -> list[dict[str, Any]]:
+    """Decode every collateral/ERC1155 movement in this receipt, without wallet inference."""
+    rows: list[dict[str, Any]]=[]
+    for log in receipt.get('logs',[]):
+        address=str(log['address']).lower()
+        topics=log.get('topics',[])
+        if not topics or address not in (collateral,ctf):
+            continue
+        topic=topics[0].lower()
+        if topic not in (ERC20_TRANSFER_TOPIC,ERC1155_SINGLE_TOPIC,ERC1155_BATCH_TOPIC):
+            continue
+        if (log.get('removed',False) or any(len(t)!=66 for t in topics)
+                or log.get('transactionHash','').lower()!=receipt.get('transactionHash','').lower()
+                or log.get('blockNumber')!=receipt.get('blockNumber')):
+            raise ValueError('Malformed native transfer identity')
+        data=log['data'].removeprefix('0x')
+        if len(data)%64:
+            raise ValueError('Malformed native transfer data')
+        words=[int(data[i:i+64],16) for i in range(0,len(data),64)]
+        if topic==ERC20_TRANSFER_TOPIC:
+            if address!=collateral or len(topics)!=3 or len(words)!=1:
+                raise ValueError('Transfer ABI contradicts verified collateral identity')
+            sender,receiver='0x'+topics[1][-40:].lower(),'0x'+topics[2][-40:].lower()
+            assets=[('0',words[0])]; kind='COLLATERAL'
+        else:
+            if address!=ctf or len(topics)!=4:
+                raise ValueError('Transfer ABI contradicts verified CTF identity')
+            sender,receiver='0x'+topics[2][-40:].lower(),'0x'+topics[3][-40:].lower()
+            kind='OUTCOME'
+            if topic==ERC1155_SINGLE_TOPIC:
+                if len(words)!=2:
+                    raise ValueError('TransferSingle has invalid data length')
+                assets=[(str(words[0]),words[1])]
+            else:
+                if len(words)<4 or words[0]!=64:
+                    raise ValueError('TransferBatch has invalid first array offset')
+                length=words[2]
+                second=3+length
+                if words[1]!=32*second or second>=len(words) or words[second]!=length or len(words)!=4+2*length:
+                    raise ValueError('TransferBatch arrays do not reconcile')
+                assets=[(str(token),amount) for token,amount in zip(words[3:second],words[second+1:])]
+        for asset,amount in assets:
+            rows.append({'log_index':int(log['logIndex'],16),'token_contract':address,'asset_kind':kind,
+                         'asset_id':asset,'from_wallet':sender,'to_wallet':receiver,'amount_raw':amount})
+    return sorted(rows,key=lambda r:(r['log_index'],r['asset_id']))
+
+
+def rejected_receipt_comparison(original: Sequence[Mapping[str, Any]], receipt: Mapping[str, Any],
+        collateral: str | None, ctf: str | None, complements: Mapping[str, str]
+        ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Compare original rejected records with native logs and actual asset payouts."""
+    expected=deduplicate_raw_fills(original)
+    groups={(r['transaction_hash'],r['exchange_address'].lower()) for r in expected}
+    if len(groups)!=1:
+        raise ValueError('Rejected-batch diagnostic is limited to one transaction/exchange group')
+    tx,exchange=next(iter(groups))
+    native=deduplicate_raw_fills([n for n in (normalize_receipt_log(log) for log in receipt.get('logs',[]))
+                                 if n is not None and n['exchange_address']==exchange])
+    receipt_ok=(receipt.get('status')=='0x1' and receipt.get('transactionHash','').lower()==tx
+                and {r['block_number'] for r in expected}=={int(receipt.get('blockNumber','0x0'),16)})
+    native_match=receipt_ok and native==expected
+    aggregates=[r for r in expected if r['taker'].lower()==exchange]
+    if len(aggregates)!=1:
+        raise ValueError('Rejected-batch diagnostic requires exactly one original active aggregate')
+    active=aggregates[0]
+    active_side='BUY' if active['maker_asset_id']=='0' else 'SELL'
+    active_token=active['taker_asset_id'] if active_side=='BUY' else active['maker_asset_id']
+    matched_quantity=matched_cash=0
+    mechanisms=Counter()
+    for passive in expected:
+        if passive is active:
+            continue
+        side='BUY' if passive['maker_asset_id']=='0' else 'SELL'
+        token=passive['taker_asset_id'] if side=='BUY' else passive['maker_asset_id']
+        quantity=passive['taker_amount_filled'] if side=='BUY' else passive['maker_amount_filled']
+        cash=passive['maker_amount_filled'] if side=='BUY' else passive['taker_amount_filled']
+        if side!=active_side and token==active_token:
+            kind='NORMAL'; active_cash=cash
+        elif side==active_side and token==complements.get(active_token):
+            kind='MINT' if side=='BUY' else 'MERGE'; active_cash=quantity-cash
+        else:
+            raise ValueError('Rejected-batch asset relationship remains unexplained')
+        mechanisms[kind]+=1
+        matched_quantity+=quantity; matched_cash+=active_cash
+    transfers=decode_asset_transfers(receipt,collateral,ctf) if collateral and ctf else []
+    def flow(wallet: str, asset_kind: str) -> dict[str,int]:
+        incoming=sum(r['amount_raw'] for r in transfers if r['asset_kind']==asset_kind and r['to_wallet']==wallet)
+        outgoing=sum(r['amount_raw'] for r in transfers if r['asset_kind']==asset_kind and r['from_wallet']==wallet)
+        return {'incoming_raw':incoming,'outgoing_raw':outgoing,'net_incoming_raw':incoming-outgoing}
+    wallet_roles=defaultdict(set)
+    for r in expected:
+        wallet_roles[r['maker'].lower()].add('active' if r['taker'].lower()==exchange else 'passive')
+    wallets=[{'wallet':wallet,'roles':','.join(sorted(roles)),**flow(wallet,'COLLATERAL')}
+             for wallet,roles in sorted(wallet_roles.items())]
+    result={'analysis':'bounded_rejected_source_native_and_transfer_audit',
+            'status':'verified_native_observations_only' if native_match and collateral and ctf else 'blocked_native_problem_evidence',
+            'transaction_hash':tx,'exchange_address':exchange,'block_number':active['block_number'],
+            'source_original_logs':len(expected),'native_exchange_orderfilled_logs':len(native),
+            'native_original_log_set_exact_match':native_match,'receipt_identity_and_success':receipt_ok,
+            'collateral_contract':collateral,'ctf_contract':ctf,'matched_mechanisms':dict(mechanisms),
+            'active_side':active_side,'matched_quantity_raw':matched_quantity,'matched_cash_raw':matched_cash,
+            'aggregate_original_making_raw':active['maker_amount_filled'],
+            'aggregate_original_taking_raw':active['taker_amount_filled'],
+            'unexplained_receiving_asset_excess_raw':active['taker_amount_filled']-(matched_quantity if active_side=='BUY' else matched_cash),
+            'exchange_collateral_flow':flow(exchange,'COLLATERAL') if collateral and ctf else None,
+            'decoded_transfer_rows':len(transfers),
+            'limits':'Native receipt proves emitted amounts and movements, not the origin of an opening exchange balance. No source correction or gate relaxation.'}
+    return result,native,transfers,wallets
+
+
+def run_rejected_source_batch(source_dir: Path, market_tokens: Path, run_dir: Path) -> dict[str, Any]:
+    """One rejected batch, one native receipt, two immutable-asset getter calls; no raw-source scan."""
+    import requests
+    manifest=json.loads((source_dir/'manifest.json').read_text())
+    if manifest.get('inputs',{}).get('market_tokens') != fingerprint(market_tokens):
+        raise ValueError('Problem token spine differs from the parent source input fingerprint')
+    if (manifest.get('status')!='blocked_source_reconciliation'
+            or manifest.get('counts',{}).get('rejected_relevant_batches')!=1
+            or manifest.get('counts',{}).get('orphan_scoped_logs')!=0):
+        raise ValueError('Problem diagnostic requires exactly one rejected batch and no scoped orphans')
+    exclusions=source_dir/'source_exclusions.parquet'
+    if manifest.get('outputs',{}).get(exclusions.name)!=artifact_fingerprint(exclusions):
+        raise ValueError('Rejected original records differ from their source-stage manifest')
+    table=pq.read_table(exclusions,columns=[*RAW_FIELDS,'exclusion_reason'])
+    original=[{name:r[name] for name in RAW_FIELDS} for r in table.to_pylist()]
+    groups={(r['transaction_hash'],r['exchange_address'].lower()) for r in original}
+    if len(groups)!=1 or len({r['block_number'] for r in original})!=1:
+        raise ValueError('Problem diagnostic is limited to one rejected transaction/exchange batch')
+    tx,exchange=next(iter(groups)); block=original[0]['block_number']
+    complements=validate_complements(pq.read_table(market_tokens,
+        columns=['token_id','market_id','complement_token_id']).to_pylist())
+    endpoint=os.environ.get('POLYGON_RPC_URL')
+    if not endpoint:
+        endpoint=runpy.run_path('/home/ubuntu/prediction_markets/pipeline/config.py')['RPC_URL']
+    session=requests.Session(); statuses={}; responses={}
+    def rpc(name: str, method: str, params: list[Any]) -> Any:
+        try:
+            response=session.post(endpoint,json={'jsonrpc':'2.0','id':len(statuses)+1,'method':method,'params':params},timeout=30)
+            if response.status_code!=200:
+                statuses[name]='HTTP_status_'+str(response.status_code); return None
+            payload=response.json()
+            if 'error' in payload:
+                code=payload['error'].get('code')
+                statuses[name]='RPC_error_code_'+(str(code) if isinstance(code,int) and not isinstance(code,bool) else 'unknown')
+                return None
+            value=payload.get('result')
+            statuses[name]='available' if value is not None else 'null_result'
+            responses[name]=value
+            return value
+        except requests.RequestException as exc:
+            statuses[name]='network_exception_'+type(exc).__name__
+        except (ValueError,KeyError,TypeError) as exc:
+            statuses[name]='response_exception_'+type(exc).__name__
+        return None
+    receipt=rpc('receipt','eth_getTransactionReceipt',[tx])
+    collateral=ctf=None
+    if receipt is not None:
+        for name,selector in (('collateral',GET_COLLATERAL_SELECTOR),('ctf',GET_CTF_SELECTOR)):
+            value=rpc(name,'eth_call',[{'to':exchange,'data':selector},hex(block)])
+            if isinstance(value,str) and len(value)==66 and value.startswith('0x'):
+                try:
+                    if int(value[2:26],16)==0 and int(value[-40:],16)>0:
+                        if name=='collateral': collateral='0x'+value[-40:].lower()
+                        else: ctf='0x'+value[-40:].lower()
+                    else: statuses[name]='invalid_address_result'
+                except ValueError:
+                    statuses[name]='invalid_address_result'
+            else:
+                if value is not None: statuses[name]='invalid_address_result'
+    result={'analysis':'bounded_rejected_source_native_and_transfer_audit','status':'blocked_native_problem_evidence'}
+    native=[];transfers=[];wallets=[]
+    if receipt is not None:
+        try:
+            result,native,transfers,wallets=rejected_receipt_comparison(original,receipt,collateral,ctf,complements)
+        except (ValueError,KeyError,TypeError) as exc:
+            result['validation_reason']='validation_exception_'+type(exc).__name__
+    result.update(rpc_statuses=statuses,receipt_requests=1,asset_getter_calls=len(statuses)-1,
+                  source_exclusion_reasons=sorted(set(table['exclusion_reason'].to_pylist())))
+    with fresh_run(run_dir,[source_dir,market_tokens]) as staging:
+        pq.write_table(table.select(list(RAW_FIELDS)),staging/'original_rows.parquet',compression='zstd')
+        if native:
+            pq.write_table(pa.Table.from_pylist(native,schema=table.select(list(RAW_FIELDS)).schema),staging/'normalized_native.parquet',compression='zstd')
+        if transfers:
+            pq.write_table(pa.Table.from_pylist(transfers),staging/'transfers.parquet',compression='zstd')
+        if wallets:
+            pq.write_table(pa.Table.from_pylist(wallets),staging/'wallet_collateral_flows.parquet',compression='zstd')
+        write_json(staging/'native_receipt.json',receipt or {})
+        write_json(staging/'asset_getter_results.json',{k:v for k,v in responses.items() if k!='receipt'})
+        write_json(staging/'summary.json',result)
+        write_json(staging/'manifest.json',{'status':result['status'],'created_utc':datetime.now(timezone.utc).isoformat(),
+            'code':{'commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+                    'dirty_status':subprocess.check_output(['git','status','--porcelain'],text=True)},
+            'environment':{'python':sys.version,'platform':platform.platform(),'pyarrow':pa.__version__},
+            'inputs':{'source_manifest':fingerprint(source_dir/'manifest.json'),'source_exclusions':fingerprint(exclusions),
+                      'market_tokens':fingerprint(market_tokens)},
+            'endpoint':'configured_Polygon_RPC_not_recorded','rpc_methods':['eth_getTransactionReceipt','eth_call'],
+            'budgets':{'transactions':1,'asset_getters':2,'raw_source_rows_read':0,'native_logs':'entire receipt'},
+            'outputs':{p.name:artifact_fingerprint(p) for p in sorted(staging.iterdir())}})
+    return result
+
+
 def choose_receipt_transactions(audits: Sequence[Mapping[str, Any]], maximum: int) -> list[str]:
     if maximum < 1 or maximum > 20:
         raise ValueError("Receipt pilot must use one to twenty transactions")
@@ -432,11 +798,26 @@ def choose_receipt_transactions(audits: Sequence[Mapping[str, Any]], maximum: in
     return selected
 
 
+def merge_native_coverage(audits: Sequence[Mapping[str, Any]], evidence: Sequence[Mapping[str, Any]],
+                          required_addresses: Sequence[str]) -> dict[str, Any]:
+    """Require native-verified MERGE support at every full-source observed address."""
+    verified={e["transaction_hash"] for e in evidence if e["status"]=='verified'}
+    covered={a["exchange_address"] for a in audits if a["status"]=='accepted'
+             and a["merge_legs"]>0 and a["transaction_hash"] in verified}
+    required=set(required_addresses)
+    complete=bool(evidence) and all(e["status"]=='verified' for e in evidence) and required <= covered
+    return {"required_merge_exchange_addresses":sorted(required),
+            "verified_merge_exchange_addresses":sorted(covered),
+            "merge_native_gate_status":("not_requested" if not required else
+                                        "verified" if complete else "blocked_native_merge_evidence")}
+
+
 def run_receipts(pilot: Path, run_dir: Path, maximum: int) -> dict[str, Any]:
     """Read-only bounded RPC validation, preserving only sanitized failures."""
     import requests
     rows = pq.read_table(pilot/"raw_pilot.parquet").to_pylist()
     audits = pq.read_table(pilot/"batch_audit.parquet").to_pylist()
+    pilot_summary=json.loads((pilot/"summary.json").read_text())
     transactions = choose_receipt_transactions(audits,maximum)
     if not transactions:
         raise ValueError("No accepted pilot transactions for native validation")
@@ -485,10 +866,15 @@ def run_receipts(pilot: Path, run_dir: Path, maximum: int) -> dict[str, Any]:
               "statuses":dict(Counter(e["status"] for e in evidence)),"evidence":evidence,
               "normalization":"Legacy native asset IDs; V2 native side+tokenId mapped to asset IDs.",
               "limits":"Only selected complete pilot transaction/exchange groups; no population coverage claim."}
+    result.update(merge_native_coverage(audits,evidence,pilot_summary.get("merge_observed_addresses",[])))
     with fresh_run(run_dir,[pilot]) as staging:
         write_json(staging/"summary.json",result)
         write_json(staging/"native_receipts.json",receipts)
         write_json(staging/"manifest.json",{"status":"complete","created_utc":datetime.now(timezone.utc).isoformat(),
+            "code":{"commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
+                    "dirty_status":subprocess.check_output(["git","status","--porcelain"],text=True)},
+            "environment":{"python":sys.version,"platform":platform.platform(),
+                           "pyarrow":pa.__version__},
             "inputs":{"pilot_manifest":fingerprint(pilot/"manifest.json")},
             "outputs":{p.name:artifact_fingerprint(p) for p in sorted(staging.iterdir())},
             "endpoint":"configured_Polygon_RPC_not_recorded","method":"eth_getTransactionReceipt"})
@@ -502,6 +888,8 @@ def main() -> None:
     parser.add_argument("--run-dir",type=Path,required=True)
     parser.add_argument("--receipt-pilot",type=Path)
     parser.add_argument("--receipt-evidence",type=Path)
+    parser.add_argument("--full-source",type=Path)
+    parser.add_argument("--rejected-source-batch",type=Path)
     parser.add_argument("--receipt-limit",type=int,default=10)
     parser.add_argument("--max-discovery-groups", type=int, default=18)
     parser.add_argument("--max-pilot-blocks", type=int, default=12)
@@ -512,13 +900,32 @@ def main() -> None:
     if Path("/home/ubuntu/prediction_markets") not in Path(__file__).resolve().parents:
         raise ValueError("Production source pilots run only from the canonical EC2 checkout")
     if any(Path("/mnt/data") not in p.resolve().parents for p in (
-            args.raw_events,args.market_tokens,args.market_clocks,args.block_timestamps,args.run_dir,args.receipt_pilot,args.receipt_evidence) if p is not None):
+            args.raw_events,args.market_tokens,args.market_clocks,args.block_timestamps,args.run_dir,
+            args.receipt_pilot,args.receipt_evidence,args.full_source,args.rejected_source_batch) if p is not None):
         raise ValueError("Production source inputs and outputs must be under /mnt/data")
-    if args.receipt_pilot:
+    if args.rejected_source_batch:
+        if args.full_source or args.receipt_pilot or args.receipt_evidence or not args.market_tokens:
+            parser.error('Rejected-batch mode requires market-tokens and no other audit mode')
+        result=run_rejected_source_batch(args.rejected_source_batch,args.market_tokens,args.run_dir)
+        print(json.dumps({key:result.get(key) for key in ('status','native_original_log_set_exact_match',
+            'unexplained_receiving_asset_excess_raw','exchange_collateral_flow','rpc_statuses')},sort_keys=True))
+        if result['status']!='verified_native_observations_only':
+            raise SystemExit(2)
+    elif args.full_source:
+        if args.receipt_pilot or args.receipt_evidence or not args.raw_events or not args.market_tokens:
+            parser.error("A full-source audit requires raw-events and market-tokens, not receipt mode")
+        result=run_full_source_audit(args)
+        print(json.dumps({"status":result["status"],"counts":result["counts"]},sort_keys=True))
+        if result["status"]=='blocked_source_reconciliation':
+            raise SystemExit(2)
+    elif args.receipt_pilot:
         if args.receipt_evidence:
             print(json.dumps(run_support(args.receipt_pilot,args.receipt_evidence,args.run_dir)["native_statuses"],sort_keys=True))
         else:
-            print(json.dumps(run_receipts(args.receipt_pilot,args.run_dir,args.receipt_limit)["statuses"],sort_keys=True))
+            result=run_receipts(args.receipt_pilot,args.run_dir,args.receipt_limit)
+            print(json.dumps(result["statuses"],sort_keys=True))
+            if result["merge_native_gate_status"]=='blocked_native_merge_evidence':
+                raise SystemExit(2)
     else:
         if any(p is None for p in (args.raw_events,args.market_tokens,args.market_clocks,args.block_timestamps)):
             parser.error("A source pilot requires all four input paths")

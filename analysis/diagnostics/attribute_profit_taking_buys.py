@@ -1,4 +1,4 @@
-"""Attribute outcome-blind FIFO tags to original actual own-order BUY logs.
+"""Attribute outcome-blind FIFO tags to two actual BUY observation grains.
 
 Inputs are complete, verified source actions, reconciled batch links, and one
 ledger tag per action. NORMAL links carry a direct SELL tag to its true BUY;
@@ -6,8 +6,10 @@ MINT contains two BUYs but no sale; MERGE contains no BUY. Active aggregates kee
 one original fill unit and use effective execution VWAP, not a per-leg bin.
 Metadata is deliberately attached in a separate final step after classification.
 This is observed trade-implied accounting, not causal identification or balances.
-Status: synthetic-only aggregate-own-log prototype, not a replacement for the
-project's matched partial-fill calibration grain. Production grain is unresolved.
+Matched execution has one true BUY per matching leg: NORMAL one, MINT two,
+MERGE none. Own order-event keeps one original BUY log, including an active
+aggregate at VWAP. Both use the same qualified own-action labels, allocated
+uniformly over actual legs, not per-leg profit recertification or FIFO pseudo-fills.
 """
 from __future__ import annotations
 
@@ -89,7 +91,10 @@ def create_buy_attribution(
         (batch_links,LINK_COLUMNS,"Verified complete batch links"),
     ):
         require_columns(con,relation,columns,label)
-    names={key:prefix+"_"+key for key in ("actions","direct_links","buy_tags","attribution_diagnostics")}
+    names={key:prefix+"_"+key for key in (
+        "actions","direct_links","buy_tags","attribution_diagnostics",
+        "matched_buy_tags","grain_reconciliation","matched_attribution_diagnostics",
+    )}
     _reject_existing(con,list(names.values()))
     contracts=" OR ".join(
         f"(lower(exchange_address)='{address}' AND source_contract_version='{version}' AND fee_rule='{rule}')"
@@ -116,7 +121,8 @@ def create_buy_attribution(
                       "Own actions and ledger tags must be unique by original execution ID")
     _require_zero(con,f"SELECT count(*) FROM {source} ANTI JOIN {tags} USING(execution_id)","Missing own-action ledger tags")
     _require_zero(con,f"SELECT count(*) FROM {tags} ANTI JOIN {source} USING(execution_id)","Ledger tags contain unknown actions")
-    actions,direct,buys,diagnostics=(_identifier(names[key]) for key in names)
+    actions,direct,buys,diagnostics=(_identifier(names[key]) for key in (
+        "actions","direct_links","buy_tags","attribution_diagnostics"))
     con.execute(f"""CREATE TEMP VIEW {actions} AS SELECT s.execution_id,s.market_id,lower(s.maker) wallet,
         CASE WHEN maker_asset_id='0' THEN taker_asset_id ELSE maker_asset_id END token_id,
         CASE WHEN maker_asset_id='0' THEN 'BUY' ELSE 'SELL' END side,
@@ -129,7 +135,7 @@ def create_buy_attribution(
         t.primary_exit_quantity_micro,t.hedge_profitable_quantity_micro,t.unmatched_disposal_quantity_micro,
         t.primary_exit_fraction,t.hedge_fraction,t.unmatched_disposal_fraction,t.history_status
         FROM {source} s JOIN {tags} t USING(execution_id)""")
-    _require_zero(con,f"SELECT count(*) FROM {actions} WHERE gross_quantity_micro<=0 OR gross_cash_micro>gross_quantity_micro",
+    _require_zero(con,f"SELECT count(*) FROM {actions} WHERE gross_quantity_micro<=0 OR gross_cash_micro>gross_quantity_micro OR (side='BUY' AND net_acquired_quantity_micro<=0)",
                   "Effective binary execution amounts are invalid")
     _require_zero(con,f"""SELECT count(*) FROM {actions} a JOIN {tags} t USING(execution_id) WHERE
         a.market_id IS DISTINCT FROM t.market_id OR a.token_id IS DISTINCT FROM t.token_id
@@ -215,7 +221,7 @@ def create_buy_attribution(
             coalesce(d.unmatched_favorite_seller_acquisition_quantity_micro,0)::DOUBLE unmatched_favorite_seller_acquisition_quantity_micro,
             coalesce(d.crossed_bin_exit_quantity_micro,0)::DOUBLE crossed_bin_exit_quantity_micro
             FROM {actions} a LEFT JOIN direct_allocations d ON d.buyer_execution_id=a.execution_id WHERE a.side='BUY')
-        SELECT *,FALSE is_synthetic,
+        SELECT *,execution_id own_execution_id,FALSE is_synthetic,
             CASE WHEN price>.5 THEN raw_exit_quantity_micro/gross_quantity_micro ELSE 0 END::DOUBLE exit_fraction,
             CASE WHEN price<.5 THEN hedge_fraction ELSE 0 END::DOUBLE qualified_hedge_fraction,
             CASE WHEN price>.5 THEN unmatched_favorite_seller_acquisition_quantity_micro/gross_quantity_micro
@@ -238,7 +244,111 @@ def create_buy_attribution(
                   FROM {buys} WHERE crossed_bin_exit_quantity_micro>0
         UNION ALL SELECT 'qualified_hedge_crosses_original_buy_price_half',count(*),sum(crossed_price_hedge_quantity_micro)::DOUBLE
                   FROM {buys} WHERE crossed_price_hedge_quantity_micro>0""")
+    _create_matched_buy_tags(con,names,batch_links)
     return names
+
+
+def _create_matched_buy_tags(
+    con: duckdb.DuckDBPyConnection,names: dict[str,str],batch_links: str,
+) -> None:
+    """Allocate existing action-level labels, without rerunning FIFO on legs.
+
+    Active fees and net received tokens are allocated in proportion to gross
+    quantity solely for reconciliation. These fractional amounts are not raw
+    observed per-leg fees. Calibration always uses observed gross leg cash/qty.
+    """
+    actions,matched,reconciliation,diagnostics=(_identifier(names[key]) for key in (
+        "actions","matched_buy_tags","grain_reconciliation","matched_attribution_diagnostics"))
+    links=_identifier(batch_links)
+    con.execute(f"""CREATE TEMP VIEW {matched} AS WITH legs AS (
+        SELECT l.*,m.execution_id buyer_execution_id,'passive' buyer_role,
+            l.passive_cash_micro buy_cash_micro,
+            CASE WHEN l.kind='NORMAL' THEN a.execution_id END seller_execution_id
+        FROM {links} l JOIN {actions} m ON m.execution_id=l.maker_execution_id
+        JOIN {actions} a ON a.execution_id=l.active_execution_id WHERE m.side='BUY'
+        UNION ALL
+        SELECT l.*,a.execution_id buyer_execution_id,'active' buyer_role,
+            l.active_cash_micro buy_cash_micro,
+            CASE WHEN l.kind='NORMAL' THEN m.execution_id END seller_execution_id
+        FROM {links} l JOIN {actions} m ON m.execution_id=l.maker_execution_id
+        JOIN {actions} a ON a.execution_id=l.active_execution_id WHERE a.side='BUY'),
+        allocated AS (SELECT l.maker_execution_id||':buy_'||l.buyer_role execution_id,
+            a.execution_id own_execution_id,l.maker_execution_id,l.active_execution_id,
+            l.kind batch_kind,l.buyer_role,a.market_id,a.wallet,a.token_id,a.side,
+            l.quantity_micro::BIGINT gross_quantity_micro,l.buy_cash_micro::BIGINT gross_cash_micro,
+            a.fee_micro::DOUBLE*l.quantity_micro/a.gross_quantity_micro allocated_fee_micro,
+            a.net_acquired_quantity_micro::DOUBLE*l.quantity_micro/a.gross_quantity_micro net_acquired_quantity_micro,
+            a.block_number,a.transaction_hash,a.log_index,a.exchange_address,a.source_role,
+            a.fee_rule,a.source_contract_version,a.history_status,
+            a.gross_cash_micro/a.gross_quantity_micro::DOUBLE own_price,
+            l.buy_cash_micro/l.quantity_micro::DOUBLE price,
+            a.hedge_fraction,a.hedge_profitable_quantity_micro::DOUBLE*l.quantity_micro/a.gross_quantity_micro
+                hedge_profitable_quantity_micro,
+            coalesce(s.primary_exit_fraction,0)::DOUBLE*l.quantity_micro raw_exit_quantity_micro,
+            coalesce(s.unmatched_disposal_fraction,0)::DOUBLE*l.quantity_micro unmatched_counterparty_disposal_quantity_micro,
+            CASE WHEN s.gross_cash_micro/s.gross_quantity_micro::DOUBLE>.5
+                THEN s.unmatched_disposal_fraction*l.quantity_micro ELSE 0 END::DOUBLE
+                unmatched_favorite_seller_acquisition_quantity_micro,
+            CASE WHEN least(floor(s.gross_cash_micro/s.gross_quantity_micro::DOUBLE*10)::INTEGER+1,10)<>
+                          least(floor(l.buy_cash_micro/l.quantity_micro::DOUBLE*10)::INTEGER+1,10)
+                THEN s.primary_exit_fraction*l.quantity_micro ELSE 0 END::DOUBLE crossed_bin_exit_quantity_micro,
+            FALSE is_synthetic
+        FROM legs l JOIN {actions} a ON a.execution_id=l.buyer_execution_id
+        LEFT JOIN {actions} s ON s.execution_id=l.seller_execution_id)
+        SELECT *,CASE WHEN price>.5 THEN raw_exit_quantity_micro/gross_quantity_micro ELSE 0 END::DOUBLE exit_fraction,
+            CASE WHEN price<.5 THEN hedge_fraction ELSE 0 END::DOUBLE qualified_hedge_fraction,
+            CASE WHEN price>.5 THEN unmatched_favorite_seller_acquisition_quantity_micro/gross_quantity_micro
+                 ELSE 0 END::DOUBLE unmatched_seller_acquisition_fraction,
+            CASE WHEN price<=.5 THEN raw_exit_quantity_micro ELSE 0 END::DOUBLE crossed_price_exit_quantity_micro,
+            CASE WHEN price>=.5 THEN hedge_profitable_quantity_micro ELSE 0 END::DOUBLE crossed_price_hedge_quantity_micro,
+            CASE WHEN (price>.5)<>(own_price>.5) THEN gross_quantity_micro ELSE 0 END::BIGINT
+                crossed_own_buy_favorite_gate_quantity_micro,
+            CASE WHEN (price<.5)<>(own_price<.5) THEN gross_quantity_micro ELSE 0 END::BIGINT
+                crossed_own_buy_hedge_gate_quantity_micro,
+            'uniform_qualified_own_action_fraction_not_per_leg_profit_certification'::VARCHAR label_allocation_status
+        FROM allocated""")
+    _require_zero(con,f"SELECT count(*) FROM (SELECT execution_id FROM {matched} GROUP BY 1 HAVING count(*)<>1)",
+                  "Actual matched BUY identities are duplicated")
+    _require_zero(con,f"""SELECT count(*) FROM {matched} WHERE exit_fraction<0 OR qualified_hedge_fraction<0
+        OR exit_fraction+qualified_hedge_fraction>1+1e-12 OR unmatched_seller_acquisition_fraction<0
+        OR exit_fraction+unmatched_seller_acquisition_fraction>1+1e-12""",
+        "Matched BUY allocation exceeds the actual matching leg")
+    con.execute(f"""CREATE TEMP VIEW {reconciliation} AS WITH totals AS (
+        SELECT own_execution_id,count(*)::BIGINT matched_buy_legs,
+            sum(gross_quantity_micro)::HUGEINT matched_quantity_micro,
+            sum(gross_cash_micro)::HUGEINT matched_cash_micro,
+            sum(net_acquired_quantity_micro)::DOUBLE matched_net_quantity_micro,
+            sum(allocated_fee_micro)::DOUBLE matched_allocated_fee_micro,
+            sum(hedge_profitable_quantity_micro)::DOUBLE matched_allocated_hedge_quantity_micro
+        FROM {matched} GROUP BY 1)
+        SELECT a.execution_id own_execution_id,a.market_id,a.token_id,a.source_role,
+            t.matched_buy_legs,a.gross_quantity_micro own_quantity_micro,t.matched_quantity_micro,
+            a.gross_cash_micro own_cash_micro,t.matched_cash_micro,
+            a.net_acquired_quantity_micro own_net_quantity_micro,t.matched_net_quantity_micro,
+            a.fee_micro own_fee_micro,t.matched_allocated_fee_micro,
+            a.hedge_profitable_quantity_micro own_hedge_quantity_micro,t.matched_allocated_hedge_quantity_micro
+        FROM {actions} a LEFT JOIN totals t ON t.own_execution_id=a.execution_id WHERE a.side='BUY'""")
+    _require_zero(con,f"""SELECT count(*) FROM {reconciliation} WHERE matched_buy_legs IS NULL
+        OR own_quantity_micro IS DISTINCT FROM matched_quantity_micro
+        OR own_cash_micro IS DISTINCT FROM matched_cash_micro
+        OR abs(own_net_quantity_micro-matched_net_quantity_micro)>1e-10*greatest(own_net_quantity_micro,1)
+        OR abs(own_fee_micro-matched_allocated_fee_micro)>1e-10*greatest(own_fee_micro,1)
+        OR abs(own_hedge_quantity_micro-matched_allocated_hedge_quantity_micro)>1e-10*greatest(own_hedge_quantity_micro,1)""",
+        "Matched BUY legs do not conserve original own-action quantity, cash, fees and hedge allocation")
+    con.execute(f"""CREATE TEMP TABLE {diagnostics} AS
+        SELECT 'actual_matched_buy_legs' measure,count(*)::BIGINT n_records,sum(gross_quantity_micro)::DOUBLE quantity_micro FROM {matched}
+        UNION ALL SELECT 'normal_actual_buys',count(*),sum(gross_quantity_micro)::DOUBLE FROM {matched} WHERE batch_kind='NORMAL'
+        UNION ALL SELECT 'mint_actual_buys',count(*),sum(gross_quantity_micro)::DOUBLE FROM {matched} WHERE batch_kind='MINT'
+        UNION ALL SELECT 'qualified_exit_crosses_matched_buy_price_half',count(*),sum(crossed_price_exit_quantity_micro)
+            FROM {matched} WHERE crossed_price_exit_quantity_micro>0
+        UNION ALL SELECT 'qualified_exit_crosses_matched_buy_bin',count(*),sum(crossed_bin_exit_quantity_micro)
+            FROM {matched} WHERE crossed_bin_exit_quantity_micro>0
+        UNION ALL SELECT 'qualified_hedge_crosses_matched_buy_price_half',count(*),sum(crossed_price_hedge_quantity_micro)
+            FROM {matched} WHERE crossed_price_hedge_quantity_micro>0
+        UNION ALL SELECT 'matched_buy_crosses_own_action_favorite_gate',count(*),sum(crossed_own_buy_favorite_gate_quantity_micro)::DOUBLE
+            FROM {matched} WHERE crossed_own_buy_favorite_gate_quantity_micro>0
+        UNION ALL SELECT 'matched_buy_crosses_own_action_hedge_gate',count(*),sum(crossed_own_buy_hedge_gate_quantity_micro)::DOUBLE
+            FROM {matched} WHERE crossed_own_buy_hedge_gate_quantity_micro>0""")
 
 
 def enrich_buy_attribution(

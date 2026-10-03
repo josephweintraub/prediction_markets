@@ -145,6 +145,111 @@ def test_mixed_active_aggregate_retains_one_unit_vwap_and_crossed_price_diagnost
         con.close()
 
 
+def test_matched_grain_uses_actual_leg_prices_and_same_own_action_tags() -> None:
+    seller=action("mixed-legs",1,"SELL","1",20,19,wallet="seller")
+    mint=action("mixed-legs",2,"BUY","2",80,79,wallet="mint-buyer")
+    buyer=action("mixed-legs",3,"BUY","1",100,20,role="active_aggregate",wallet="buyer")
+    con=connection([seller,mint,buyer],[tag(seller,primary=10,unmatched=4),tag(mint),tag(buyer,hedge=30)],
+        [link(seller,buyer,"NORMAL",20,19,19),link(mint,buyer,"MINT",80,79,1)])
+    try:
+        names=create_buy_attribution(con,"own","tags","links")
+        own=rows(con,names["buy_tags"])[buyer["execution_id"]]
+        matched=rows(con,names["matched_buy_tags"])
+        assert len(matched)==3  # NORMAL actual BUY plus both complementary MINT BUYs.
+        favorite=matched[seller["execution_id"]+":buy_active"]
+        underdog=matched[mint["execution_id"]+":buy_active"]
+        assert own["price"]==.2 and own["exit_fraction"]==0
+        assert favorite["price"]==.95 and favorite["exit_fraction"]==.5
+        assert favorite["qualified_hedge_fraction"]==0
+        assert favorite["crossed_price_hedge_quantity_micro"]==pytest.approx(6)
+        assert favorite["crossed_own_buy_favorite_gate_quantity_micro"]==20
+        assert underdog["price"]==.0125 and underdog["qualified_hedge_fraction"]==.3
+        assert underdog["raw_exit_quantity_micro"]==0
+        assert all(not record["is_synthetic"] for record in matched.values())
+        assert all(record["label_allocation_status"].endswith("not_per_leg_profit_certification") for record in matched.values())
+        assert sum(record["gross_quantity_micro"] for record in matched.values())==sum(record["gross_quantity_micro"] for record in rows(con,names["buy_tags"]).values())
+        assert sum(record["gross_cash_micro"] for record in matched.values())==sum(record["gross_cash_micro"] for record in rows(con,names["buy_tags"]).values())
+    finally:
+        con.close()
+
+
+@pytest.mark.parametrize("exchange,net",[(LEGACY,900),(V2,1000)])
+def test_matched_active_hedge_keeps_fee_rule_and_quantity_proportions(exchange: str,net: int) -> None:
+    s1=action("fee-legs",1,"SELL","2",400,20,wallet="s1",exchange=exchange)
+    s2=action("fee-legs",2,"SELL","2",600,60,wallet="s2",exchange=exchange)
+    buy=action("fee-legs",3,"BUY","2",1000,80,role="active_aggregate",wallet="hedger",fee=100,exchange=exchange)
+    con=connection([s1,s2,buy],[tag(s1),tag(s2),tag(buy,hedge=300)],
+        [link(s1,buy,"NORMAL",400,20,20),link(s2,buy,"NORMAL",600,60,60)])
+    try:
+        names=create_buy_attribution(con,"own","tags","links")
+        output=rows(con,names["matched_buy_tags"])
+        assert len(output)==2
+        assert all(record["qualified_hedge_fraction"]==pytest.approx(300/net) for record in output.values())
+        assert sum(record["net_acquired_quantity_micro"] for record in output.values())==pytest.approx(net)
+        assert sum(record["allocated_fee_micro"] for record in output.values())==pytest.approx(100)
+        assert sum(record["hedge_profitable_quantity_micro"] for record in output.values())==pytest.approx(300)
+        assert {record["price"] for record in output.values()}=={.05,.1}
+        recon=con.execute(f"SELECT own_quantity_micro,matched_quantity_micro,own_cash_micro,matched_cash_micro FROM {names['grain_reconciliation']}").fetchone()
+        assert recon==(1000,1000,80,80)
+    finally:
+        con.close()
+
+
+def test_matched_mint_has_two_buy_observations_and_merge_has_none() -> None:
+    mint_passive=action("mint-grain",1,"BUY","2",100,4,wallet="hedger")
+    mint_active=action("mint-grain",2,"BUY","1",100,96,role="active_aggregate",wallet="favorite")
+    merge_passive=action("merge-grain",3,"SELL","2",100,2,wallet="seller2")
+    merge_active=action("merge-grain",4,"SELL","1",100,98,role="active_aggregate",wallet="seller1")
+    con=connection([mint_passive,mint_active,merge_passive,merge_active],
+        [tag(mint_passive,hedge=40),tag(mint_active),tag(merge_passive),tag(merge_active,primary=50)],
+        [link(mint_passive,mint_active,"MINT",100,4,96),link(merge_passive,merge_active,"MERGE",100,2,98)])
+    try:
+        names=create_buy_attribution(con,"own","tags","links")
+        output=rows(con,names["matched_buy_tags"])
+        assert set(output)=={mint_passive["execution_id"]+":buy_passive",mint_passive["execution_id"]+":buy_active"}
+        assert all(record["batch_kind"]=="MINT" and record["exit_fraction"]==0 for record in output.values())
+        assert output[mint_passive["execution_id"]+":buy_passive"]["qualified_hedge_fraction"]==.4
+    finally:
+        con.close()
+
+
+def test_matched_metadata_preserves_quantity_weighted_calibration_and_support() -> None:
+    seller1=action("calibration-grain",1,"SELL","1",40,20,wallet="s1")
+    seller2=action("calibration-grain",2,"SELL","1",60,54,wallet="s2")
+    buyer=action("calibration-grain",3,"BUY","1",100,74,role="active_aggregate",wallet="buyer")
+    con=connection([seller1,seller2,buyer],[tag(seller1),tag(seller2,primary=30),tag(buyer)],
+        [link(seller1,buyer,"NORMAL",40,20,20),link(seller2,buyer,"NORMAL",60,54,54)])
+    try:
+        names=create_buy_attribution(con,"own","tags","links")
+        metadata(con)
+        own=enrich_buy_attribution(con,names["buy_tags"],"tokens","clocks","blocks","flags",output="own_enriched")
+        matched=enrich_buy_attribution(con,names["matched_buy_tags"],"tokens","clocks","blocks","flags",output="matched_enriched")
+        own_total=con.execute(f"SELECT count(*),sum(gross_quantity_micro),sum(gross_cash_micro),sum(gross_quantity_micro*residual) FROM {own}").fetchone()
+        matched_total=con.execute(f"SELECT count(*),sum(gross_quantity_micro),sum(gross_cash_micro),sum(gross_quantity_micro*residual) FROM {matched}").fetchone()
+        assert own_total[:3]==(1,100,74)
+        assert matched_total[:3]==(2,100,74)
+        assert own_total[3]==pytest.approx(matched_total[3])
+        assert own_total[3]==pytest.approx(26)
+    finally:
+        con.close()
+
+
+def test_zero_one_price_matched_buys_retained_until_focal_filtering() -> None:
+    passive=action("boundary-mint",1,"BUY","2",100,0,wallet="zero")
+    active=action("boundary-mint",2,"BUY","1",100,100,role="active_aggregate",wallet="one")
+    con=connection([passive,active],[tag(passive),tag(active)],
+                   [link(passive,active,"MINT",100,0,100)])
+    try:
+        names=create_buy_attribution(con,"own","tags","links")
+        assert {record["price"] for record in rows(con,names["matched_buy_tags"]).values()}=={0,1}
+        metadata(con)
+        enriched=enrich_buy_attribution(con,names["matched_buy_tags"],"tokens","clocks","blocks","flags")
+        assert con.execute(f"SELECT count(*) FROM {enriched}").fetchone()[0]==2
+        assert con.execute(f"SELECT min(price),max(price) FROM {enriched}").fetchone()==(0,1)
+    finally:
+        con.close()
+
+
 def test_mint_has_two_actual_buys_and_merge_creates_no_synthetic_buy() -> None:
     m_buy=action("mint",1,"BUY","2",100,4,wallet="hedger")
     a_buy=action("mint",2,"BUY","1",100,96,role="active_aggregate",wallet="speculator")

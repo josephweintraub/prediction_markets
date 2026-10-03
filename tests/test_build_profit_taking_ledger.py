@@ -10,7 +10,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from analysis.diagnostics.build_profit_taking_ledger import (
-    HISTORY_STATUS, SOURCE_COLUMNS, build_ledger, parse_args,
+    HISTORY_STATUS, SOURCE_COLUMNS, build_ledger, parse_args, verify_native_readiness,
 )
 from analysis.diagnostics.profit_taking_actions import EXCHANGE_ADDRESSES, V2_EXCHANGE_ADDRESSES
 from analysis.sports_game_dynamics.artifacts import artifact_fingerprint
@@ -280,3 +280,139 @@ def test_parent_source_stage_cannot_be_bypassed_with_accepted_subset(tmp_path: P
         build_ledger(args)
     assert not (tmp_path/"run").exists()
     assert not list(tmp_path.glob(".run.staging-*"))
+
+
+def ledger_cli_arguments() -> list[str]:
+    return ["--own-actions", "/mnt/data/source/own_actions.parquet",
+            "--market-tokens", "/mnt/data/tokens.parquet",
+            "--source-manifest", "/mnt/data/source/manifest.json",
+            "--source-audit-manifest", "/mnt/data/source-audit/manifest.json",
+            "--run-dir", "/mnt/data/runs/new-ledger"]
+
+
+def test_ledger_cli_requires_shared_production_guard_before_build(monkeypatch) -> None:
+    import analysis.diagnostics.build_profit_taking_ledger as runner
+    def refuse() -> None:
+        raise RuntimeError("canonical EC2 environment")
+    monkeypatch.setattr(runner, "require_production_host", refuse)
+    monkeypatch.setattr(runner, "build_ledger", lambda args: pytest.fail("Build must not run"))
+    with pytest.raises(RuntimeError, match="canonical EC2 environment"):
+        runner.main(ledger_cli_arguments())
+
+
+def test_ledger_cli_rejects_noncanonical_script_even_after_shared_guard(monkeypatch) -> None:
+    import analysis.diagnostics.build_profit_taking_ledger as runner
+    monkeypatch.setattr(runner, "require_production_host", lambda: None)
+    monkeypatch.setattr(runner, "__file__", "/tmp/noncanonical/build_profit_taking_ledger.py")
+    monkeypatch.setattr(runner, "build_ledger", lambda args: pytest.fail("Build must not run"))
+    with pytest.raises(RuntimeError, match="canonical EC2 checkout"):
+        runner.main(ledger_cli_arguments())
+
+
+def test_ledger_cli_canonical_host_calls_build(monkeypatch, capsys) -> None:
+    import analysis.diagnostics.build_profit_taking_ledger as runner
+    monkeypatch.setattr(runner, "require_production_host", lambda: None)
+    monkeypatch.setattr(runner, "__file__", "/home/ubuntu/prediction_markets/analysis/diagnostics/build_profit_taking_ledger.py")
+    # Linux /home has no macOS /System/Volumes/Data symlink normalization.
+    actual_resolve=runner.Path.resolve
+    monkeypatch.setattr(runner.Path, "resolve", lambda self: self if str(self)==runner.__file__ else actual_resolve(self))
+    monkeypatch.setattr(runner, "build_ledger", lambda args: {"counts": {"output_actions": 2}})
+    monkeypatch.setattr(runner, "verify_native_readiness", lambda *args: {"status":"verified_no_observed_merge"})
+    runner.main(ledger_cli_arguments())
+    assert json.loads(capsys.readouterr().out) == {"output_actions": 2}
+
+
+def native_stage_fixtures(args, *, merge: bool):
+    audit=args.source_manifest.parent/'audit'; audit.mkdir()
+    summary={"status":"pending_native_merge_receipts" if merge else "complete_no_merge_native_gate_not_applicable",
+             "source_status":"complete","counts":json.loads(args.source_manifest.read_text())['counts'],
+             "merge_observed_addresses":[EXCHANGE] if merge else [],
+             "merge_selected_transactions":1 if merge else 0,
+             "accepted_match_support":[{"exchange_address":EXCHANGE,"kind":"MERGE" if merge else "NORMAL","legs":1}]}
+    (audit/'summary.json').write_text(json.dumps(summary))
+    if merge:
+        pq.write_table(pa.Table.from_pylist([{"transaction_hash":"tx-merge","exchange_address":EXCHANGE,
+            "status":"accepted","merge_legs":1}]),audit/'batch_audit.parquet')
+        pq.write_table(pa.table({"raw_marker":[1]}),audit/'raw_pilot.parquet')
+    from analysis.sports_game_dynamics.artifacts import fingerprint
+    manifest={"status":summary['status'],"inputs":{"source_manifest":fingerprint(args.source_manifest)},
+              "outputs":{p.name:artifact_fingerprint(p) for p in audit.iterdir()}}
+    args.source_audit_manifest=audit/'manifest.json'
+    args.source_audit_manifest.write_text(json.dumps(manifest))
+    if merge:
+        receipts=args.source_manifest.parent/'receipts'; receipts.mkdir()
+        native={"requested_transactions":1,"statuses":{"verified":1},
+                "evidence":[{"transaction_hash":"tx-merge","status":"verified"}],
+                "merge_native_gate_status":"verified","required_merge_exchange_addresses":[EXCHANGE],
+                "verified_merge_exchange_addresses":[EXCHANGE]}
+        (receipts/'summary.json').write_text(json.dumps(native))
+        (receipts/'native_receipts.json').write_text(json.dumps({"tx-merge":{}}))
+        receipt_manifest={"status":"complete","inputs":{"pilot_manifest":fingerprint(args.source_audit_manifest)},
+                          "outputs":{p.name:artifact_fingerprint(p) for p in receipts.iterdir()}}
+        args.merge_receipt_manifest=receipts/'manifest.json'
+        args.merge_receipt_manifest.write_text(json.dumps(receipt_manifest))
+    return args
+
+
+@pytest.mark.parametrize('merge',[False,True])
+def test_ledger_saves_verified_native_gate_and_input_lineage(tmp_path,merge):
+    args=native_stage_fixtures(fixtures(tmp_path,[own_row('BUY','1',1,400_000)]),merge=merge)
+    manifest=build_ledger(args)
+    assert manifest['native_source_gates']['status']==('verified_native_merge' if merge else 'verified_no_observed_merge')
+    assert 'source_audit_manifest' in manifest['inputs']
+    assert ('merge_receipt_manifest' in manifest['inputs'])==merge
+
+
+@pytest.mark.parametrize('failure',[
+    'blocked_source','audit_hash','source_lineage','missing_receipts','receipt_lineage','receipt_hash',
+    'failed_receipt','missing_address','different_transaction','raw_pilot_hash','native_receipt_artifact',
+    'audit_contradiction',
+])
+def test_native_readiness_cannot_be_bypassed_with_foreign_or_incomplete_evidence(tmp_path,failure):
+    from analysis.sports_game_dynamics.artifacts import fingerprint
+    args=native_stage_fixtures(fixtures(tmp_path,[own_row('BUY','1',1,400_000)]),merge=True)
+    audit=json.loads(args.source_audit_manifest.read_text())
+    receipts=json.loads(args.merge_receipt_manifest.read_text())
+    native_path=args.merge_receipt_manifest.parent/'summary.json'
+    native=json.loads(native_path.read_text())
+    if failure=='blocked_source':
+        source=json.loads(args.source_manifest.read_text()); source['status']='blocked_source_reconciliation'
+        args.source_manifest.write_text(json.dumps(source))
+    if failure=='audit_hash': audit['outputs']['summary.json']['sha256']='0'*64
+    if failure=='source_lineage': audit['inputs']['source_manifest']['sha256']='0'*64
+    if failure=='missing_receipts': args.merge_receipt_manifest=None
+    if failure=='receipt_lineage': receipts['inputs']['pilot_manifest']['sha256']='0'*64
+    if failure=='receipt_hash': receipts['outputs']['summary.json']['sha256']='0'*64
+    if failure=='failed_receipt': native['evidence'][0]['status']='unavailable'
+    if failure=='missing_address': native['verified_merge_exchange_addresses']=[]
+    if failure=='different_transaction': native['evidence'][0]['transaction_hash']='other-tx'
+    if failure=='raw_pilot_hash': audit['outputs']['raw_pilot.parquet']['sha256']='0'*64
+    if failure=='native_receipt_artifact': receipts['outputs']['native_receipts.json']['sha256']='0'*64
+    if failure=='audit_contradiction':
+        path=args.source_audit_manifest.parent/'summary.json'
+        summary=json.loads(path.read_text()); summary['merge_observed_addresses']=[]
+        path.write_text(json.dumps(summary)); audit['outputs']['summary.json']=artifact_fingerprint(path)
+    args.source_audit_manifest.write_text(json.dumps(audit))
+    if args.merge_receipt_manifest is not None:
+        if failure not in ('receipt_lineage','blocked_source','source_lineage','audit_hash'):
+            receipts['inputs']['pilot_manifest']=fingerprint(args.source_audit_manifest)
+        if failure in ('failed_receipt','missing_address','different_transaction'):
+            native_path.write_text(json.dumps(native))
+            receipts['outputs']['summary.json']=artifact_fingerprint(native_path)
+        args.merge_receipt_manifest.write_text(json.dumps(receipts))
+    with pytest.raises(ValueError):
+        build_ledger(args)
+    assert not (tmp_path/'run').exists()
+
+
+def test_production_cli_requires_saved_source_audit_before_build(monkeypatch):
+    import analysis.diagnostics.build_profit_taking_ledger as runner
+    monkeypatch.setattr(runner,'require_production_host',lambda:None)
+    monkeypatch.setattr(runner,'__file__','/home/ubuntu/prediction_markets/analysis/diagnostics/build_profit_taking_ledger.py')
+    actual_resolve=runner.Path.resolve
+    monkeypatch.setattr(runner.Path,'resolve',lambda self:self if str(self)==runner.__file__ else actual_resolve(self))
+    monkeypatch.setattr(runner,'build_ledger',lambda args:pytest.fail('No build before required audit'))
+    arguments=ledger_cli_arguments()
+    index=arguments.index('--source-audit-manifest'); del arguments[index:index+2]
+    with pytest.raises(ValueError,match='requires --source-audit-manifest'):
+        runner.main(arguments)

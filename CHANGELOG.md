@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-02 - Two-grain profit-taking comparison
+
+- Approved matched execution and own-order-event calibration versions with the
+  same full-history FIFO/profit labels, literal windows and original-denominator
+  contribution definitions.
+- Added actual BUY-leg allocation and quantity/cash reconciliation checks;
+  retained price-class crossings and distinct support at each observation grain.
+- Started the gated, serialized full-history source audit before any production
+  wallet matching or calibration estimation. Completed source stages and results
+  are recorded separately in the run record.
+
 ## 2026-10-02 - Protocol-aware profit-taking reconstruction
 
 - Added outcome-blind, integer-quantity FIFO matching for direct favorite sales

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from collections import deque
 from fractions import Fraction
 
 import pytest
@@ -364,6 +365,24 @@ def test_complement_hedge_locks_profit_without_consuming_favorite_stock() -> Non
     assert second.pretrade_net_favorite_quantity_micro == 0
     assert second.qualifying_quantity_micro == 0
     assert second.unmatched_quantity_micro == 1_000_000
+
+
+def test_fully_hedged_low_price_buy_never_rescans_retained_favorite_lots() -> None:
+    book=ObservedFIFO()
+    apply_action(book,action(cash=400_000),COMPLEMENTS)
+    apply_action(book,action(token='2',cash=100_000,block=2),COMPLEMENTS)
+    original=book._lots[('wallet','1')]
+    class NoIterationDeque(deque):
+        def __iter__(self):
+            pytest.fail('Zero-request preview must not iterate the retained FIFO prefix')
+    book._lots[('wallet','1')]=NoIterationDeque(original)
+    tag=apply_action(book,action(token='2',cash=100_000,block=3),COMPLEMENTS)
+    assert tag.matched_quantity_micro==tag.qualifying_quantity_micro==0
+    assert tag.unmatched_quantity_micro==1_000_000
+    assert book.observed_remaining_micro('wallet','1')==1_000_000
+    assert book.observed_remaining_micro('wallet','2')==2_000_000
+    book._lots[('wallet','1')]=original
+    book.validate_remaining_totals()
 
 
 def test_repeated_hedge_offsets_oldest_favorite_lots_before_current_cost_matching() -> None:

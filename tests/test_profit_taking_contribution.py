@@ -6,7 +6,7 @@ import duckdb
 import pytest
 
 from analysis.diagnostics.profit_taking_contribution import (
-    create_contribution_summaries, validate_executions,
+    create_contribution_summaries, create_sport_contribution_summaries, validate_executions,
 )
 
 
@@ -242,5 +242,199 @@ def test_empty_original_population_retains_full_suppressed_grid() -> None:
         assert con.execute(f"SELECT count(*) FROM {names['profile']} WHERE suppressed").fetchone()[0] == 30
         assert con.execute(f"SELECT count(*) FROM {names['profile']} WHERE calibration_raw IS NOT NULL").fetchone()[0] == 0
         assert con.execute(f"SELECT count(*) FROM {names['tails']} WHERE suppressed AND spread IS NULL").fetchone()[0] == 3
+    finally:
+        con.close()
+
+
+def test_own_event_and_genuine_leg_grains_conserve_cash_but_not_dollar_price_mean() -> None:
+    # One true BUY order event received 10 units at .91 and 90 at .95. Its VWAP
+    # is .946. Both grains allocate the SAME original .4 own-action tag. These
+    # are real execution legs, not two acquisition-lot links to the same fill.
+    quantities=(Fraction(10),Fraction(90))
+    prices=(Fraction(91,100),Fraction(95,100))
+    cash=tuple(q*p for q,p in zip(quantities,prices))
+    quantity=sum(quantities)
+    dollars=sum(cash)
+    vwap=dollars/quantity
+    legs=connection([buy("leg-1","m",float(prices[0]),1,float(cash[0]),exit=.4),
+                     buy("leg-2","m",float(prices[1]),1,float(cash[1]),exit=.4)])
+    own=connection([buy("own-event","m",float(vwap),1,float(dollars),exit=.4)])
+    try:
+        leg_tables=create_contribution_summaries(legs,"buys",support_floor=1)
+        own_tables=create_contribution_summaries(own,"buys",support_floor=1)
+        l=one(legs,leg_tables["profile"],"weighting='dollar' AND price_bin=10")
+        o=one(own,own_tables["profile"],"weighting='dollar' AND price_bin=10")
+        variance=sum(q*(p-vwap)**2 for q,p in zip(quantities,prices))/quantity
+        assert l["dollars"]==pytest.approx(o["dollars"])
+        assert l["exit_weight"]==pytest.approx(o["exit_weight"])
+        assert l["n_executions"]==2 and o["n_executions"]==1
+        assert o["calibration"]-l["calibration"]==pytest.approx(float(variance/vwap))
+        assert o["exit_contribution"]-l["exit_contribution"]==pytest.approx(.4*float(variance/vwap))
+        assert sum(q*(1-p) for q,p in zip(quantities,prices))==quantity*(1-vwap)
+        assert set(legs.execute(f"SELECT DISTINCT weighting FROM {leg_tables['profile']}").fetchnumpy()["weighting"]) \
+            == {"fill","dollar","equal_market"}  # Quantity is a conservation check, not a fourth report estimand.
+    finally:
+        legs.close()
+        own.close()
+
+
+def test_homogeneous_price_leg_split_preserves_all_weighted_components() -> None:
+    own=connection([buy("own-event","m",.95,1,19,exit=.25,unknown=.2)])
+    legs=connection([buy("leg-1","m",.95,1,4.75,exit=.25,unknown=.2),
+                     buy("leg-2","m",.95,1,14.25,exit=.25,unknown=.2)])
+    try:
+        a=create_contribution_summaries(own,"buys",support_floor=1)
+        b=create_contribution_summaries(legs,"buys",support_floor=1)
+        for weighting in ("fill","dollar","equal_market"):
+            o=one(own,a["profile"],f"weighting='{weighting}' AND price_bin=10")
+            l=one(legs,b["profile"],f"weighting='{weighting}' AND price_bin=10")
+            for field in ("calibration","exit_contribution","hedge_contribution","remaining_contribution",
+                          "unknown_history_weight_share"):
+                assert l[field]==pytest.approx(o[field])
+            assert l["n_executions"]==2 and o["n_executions"]==1
+    finally:
+        legs.close()
+        own.close()
+
+
+def timed_connection(records: list[tuple[tuple,float,float,bool]]) -> duckdb.DuckDBPyConnection:
+    con=connection([record[0] for record in records])
+    for definition in ("sport VARCHAR DEFAULT 'atp'","realized_time DOUBLE","seconds_to_end DOUBLE",
+                       "is_nonhuman BOOLEAN","gross_quantity_micro BIGINT DEFAULT 1000000"):
+        con.execute("ALTER TABLE buys ADD COLUMN "+definition)
+    if records:
+        con.executemany("UPDATE buys SET realized_time=?,seconds_to_end=?,is_nonhuman=? WHERE execution_id=?",
+                        [(time,seconds,bot,record[0]) for record,time,seconds,bot in records])
+    return con
+
+
+def test_grouped_fixed_grid_and_literal_window_boundaries() -> None:
+    boundaries=[("deep-pre",-25,2600),("short-pre",-.1,110),("start",0,200),
+                ("third-1",1/3,100),("third-2",2/3,80),("80",.8,60),("90",.9,30),
+                ("95",.95,20),("99",.99,10),("end",1,0),("post",1.001,-.1),("120",.5,120)]
+    con=timed_connection([(buy(identity,"m",.95,1,.95,exit=.25),time,seconds,False)
+                          for identity,time,seconds in boundaries])
+    expected={"pregame":{"deep-pre","short-pre"},
+        "live":{"start","third-1","third-2","80","90","95","99","end","120"},
+        "live_first_third":{"start"},"live_middle_third":{"third-1","120"},
+        "live_final_third":{"third-2","80","90","95","99","end"},
+        "live_80_90":{"80"},"live_90_95":{"90"},"live_95_99":{"95"},
+        "live_99_100":{"99","end"},"last_120_seconds":{"third-1","third-2","80","90","95","99","end","120"}}
+    try:
+        names=create_sport_contribution_summaries(con,"buys",support_floor=1)
+        assert con.execute(f"SELECT count(*) FROM {names['profile']}").fetchone()[0]==9*3*10*10*3
+        assert con.execute(f"SELECT count(*) FROM {names['tails']}").fetchone()[0]==9*3*10*3
+        assert con.execute(f"SELECT count(*) FROM {names['late_delta']}").fetchone()[0]==9*3*3
+        for window,identities in expected.items():
+            actual={row[0] for row in con.execute(
+                f'SELECT execution_id FROM {names["focal"]} WHERE sport=\'atp\' AND sample=\'filtered\' AND "window"=?',
+                [window]).fetchall()}
+            assert actual==identities
+        assert con.execute(f'SELECT count(*) FROM {names["profile"]} WHERE sport<>\'atp\' AND NOT suppressed').fetchone()[0]==0
+    finally:
+        con.close()
+
+
+def test_grouped_focal_samples_do_not_filter_matching_history_or_copy_boundary_prices() -> None:
+    records=[(buy("human","m",.05,0,.05,hedge=.25),.999,1,False),
+             (buy("bot","m",.05,0,.05,hedge=.25),.999,1,True),
+             (buy("one-cent","m",.01,0,.01),.999,1,False),
+             (buy("99-cents","m",.99,1,.99),.999,1,False),
+             (buy("zero-price","m",0,0,0),.999,1,False),
+             (buy("one-price","m",1,1,1),.999,1,False)]
+    con=timed_connection(records)
+    try:
+        names=create_sport_contribution_summaries(con,"buys",support_floor=1)
+        expected={"filtered":{"human"},"interior_all_actors":{"human","bot"},
+                  "all_trades":{"human","bot","one-cent","99-cents"}}
+        for sample,identities in expected.items():
+            actual={row[0] for row in con.execute(
+                f'SELECT execution_id FROM {names["focal"]} WHERE "window"=\'live_99_100\' AND sample=?',[sample]).fetchall()}
+            assert actual==identities
+        assert con.execute("SELECT count(*) FROM buys").fetchone()[0]==6
+    finally:
+        con.close()
+
+
+def test_grouped_equal_market_denominators_are_original_specific_sample_and_window() -> None:
+    records=[(buy("large-tag","large",.95,1,9,exit=1),.999,1,False),
+             (buy("large-other","large",.95,1,1),.999,1,False),
+             (buy("small-other","small",.92,0,1),.999,1,False),
+             # This bot belongs to an earlier window and all-actor live samples.
+             # Neither it nor repeated overlapping windows may dilute late weights.
+             (buy("earlier-bot","large",.95,1,90,exit=1),.97,30,True)]
+    con=timed_connection(records)
+    try:
+        names=create_sport_contribution_summaries(con,"buys",support_floor=1)
+        for sample in ("filtered","interior_all_actors","all_trades"):
+            row=one(con,names["profile"],f'sport=\'atp\' AND sample=\'{sample}\' AND "window"=\'live_99_100\' AND weighting=\'equal_market\' AND price_bin=10')
+            assert row["weight_total"]==2
+            assert row["calibration"]==pytest.approx((.05-.92)/2)
+            assert row["exit_contribution"]==pytest.approx(.9*.05/2)
+            assert row["n_executions"]==3
+            assert row["exit_contributing_executions"]==1
+            assert row["gross_quantity_micro"]==3_000_000
+            assert row["allocated_exit_gross_quantity_micro"]+row["allocated_hedge_gross_quantity_micro"] \
+                +row["allocated_remaining_gross_quantity_micro"]==pytest.approx(row["gross_quantity_micro"])
+    finally:
+        con.close()
+
+
+def test_grouped_late_change_is_final_minus_previous_with_additive_pp_components() -> None:
+    records=[(buy("early-low","m",.05,0,.05,hedge=.5),.97,30,False),
+             (buy("early-high","m",.95,1,.95,exit=.2),.97,30,False),
+             (buy("late-low","m",.06,0,.06,hedge=.25),.995,5,False),
+             (buy("late-high","m",.94,1,.94,exit=.4),.995,5,False)]
+    con=timed_connection(records)
+    try:
+        names=create_sport_contribution_summaries(con,"buys",support_floor=1)
+        row=one(con,names["late_delta"],"sport='atp' AND sample='filtered' AND weighting='fill'")
+        assert row["contrast"]=="live_99_100_minus_live_95_99"
+        assert not row["suppressed"]
+        assert row["spread_delta"]==pytest.approx(.02)
+        assert row["exit_spread_delta"]==pytest.approx(.014)
+        assert row["hedge_spread_delta"]==pytest.approx(-.01)
+        assert row["remaining_spread_delta"]==pytest.approx(.016)
+        assert row["spread_delta_pp"]==pytest.approx(2)
+        assert row["exit_spread_delta_pp"]==pytest.approx(1.4)
+        assert row["hedge_spread_delta_pp"]==pytest.approx(-1)
+        assert row["remaining_spread_delta_pp"]==pytest.approx(1.6)
+        assert row["spread_delta_pp"]==pytest.approx(sum(row[name] for name in (
+            "exit_spread_delta_pp","hedge_spread_delta_pp","remaining_spread_delta_pp")))
+        assert row["uncertainty_status"]=="not_estimated_descriptive"
+    finally:
+        con.close()
+
+
+def test_grouped_late_change_requires_support_in_all_four_tails() -> None:
+    records=[]
+    for phase,time,seconds in (("early",.97,30),("late",.995,5)):
+        for bin_name,price,outcome in (("low",.05,0),("high",.95,1)):
+            n=499 if phase=="late" and bin_name=="low" else 500
+            records.extend((buy(f"{phase}-{bin_name}-{i}","m",price,outcome,price),time,seconds,False) for i in range(n))
+    con=timed_connection(records)
+    try:
+        names=create_sport_contribution_summaries(con,"buys")
+        row=one(con,names["late_delta"],"sport='atp' AND sample='filtered' AND weighting='fill'")
+        assert row["previous_d1_n_executions"]==500 and row["previous_d10_n_executions"]==500
+        assert row["final_d1_n_executions"]==499 and row["final_d10_n_executions"]==500
+        assert row["suppressed"]
+        assert row["spread_delta_raw"]==pytest.approx(0)
+        for name in ("spread_delta","exit_spread_delta","hedge_spread_delta","remaining_spread_delta",
+                     "spread_delta_pp","exit_spread_delta_pp","hedge_spread_delta_pp","remaining_spread_delta_pp"):
+            assert row[name] is None
+    finally:
+        con.close()
+
+
+@pytest.mark.parametrize("field,value",[("sport","wta"),("realized_time",None),
+                                        ("seconds_to_end",float("inf")),("is_nonhuman",None),
+                                        ("gross_quantity_micro",0)])
+def test_grouped_invalid_scope_and_timing_fail_closed(field: str,value) -> None:
+    con=timed_connection([(buy("x","m",.95,1,.95),.999,1,False)])
+    try:
+        con.execute(f"UPDATE buys SET {field}=?",[value])
+        with pytest.raises(ValueError):
+            create_sport_contribution_summaries(con,"buys")
     finally:
         con.close()

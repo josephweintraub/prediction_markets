@@ -441,6 +441,8 @@ class ObservedFIFO:
         """
         quantity_micro = _integer(quantity_micro, "quantity_micro")
         skip_micro = _integer(skip_micro, "skip_micro")
+        if not quantity_micro:
+            return FIFOConsumption(0, (), 0)
         remaining = quantity_micro
         allocations: list[LotAllocation] = []
         for lot in self._lots[(action.wallet, token_id)]:

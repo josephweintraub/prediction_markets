@@ -32,6 +32,7 @@ from analysis.sports_game_dynamics.artifacts import (
     INTEGER_TYPES, artifact_fingerprint, fingerprint, fresh_run, quoted,
     require_columns, write_json,
 )
+from production_guard import require_production_host
 
 
 SOURCE_MARKERS = {"source_status": "verified_own_action"}
@@ -105,6 +106,75 @@ def verify_source_stage(source_manifest: Path, own_actions: Path) -> dict[str, A
     if row_count <= 0 or row_count != counts["accepted_own_actions"]:
         raise ValueError("Own-action output count does not match its complete source stage")
     return {"counts": counts, "own_actions_fingerprint": observed}
+
+
+def verify_native_readiness(source_manifest: Path, audit_manifest: Path,
+                            receipt_manifest: Path | None = None) -> dict[str, Any]:
+    """Verify the saved full-source audit and conditional native MERGE gate."""
+    def saved_summary(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+        if path.name != 'manifest.json':
+            raise ValueError("Native readiness requires an immutable stage manifest.json")
+        manifest=json.loads(path.read_text())
+        summary_path=path.parent/'summary.json'
+        if manifest.get('outputs',{}).get('summary.json') != artifact_fingerprint(summary_path):
+            raise ValueError("Native readiness summary fingerprint differs from its stage manifest")
+        return manifest,json.loads(summary_path.read_text())
+    source=json.loads(source_manifest.read_text())
+    audit,summary=saved_summary(audit_manifest)
+    if audit.get('inputs',{}).get('source_manifest') != fingerprint(source_manifest):
+        raise ValueError("Source audit lineage differs from the supplied source manifest")
+    if source.get('status')!='complete' or summary.get('source_status')!='complete' or summary.get('counts')!=source.get('counts'):
+        raise ValueError("Native readiness audit does not certify this complete source stage")
+    if any(source.get('counts',{}).get(name) != 0 for name in ('rejected_relevant_batches','orphan_scoped_logs')):
+        raise ValueError("Native readiness cannot certify a source with scoped exclusions")
+    required=summary.get('merge_observed_addresses')
+    if not isinstance(required,list) or any(a not in EXCHANGE_CONTRACTS for a in required) or len(set(required))!=len(required):
+        raise ValueError("Native readiness has invalid observed MERGE addresses")
+    support=summary.get('accepted_match_support',[])
+    observed={s['exchange_address'] for s in support if s.get('kind')=='MERGE' and s.get('legs',0)>0}
+    if observed != set(required):
+        raise ValueError("Native readiness MERGE support and required addresses disagree")
+    result={'source_manifest':fingerprint(source_manifest),'source_audit_manifest':fingerprint(audit_manifest),
+            'source_audit_summary':artifact_fingerprint(audit_manifest.parent/'summary.json'),
+            'required_merge_exchange_addresses':sorted(required)}
+    if not required:
+        if (audit.get('status')!='complete_no_merge_native_gate_not_applicable'
+                or summary.get('status')!=audit['status'] or receipt_manifest is not None):
+            raise ValueError("No-MERGE readiness must be explicit and omit unrelated receipt evidence")
+        return {**result,'status':'verified_no_observed_merge'}
+    if audit.get('status')!='pending_native_merge_receipts' or summary.get('status')!=audit['status'] or receipt_manifest is None:
+        raise ValueError("Observed MERGE requires the matching native receipt manifest")
+    for name in ('raw_pilot.parquet','batch_audit.parquet'):
+        if audit.get('outputs',{}).get(name) != artifact_fingerprint(audit_manifest.parent/name):
+            raise ValueError("Native MERGE pilot artifact differs from its audit manifest")
+    batch_evidence=pq.read_table(audit_manifest.parent/'batch_audit.parquet',
+                                columns=['transaction_hash','exchange_address','status','merge_legs']).to_pylist()
+    expected_transactions={a['transaction_hash'] for a in batch_evidence}
+    if (not batch_evidence or any(a['status']!='accepted' or a['merge_legs']<=0 for a in batch_evidence)
+            or {a['exchange_address'] for a in batch_evidence}!=set(required)):
+        raise ValueError("Native MERGE batch evidence does not cover every observed address")
+    receipts,native=saved_summary(receipt_manifest)
+    if (receipts.get('status')!='complete'
+            or receipts.get('inputs',{}).get('pilot_manifest')!=fingerprint(audit_manifest)):
+        raise ValueError("Native MERGE receipt lineage differs from the exact source pilot")
+    if receipts.get('outputs',{}).get('native_receipts.json') != artifact_fingerprint(receipt_manifest.parent/'native_receipts.json'):
+        raise ValueError("Native MERGE receipt artifact differs from its manifest")
+    requested=native.get('requested_transactions')
+    evidence=native.get('evidence',[])
+    if (isinstance(requested,bool) or not isinstance(requested,int) or requested<=0
+            or requested!=summary.get('merge_selected_transactions')
+            or native.get('statuses')!={'verified':requested}
+            or len(evidence)!=requested or any(e.get('status')!='verified' for e in evidence)
+            or {e.get('transaction_hash') for e in evidence}!=expected_transactions
+            or len(expected_transactions)!=requested
+            or native.get('merge_native_gate_status')!='verified'
+            or native.get('required_merge_exchange_addresses')!=sorted(required)
+            or native.get('verified_merge_exchange_addresses')!=sorted(required)):
+        raise ValueError("Native MERGE evidence does not verify every selected transaction and observed address")
+    return {**result,'status':'verified_native_merge',
+            'verified_merge_transactions':sorted(expected_transactions),
+            'merge_receipt_manifest':fingerprint(receipt_manifest),
+            'merge_receipt_summary':artifact_fingerprint(receipt_manifest.parent/'summary.json')}
 
 
 def validate_sources(
@@ -267,6 +337,20 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
     own_actions, market_tokens = Path(args.own_actions), Path(args.market_tokens)
     source_manifest = Path(args.source_manifest)
     inputs = (own_actions, market_tokens, source_manifest)
+    input_names = ('own_actions','market_tokens','source_manifest')
+    audit_manifest=getattr(args,'source_audit_manifest',None)
+    receipt_manifest=getattr(args,'merge_receipt_manifest',None)
+    if receipt_manifest is not None and audit_manifest is None:
+        raise ValueError("A native receipt manifest requires its full-source audit manifest")
+    native_evidence=None
+    if audit_manifest is not None:
+        native_evidence=verify_native_readiness(source_manifest,Path(audit_manifest),
+                                              Path(receipt_manifest) if receipt_manifest else None)
+        inputs+=(Path(audit_manifest),)
+        input_names+=('source_audit_manifest',)
+        if receipt_manifest is not None:
+            inputs+=(Path(receipt_manifest),)
+            input_names+=('merge_receipt_manifest',)
     if args.threads < 1 or args.batch_size < 1 or not re.fullmatch(r"[1-9][0-9]*(?:MB|GB)", args.memory_limit):
         raise ValueError("Positive threads/batch size and explicit memory-limit MB/GB are required")
     if any(not path.is_file() for path in inputs):
@@ -355,8 +439,9 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
             "environment": {"python": platform.python_version(), "duckdb": duckdb.__version__, "pyarrow": pa.__version__},
             "code": {"script": fingerprint(Path(__file__)),
                      "primitives": fingerprint(Path(__file__).with_name("profit_taking_actions.py"))},
-            "inputs": {name: fingerprint(path) for name, path in zip(("own_actions", "market_tokens", "source_manifest"), inputs)},
+            "inputs": {name: fingerprint(path) for name, path in zip(input_names, inputs)},
             "source_stage_gates": source_evidence,
+            "native_source_gates": native_evidence,
             "contract": {
                 "grain": "One original own OrderFilled action; corrected active aggregate VWAP remains one action.",
                 "history": "All verified own BUY and SELL actions, prices and actors; no focal history filters.",
@@ -380,6 +465,9 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
         completed_input = {**manifest["inputs"]["own_actions"], "path": own_actions.name}
         if completed_input != source_evidence["own_actions_fingerprint"]:
             raise ValueError("Immutable own-action input changed during FIFO publication")
+        if audit_manifest is not None and verify_native_readiness(source_manifest,Path(audit_manifest),
+                Path(receipt_manifest) if receipt_manifest else None) != native_evidence:
+            raise ValueError("Immutable source/native readiness evidence changed during FIFO publication")
         write_json(staging/"manifest.json", manifest)
     return manifest
 
@@ -388,6 +476,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("own-actions", "market-tokens", "source-manifest", "run-dir"):
         parser.add_argument("--"+name, type=Path, required=True)
+    parser.add_argument("--source-audit-manifest",type=Path)
+    parser.add_argument("--merge-receipt-manifest",type=Path)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--memory-limit", default="100GB")
     parser.add_argument("--temp-directory", type=Path)
@@ -395,9 +485,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     # Production-only CLI guard; synthetic tests call build_ledger directly.
-    if not Path("/mnt/data").is_dir():
-        raise RuntimeError("Production FIFO ledger runs only on the EC2 /mnt/data host")
+    require_production_host()
+    if Path("/home/ubuntu/prediction_markets") not in Path(__file__).resolve().parents:
+        raise RuntimeError("Production FIFO ledger runs only from the canonical EC2 checkout")
+    if args.source_audit_manifest is None:
+        raise ValueError("Production FIFO CLI requires --source-audit-manifest")
+    verify_native_readiness(args.source_manifest,args.source_audit_manifest,args.merge_receipt_manifest)
     print(json.dumps(build_ledger(args)["counts"], sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
