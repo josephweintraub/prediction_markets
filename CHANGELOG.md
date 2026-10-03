@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-03 - Completed two-grain profit-taking run
+
+- Completed native-gated source recovery, full-history FIFO and serialized
+  matched-execution/own-order-event estimation for the frozen nine-sport cohort.
+- Independently reconciled compact outputs, support/suppression and additive
+  components; rendered a standalone six-page LaTeX report with native compilation
+  and all-page visual QA. Recorded findings in the scoped run record, not here.
+- Passed 437 canonical release tests and 90 focused final-report tests; prepared
+  a scoped code/aggregate/report release without private trading payloads.
+
 ## 2026-10-02 - Native-proven settlement reconciliation
 
 - Preserved legacy active SELL excess collateral separately from matched
