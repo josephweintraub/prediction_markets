@@ -63,6 +63,15 @@ are built and run without encoding an expected sign.
   exact holdings additionally require token movements and opening balances.
   See [`tennis_timing_wallet_exits_v1.md`](analysis_specs/tennis_timing_wallet_exits_v1.md)
   and the [exchange source](https://github.com/Polymarket/ctf-exchange/blob/main/src/exchange/mixins/Trading.sol).
+- **Wallet fees and execution amounts:** dispatch by verified emitting exchange
+  version. Legacy BUY fees reduce received outcome tokens; V2 BUY fees add to
+  collateral spending. Both deduct SELL fees from collateral proceeds. Preserve
+  gross execution price separately from fee-adjusted acquisition cost. An
+  exchange-facing active aggregate can include reserved making amounts and a
+  refund; reconstruct and reconcile effective spending before using it in a
+  trade-implied inventory book. See
+  [`sports_profit_taking_v1.md`](analysis_specs/sports_profit_taking_v1.md) and
+  the [V2 exchange source](https://github.com/Polymarket/ctf-exchange-v2/blob/main/src/exchange/mixins/Trading.sol).
 
 ## Standard trade filters (defaults for every calibration run)
 

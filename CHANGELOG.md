@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-02 - Protocol-aware profit-taking reconstruction
+
+- Added outcome-blind, integer-quantity FIFO matching for direct favorite sales
+  and complementary purchases, retaining full trade-implied history, partial
+  quantities, unmatched sales and explicit exposure caps.
+- Added verified-address legacy/V2 fee dispatch and exact active-order refund
+  reconciliation; kept gross calibration prices distinct from net profit costs.
+- Added a bounded raw-log audit, focused synthetic tests, a streamed ledger
+  builder and a fixed-denominator calibration-contribution prototype. Production
+  estimation remains gated by source reconciliation and final observation grain.
+- Recorded the scoped contract in
+  [`docs/analysis_specs/sports_profit_taking_v1.md`](docs/analysis_specs/sports_profit_taking_v1.md)
+  and added protocol/fee guidance to the methods reference.
+
 ## 2026-10-02 - Tennis timing and terminal wallet-sequence investigation
 
 - Added a frozen-source Australian Open timing collector with player/result,
