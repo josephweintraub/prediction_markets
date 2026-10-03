@@ -25,6 +25,7 @@ from analysis.diagnostics.attribute_profit_taking_buys import (
     create_buy_attribution, enrich_buy_attribution,
 )
 from analysis.diagnostics.build_profit_taking_ledger import verify_native_readiness, verify_source_stage
+from analysis.diagnostics.profit_taking_source_audit import verify_source_settlement_surpluses
 from analysis.diagnostics.profit_taking_contribution import (
     SPORTS, SAMPLES, WINDOWS, WEIGHTS, SUPPORT_FLOOR, create_sport_contribution_summaries,
 )
@@ -50,7 +51,7 @@ ESTIMATION_COLUMNS = (
 
 def verify_parent_stages(paths: dict[str, Path], *, require_native: bool=False) -> dict[str, Any]:
     """Require complete parent stages and exact supplied-file lineage."""
-    source_evidence = verify_source_stage(paths["source_manifest"], paths["own_actions"])
+    source_evidence = verify_source_stage(paths["source_manifest"], paths["own_actions"], paths["market_tokens"])
     source = json.loads(paths["source_manifest"].read_text())
     if (paths["batch_links"].name != "batch_links.parquet"
             or paths["batch_links"].resolve().parent != paths["source_manifest"].resolve().parent
@@ -66,6 +67,8 @@ def verify_parent_stages(paths: dict[str, Path], *, require_native: bool=False) 
     if (ledger.get("completion_status") != "complete"
             or ledger.get("stage") != "profit_taking_trade_implied_fifo_v1"):
         raise ValueError("Parent all-history FIFO stage is not complete")
+    if ledger.get("source_stage_gates", {}).get("settlement_surplus_gates") != source_evidence["settlement_surplus_gates"]:
+        raise ValueError("Ledger settlement-surplus proof differs from the complete source-stage evidence")
     for name in ("own_actions", "market_tokens", "source_manifest"):
         if ledger.get("inputs", {}).get(name) != fingerprint(paths[name]):
             raise ValueError(f"Ledger input lineage mismatch: {name}")
@@ -364,6 +367,8 @@ def build_contribution(args: argparse.Namespace) -> dict[str, Any]:
         final_inputs = {name: fingerprint(path) for name, path in paths.items()}
         if final_inputs != initial_inputs:
             raise ValueError("An immutable source, ledger or metadata input changed during estimation")
+        if verify_source_settlement_surpluses(paths["source_manifest"], paths["market_tokens"]) != parent_evidence["source"]["settlement_surplus_gates"]:
+            raise ValueError("Saved source settlement-surplus proof changed during estimation")
         native = parent_evidence["native_source_gates"]
         if native is not None and verify_native_readiness(paths["source_manifest"],
                 Path(native["source_audit_manifest"]["path"]),

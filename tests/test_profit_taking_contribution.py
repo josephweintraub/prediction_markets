@@ -297,6 +297,66 @@ def test_homogeneous_price_leg_split_preserves_all_weighted_components() -> None
         own.close()
 
 
+@pytest.mark.parametrize("acquisition_cash_usdc,expected_profit_usdc,expected_exit_fraction",[
+    (85_500,-1_800,0.),(18_000,65_700,1.),
+])
+def test_verified_settlement_surplus_never_becomes_trading_profit_or_contribution(
+        acquisition_cash_usdc: int,expected_profit_usdc: int,expected_exit_fraction: float) -> None:
+    """Given admitted effective amounts, an external payout is not trade cash.
+
+    The source/native-proof owners separately test admission. This independent
+    downstream check tests both a losing trade and a profitable prior-underdog
+    acquisition, with and without an eight-million-dollar settlement surplus.
+    """
+    from analysis.diagnostics.build_profit_taking_ledger import decoded_source_action,tag_row
+    from analysis.diagnostics.profit_taking_actions import ObservedFIFO,apply_action,decode_own_action
+    exchange="0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e"
+    quantity=90_000*1_000_000
+    matched_cash=83_700*1_000_000
+    outcomes=[]
+    for surplus in (0,8_000_000*1_000_000):
+        acquisition=dict(order_hash="prior",maker="seller",taker="earlier-counterparty",
+            maker_asset_id="0",taker_asset_id="1",maker_amount_filled=acquisition_cash_usdc*1_000_000,
+            taker_amount_filled=quantity,fee=0,block_number=1,transaction_hash="earlier",log_index=1,
+            exchange_address=exchange)
+        source_sale=dict(order_hash="sale",maker="seller",taker=exchange,
+            maker_asset_id="1",taker_asset_id="0",maker_amount_filled=quantity,
+            taker_amount_filled=matched_cash,fee=0,block_number=2,transaction_hash="later",log_index=2,
+            exchange_address=exchange,execution_id=exchange+":later:2",market_id="m",
+            source_role="active_aggregate",source_status="verified_own_action",aggregate_reconciled=True,
+            source_contract_version="legacy_reserved_making_v1",fee_rule="received_asset",
+            original_maker_amount_filled=quantity,original_taker_amount_filled=matched_cash+surplus,
+            refund_making_micro=0,settlement_surplus_cash_micro=surplus)
+        book=ObservedFIFO()
+        apply_action(book,decode_own_action(acquisition,fee_rule="received_asset"),{"1":"2","2":"1"})
+        sale=decoded_source_action(source_sale)
+        assert sale.gross_price==Fraction(93,100)
+        assert sale.sale_cash_micro==matched_cash
+        tag=apply_action(book,sale,{"1":"2","2":"1"})
+        assert tag is not None
+        ledger_tag=tag_row(source_sale,sale,tag,quantity,0)
+        assert ledger_tag["matched_profit_usdc"]==pytest.approx(expected_profit_usdc)
+        assert ledger_tag["primary_exit_fraction"]==expected_exit_fraction
+        assert ledger_tag["primary_exit_quantity_micro"]==quantity*expected_exit_fraction
+        assert book.observed_remaining_micro("seller","1")==0
+        con=connection([buy("actual-favorite-buyer","m",.93,1,83_700,
+                            exit=ledger_tag["primary_exit_fraction"]),
+                        buy("independent-underdog-buy","n",.07,0,7)])
+        try:
+            names=create_contribution_summaries(con,"buys",support_floor=1)
+            result={}
+            for weighting in ("fill","dollar","equal_market"):
+                tail=one(con,names["tails"],f"weighting='{weighting}'")
+                assert tail["spread"]==pytest.approx(.14)
+                assert tail["exit_spread_contribution"]==pytest.approx(.07*expected_exit_fraction)
+                result[weighting]=tuple(tail[field] for field in (
+                    "spread","exit_spread_contribution","hedge_spread_contribution","remaining_spread_contribution"))
+            outcomes.append(result)
+        finally:
+            con.close()
+    assert outcomes[0]==outcomes[1]
+
+
 def timed_connection(records: list[tuple[tuple,float,float,bool]]) -> duckdb.DuckDBPyConnection:
     con=connection([record[0] for record in records])
     for definition in ("sport VARCHAR DEFAULT 'atp'","realized_time DOUBLE","seconds_to_end DOUBLE",

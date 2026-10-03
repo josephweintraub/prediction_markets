@@ -41,6 +41,7 @@ def own_row(
         "fee_rule": "received_asset", "aggregate_reconciled": aggregate,
         "original_maker_amount_filled": maker_amount+refund,
         "original_taker_amount_filled": taker_amount, "refund_making_micro": refund,
+        'settlement_surplus_cash_micro':0,
     }
 
 

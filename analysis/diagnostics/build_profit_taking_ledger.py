@@ -28,6 +28,7 @@ import pyarrow.parquet as pq
 from analysis.diagnostics.profit_taking_actions import (
     RAW_FIELDS, EXCHANGE_CONTRACTS, ExitTag, ObservedFIFO, OwnAction, apply_action, decode_own_action,
 )
+from analysis.diagnostics.profit_taking_source_audit import verify_source_settlement_surpluses
 from analysis.sports_game_dynamics.artifacts import (
     INTEGER_TYPES, artifact_fingerprint, fingerprint, fresh_run, quoted,
     require_columns, write_json,
@@ -40,10 +41,12 @@ SOURCE_COLUMNS = RAW_FIELDS + (
     "execution_id", "market_id", "source_role", "source_status",
     "source_contract_version", "fee_rule", "aggregate_reconciled",
     "original_maker_amount_filled", "original_taker_amount_filled", "refund_making_micro",
+    "settlement_surplus_cash_micro",
 )
 INTEGER_COLUMNS = (
     "maker_amount_filled", "taker_amount_filled", "fee", "block_number", "log_index",
     "original_maker_amount_filled", "original_taker_amount_filled", "refund_making_micro",
+    "settlement_surplus_cash_micro",
 )
 HISTORY_STATUS = "trade_implied_only_opening_and_nontrade_movements_unknown"
 SPILL_CAP_BYTES = 12 * 1024**3
@@ -54,6 +57,7 @@ TAG_SCHEMA = pa.schema([
     ("transaction_hash", pa.string()), ("log_index", pa.int64()),
     ("exchange_address", pa.string()), ("gross_quantity_micro", pa.int64()),
     ("gross_cash_micro", pa.int64()), ("fee_micro", pa.int64()),
+    ("settlement_surplus_cash_micro", pa.int64()),
     ("acquisition_cash_micro", pa.int64()), ("fee_rule", pa.string()),
     ("source_contract_version", pa.string()),
     ("net_acquired_quantity_micro", pa.int64()), ("net_sale_cash_micro", pa.int64()),
@@ -84,7 +88,7 @@ def _count(con: duckdb.DuckDBPyConnection, query: str) -> int:
     return int(con.execute(query).fetchone()[0])
 
 
-def verify_source_stage(source_manifest: Path, own_actions: Path) -> dict[str, Any]:
+def verify_source_stage(source_manifest: Path, own_actions: Path, market_tokens: Path) -> dict[str, Any]:
     """Do not let an accepted subset bypass a globally blocked source stage."""
     if (source_manifest.name != "manifest.json"
             or source_manifest.resolve().parent != own_actions.resolve().parent
@@ -105,7 +109,23 @@ def verify_source_stage(source_manifest: Path, own_actions: Path) -> dict[str, A
     row_count = pq.ParquetFile(own_actions).metadata.num_rows
     if row_count <= 0 or row_count != counts["accepted_own_actions"]:
         raise ValueError("Own-action output count does not match its complete source stage")
-    return {"counts": counts, "own_actions_fingerprint": observed}
+    surplus_evidence=verify_source_settlement_surpluses(source_manifest,market_tokens)
+    con=duckdb.connect()
+    try:
+        con.execute(f"CREATE VIEW source_actions AS SELECT * FROM read_parquet('{quoted(own_actions)}')")
+        require_columns(con,'source_actions',SOURCE_COLUMNS,'Verified own actions')
+        records=con.execute('''SELECT execution_id,settlement_surplus_cash_micro,
+            CASE WHEN maker_asset_id='0' THEN taker_amount_filled ELSE maker_amount_filled END quantity_micro,
+            CASE WHEN maker_asset_id='0' THEN maker_amount_filled ELSE taker_amount_filled END cash_micro,
+            original_maker_amount_filled,original_taker_amount_filled
+            FROM source_actions WHERE settlement_surplus_cash_micro>0 ORDER BY execution_id''').fetchall()
+        expected=sorted((c['active_execution_id'],c['settlement_surplus_cash_micro'],c['effective_quantity_micro'],
+            c['effective_cash_micro'],c['original_making_micro'],c['original_taking_micro']) for c in surplus_evidence['cases'])
+        if records!=expected:
+            raise ValueError('Own-action surplus amounts do not match every complete native proof case')
+    finally:
+        con.close()
+    return {"counts": counts, "own_actions_fingerprint": observed,'settlement_surplus_gates':surplus_evidence}
 
 
 def verify_native_readiness(source_manifest: Path, audit_manifest: Path,
@@ -210,11 +230,14 @@ def validate_sources(
     if _count(con, """SELECT count(*) FROM own_actions WHERE maker_amount_filled IS NULL
         OR taker_amount_filled IS NULL OR fee IS NULL OR block_number IS NULL OR log_index IS NULL
         OR original_maker_amount_filled IS NULL OR original_taker_amount_filled IS NULL
-        OR refund_making_micro IS NULL OR maker_amount_filled<0 OR taker_amount_filled<0 OR fee<0
-        OR block_number<0 OR log_index<0 OR refund_making_micro<0
-        OR original_taker_amount_filled<>taker_amount_filled
+        OR refund_making_micro IS NULL OR settlement_surplus_cash_micro IS NULL
+        OR maker_amount_filled<0 OR taker_amount_filled<0 OR fee<0
+        OR block_number<0 OR log_index<0 OR refund_making_micro<0 OR settlement_surplus_cash_micro<0
+        OR original_taker_amount_filled<>taker_amount_filled+settlement_surplus_cash_micro
         OR original_maker_amount_filled-maker_amount_filled<>refund_making_micro
-        OR (source_role='passive' AND refund_making_micro<>0)"""):
+        OR (source_role='passive' AND (refund_making_micro<>0 OR settlement_surplus_cash_micro<>0))
+        OR (settlement_surplus_cash_micro>0 AND (source_role<>'active_aggregate'
+            OR maker_asset_id='0' OR taker_asset_id<>'0' OR source_contract_version<>'legacy_reserved_making_v1'))"""):
         raise ValueError("Original/effective amounts or making-asset refund do not reconcile")
     con.execute(f"CREATE TEMP VIEW market_tokens AS SELECT * FROM read_parquet('{quoted(market_tokens)}')")
     require_columns(con, "market_tokens", ("token_id", "market_id", "complement_token_id"), "Accepted market tokens")
@@ -292,6 +315,7 @@ def tag_row(
         "exchange_address": action.exchange_address,
         "gross_quantity_micro": action.gross_quantity_micro, "gross_cash_micro": action.gross_cash_micro,
         "fee_micro": action.fee_micro,
+        "settlement_surplus_cash_micro": row['settlement_surplus_cash_micro'],
         "acquisition_cash_micro": None if is_sale else action.acquisition_cash_micro,
         "fee_rule": action.fee_rule, "source_contract_version": row["source_contract_version"],
         "net_acquired_quantity_micro": None if is_sale else action.acquired_quantity_micro,
@@ -355,7 +379,7 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("Positive threads/batch size and explicit memory-limit MB/GB are required")
     if any(not path.is_file() for path in inputs):
         raise FileNotFoundError("Verified own-action, parent manifest and accepted-token inputs must exist")
-    source_evidence = verify_source_stage(source_manifest, own_actions)
+    source_evidence = verify_source_stage(source_manifest, own_actions,market_tokens)
     output_parent = Path(args.run_dir).resolve().parent
     existing_parent = output_parent
     while not existing_parent.exists():
@@ -453,6 +477,7 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
                 "fractions": "Direct primary/gross disposed SELL quantity; hedge qualified net acquired BUY quantity/total net acquired BUY quantity. One original fill unit is preserved.",
                 "money": "Per-lot profit signs and eligibility are exact rationals; saved aggregate USDC diagnostics are floating sums after classification.",
                 "fees": "Emitting-address dispatch only: legacy BUY fee deducts outcome tokens; V2 BUY fee is extra collateral acquisition cost. Both SELL fees deduct collateral proceeds. Gross execution calibration is unchanged.",
+                "settlement_surplus": "Every legacy active SELL excess collateral payment is native-proven and preserved separately; matched execution cash alone enters price, FIFO trading profit, and exit classification.",
                 "limits": HISTORY_STATUS+"; quantity allocation is not certified inventory, unique positions closed across episodes, intent, or causal price attribution.",
             },
             "counts": counts,
@@ -465,6 +490,8 @@ def build_ledger(args: argparse.Namespace) -> dict[str, Any]:
         completed_input = {**manifest["inputs"]["own_actions"], "path": own_actions.name}
         if completed_input != source_evidence["own_actions_fingerprint"]:
             raise ValueError("Immutable own-action input changed during FIFO publication")
+        if verify_source_settlement_surpluses(source_manifest,market_tokens)!=source_evidence['settlement_surplus_gates']:
+            raise ValueError('Immutable source settlement-surplus proof changed during FIFO publication')
         if audit_manifest is not None and verify_native_readiness(source_manifest,Path(audit_manifest),
                 Path(receipt_manifest) if receipt_manifest else None) != native_evidence:
             raise ValueError("Immutable source/native readiness evidence changed during FIFO publication")

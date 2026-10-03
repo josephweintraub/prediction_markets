@@ -72,6 +72,15 @@ are built and run without encoding an expected sign.
   trade-implied inventory book. See
   [`sports_profit_taking_v1.md`](analysis_specs/sports_profit_taking_v1.md) and
   the [V2 exchange source](https://github.com/Polymarket/ctf-exchange-v2/blob/main/src/exchange/mixins/Trading.sol).
+- **Legacy SELL settlement surplus:** the active aggregate can receive excess
+  collateral in addition to its matched execution proceeds. A case-specific
+  complete native event and payout proof must reconcile the difference before
+  admission. Preserve original settlement and excess cash separately; use only
+  matched execution cash for binary price and FIFO trading profit. The source
+  builder and downstream publication reopen that proof. Unproved surplus, BUY
+  surplus and V2 surplus remain blocked. The legacy
+  [surplus calculation](https://github.com/Polymarket/ctf-exchange/blob/main/src/exchange/mixins/Trading.sol#L338-L342)
+  reads the receiving-asset balance, not just the matched-leg amounts.
 
 ## Standard trade filters (defaults for every calibration run)
 

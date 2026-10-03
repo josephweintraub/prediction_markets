@@ -27,7 +27,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from analysis.diagnostics.profit_taking_actions import (
-    EXCHANGE_ADDRESSES, RAW_FIELDS, V2_EXCHANGE_ADDRESSES, decode_own_action, deduplicate_raw_fills,
+    EXCHANGE_ADDRESSES, LEGACY_EXCHANGE_ADDRESSES, RAW_FIELDS, V2_EXCHANGE_ADDRESSES, decode_own_action, deduplicate_raw_fills,
     reconcile_reserved_match_batch,
 )
 from analysis.sports_game_dynamics.artifacts import (
@@ -296,6 +296,7 @@ def full_source_support(source_dir: Path, market_tokens: Path, maximum: int
         observed=artifact_fingerprint(source_dir/name)
         if observed != manifest["outputs"][name]:
             raise ValueError("Full source audit input changed: "+name)
+    surplus_evidence=verify_source_settlement_surpluses(source_dir/'manifest.json',market_tokens)
     con=duckdb.connect()
     try:
         con.execute("SET threads=2")
@@ -328,12 +329,20 @@ def full_source_support(source_dir: Path, market_tokens: Path, maximum: int
                 "source_status":summary["status"],"counts":counts,
                 "batch_status_counts":statuses,"excluded_original_log_reasons":reasons,
                 "orphan_log_counts":orphans,"accepted_match_support":[],
+                "settlement_surplus_gates":surplus_evidence,
                 "support_population":"No mechanism profiles from a blocked accepted subset.",
                 "source_resource_limits":{"threads":2,"memory_limit":"8GB","spill_limit":"0GB"}}
         if not complete:
             result["status"]="blocked_source_reconciliation"
             return result,[]
         result["support_population"]="All accepted source batches; complete scan has no relevant rejection or scoped orphan."
+        observed_surpluses=records('''SELECT active_execution_id,settlement_surplus_cash_micro,
+            effective_quantity_micro,effective_cash_micro,original_making_micro,original_taking_micro,
+            settlement_surplus_proof_id FROM batches WHERE settlement_surplus_cash_micro>0 ORDER BY active_execution_id''')
+        if observed_surpluses!=sorted(surplus_evidence['cases'],key=lambda c:c['active_execution_id']):
+            raise ValueError('Full source surplus batch amounts differ from every exact native proof case')
+        if con.execute("SELECT count(*) FROM batches WHERE settlement_surplus_cash_micro>0 AND settlement_surplus_proof_status IS DISTINCT FROM 'verified_complete_native_sell_collateral_surplus'").fetchone()[0]:
+            raise ValueError('Full source surplus batch lacks its verified native proof status')
         result["accepted_match_support"]=records("""SELECT b.exchange_address,b.source_contract_version,l.kind,
             count(*)::BIGINT legs,sum(l.quantity_micro)::HUGEINT gross_quantity_micro
             FROM links l JOIN batches b ON l.active_execution_id=b.active_execution_id
@@ -423,6 +432,8 @@ def run_full_source_audit(args: argparse.Namespace) -> dict[str, Any]:
                            staging/"raw_pilot.parquet",compression="zstd")
             pq.write_table(pa.Table.from_pylist(selected_audits),staging/"batch_audit.parquet",compression="zstd")
         write_json(staging/"summary.json",result)
+        if verify_source_settlement_surpluses(args.full_source/'manifest.json',args.market_tokens)!=result['settlement_surplus_gates']:
+            raise ValueError('Immutable settlement surplus evidence changed during source audit publication')
         write_json(staging/"manifest.json",{
             "status":result["status"],"created_utc":datetime.now(timezone.utc).isoformat(),
             "environment":{"python":sys.version,"platform":platform.platform(),
@@ -773,6 +784,127 @@ def run_rejected_source_batch(source_dir: Path, market_tokens: Path, run_dir: Pa
             'budgets':{'transactions':1,'asset_getters':2,'raw_source_rows_read':0,'native_logs':'entire receipt'},
             'outputs':{p.name:artifact_fingerprint(p) for p in sorted(staging.iterdir())}})
     return result
+
+
+def load_verified_settlement_surpluses(proof_manifests: Sequence[Path], market_tokens: Path
+        ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """Reopen complete native evidence; never certify a positive amount alone.
+
+    Only the isolated, fully compared legacy SELL diagnostic is supported. The
+    returned original rows let the full source builder compare the entire raw
+    transaction/exchange group, rather than matching merely its active log.
+    """
+    complements=validate_complements(pq.read_table(market_tokens,
+        columns=['token_id','market_id','complement_token_id']).to_pylist())
+    token_input=fingerprint(market_tokens)
+    cases=[]; originals=[]; lineage={}
+    for proof_path in proof_manifests:
+        proof_path=Path(proof_path)
+        if proof_path.name!='manifest.json':
+            raise ValueError('Settlement surplus evidence requires a stage manifest.json')
+        manifest=json.loads(proof_path.read_text())
+        parent_ref=manifest.get('inputs',{}).get('source_manifest',{})
+        parent_path=Path(parent_ref.get('path',''))
+        if not parent_path.is_file() or fingerprint(parent_path)!=parent_ref:
+            raise ValueError('Settlement surplus parent source lineage differs from its proof')
+        parent=json.loads(parent_path.read_text())
+        if (parent.get('status')!='blocked_source_reconciliation'
+                or parent.get('counts',{}).get('rejected_relevant_batches')!=1
+                or parent.get('counts',{}).get('orphan_scoped_logs')!=0
+                or manifest.get('inputs',{}).get('market_tokens')!=token_input
+                or parent.get('inputs',{}).get('market_tokens')!=token_input):
+            raise ValueError('Settlement surplus proof has incompatible source/token lineage')
+        exclusion_path=parent_path.parent/'source_exclusions.parquet'
+        if (manifest.get('inputs',{}).get('source_exclusions')!=fingerprint(exclusion_path)
+                or parent.get('outputs',{}).get(exclusion_path.name)!=artifact_fingerprint(exclusion_path)):
+            raise ValueError('Settlement surplus original exclusions differ from their parent source')
+        needed=('summary.json','original_rows.parquet','normalized_native.parquet',
+                'native_receipt.json','asset_getter_results.json','transfers.parquet','wallet_collateral_flows.parquet')
+        for filename in needed:
+            path=proof_path.parent/filename
+            if not path.is_file() or manifest.get('outputs',{}).get(filename)!=artifact_fingerprint(path):
+                raise ValueError('Settlement surplus native proof artifact fingerprint differs: '+filename)
+        summary=json.loads((proof_path.parent/'summary.json').read_text())
+        if (manifest.get('status')!='verified_native_observations_only'
+                or summary.get('status')!='verified_native_observations_only'
+                or summary.get('rpc_statuses')!={'receipt':'available','collateral':'available','ctf':'available'}):
+            raise ValueError('Settlement surplus proof lacks fully available verified native evidence')
+        rows=deduplicate_raw_fills(pq.read_table(proof_path.parent/'original_rows.parquet',columns=list(RAW_FIELDS)).to_pylist())
+        exclusions=deduplicate_raw_fills(pq.read_table(exclusion_path,columns=list(RAW_FIELDS)).to_pylist())
+        if rows!=exclusions:
+            raise ValueError('Settlement surplus original rows differ from the complete rejected source records')
+        getters=json.loads((proof_path.parent/'asset_getter_results.json').read_text())
+        addresses={}
+        for name in ('collateral','ctf'):
+            value=getters.get(name)
+            if (not isinstance(value,str) or len(value)!=66 or not value.startswith('0x')
+                    or int(value[2:26],16)!=0 or int(value[-40:],16)<=0):
+                raise ValueError('Settlement surplus proof has invalid immutable asset getters')
+            addresses[name]='0x'+value[-40:].lower()
+        receipt=json.loads((proof_path.parent/'native_receipt.json').read_text())
+        checked,native,transfers,wallets=rejected_receipt_comparison(rows,receipt,
+            addresses['collateral'],addresses['ctf'],complements)
+        if any(summary.get(name)!=value for name,value in checked.items()):
+            raise ValueError('Settlement surplus saved summary does not reproduce its native proof')
+        if (native!=deduplicate_raw_fills(pq.read_table(proof_path.parent/'normalized_native.parquet').to_pylist())
+                or transfers!=pq.read_table(proof_path.parent/'transfers.parquet').to_pylist()
+                or wallets!=pq.read_table(proof_path.parent/'wallet_collateral_flows.parquet').to_pylist()):
+            raise ValueError('Settlement surplus native observations do not reproduce saved evidence')
+        exchange=checked['exchange_address']; surplus=checked['unexplained_receiving_asset_excess_raw']
+        if (checked['status']!='verified_native_observations_only'
+                or not checked['native_original_log_set_exact_match']
+                or exchange not in LEGACY_EXCHANGE_ADDRESSES or checked['active_side']!='SELL'
+                or surplus<=0 or checked['matched_quantity_raw']<=0
+                or not 0<=checked['matched_cash_raw']<=checked['matched_quantity_raw']):
+            raise ValueError('Settlement surplus proof is not a complete legacy SELL collateral-surplus case')
+        active=next(r for r in rows if r['taker'].lower()==exchange)
+        payout=sum(t['amount_raw'] for t in transfers if t['asset_kind']=='COLLATERAL'
+                   and t['from_wallet']==exchange and t['to_wallet']==active['maker'].lower())
+        if (payout!=active['taker_amount_filled']-active['fee']
+                or checked['exchange_collateral_flow']['net_incoming_raw']!=-surplus):
+            raise ValueError('Settlement surplus actual native payout/collateral conservation does not reconcile')
+        execution_id=exchange+':'+active['transaction_hash'].lower()+':'+str(active['log_index'])
+        if execution_id in lineage:
+            raise ValueError('Settlement surplus evidence duplicates one original active execution')
+        proof_id=fingerprint(proof_path)['sha256']
+        cases.append({'active_execution_id':execution_id,'settlement_surplus_cash_micro':surplus,
+                      'effective_quantity_micro':checked['matched_quantity_raw'],
+                      'effective_cash_micro':checked['matched_cash_raw'],
+                      'original_making_micro':active['maker_amount_filled'],
+                      'original_taking_micro':active['taker_amount_filled'],
+                      'settlement_surplus_proof_id':proof_id})
+        originals.extend(rows)
+        lineage[execution_id]={'proof_manifest':fingerprint(proof_path),
+            'parent_source_manifest':parent_ref,'raw_events':parent['inputs']['raw_events'],
+            'settlement_surplus_cash_micro':surplus,'proof_id':proof_id,
+            'status':'verified_complete_native_sell_collateral_surplus'}
+    return cases,originals,lineage
+
+
+def verify_source_settlement_surpluses(source_manifest: Path, market_tokens: Path) -> dict[str,Any]:
+    """Revalidate every manifested exception from saved native proof and its lineage."""
+    source=json.loads(source_manifest.read_text())
+    refs=source.get('inputs',{}).get('surplus_receipt_manifests',[])
+    if not isinstance(refs,list):
+        raise ValueError('Settlement surplus source proof inputs must be explicit manifest fingerprints')
+    paths=[]
+    for ref in refs:
+        path=Path(ref.get('path',''))
+        if not path.is_file() or fingerprint(path)!=ref:
+            raise ValueError('Settlement surplus source proof input lineage changed')
+        paths.append(path)
+    cases,_,lineage=load_verified_settlement_surpluses(paths,market_tokens)
+    if source.get('settlement_surplus_proofs',{})!=lineage:
+        raise ValueError('Settlement surplus source cases differ from reopened native proof')
+    counts=source.get('counts',{})
+    if (counts.get('accepted_settlement_surplus_batches',0)!=len(cases)
+            or counts.get('accepted_settlement_surplus_cash_micro',0)!=sum(c['settlement_surplus_cash_micro'] for c in cases)):
+        raise ValueError('Settlement surplus source counts differ from its exact native proof cases')
+    if any(source.get('inputs',{}).get('raw_events')!=p['raw_events'] for p in lineage.values()):
+        raise ValueError('Settlement surplus source raw vintage differs from its native proof lineage')
+    return {'status':'verified_complete_native_sell_collateral_surplus' if cases else 'not_applicable',
+            'cases':cases,'proof_lineage':lineage,
+            'policy':'Preserve original settlement; matched execution cash alone defines binary price and trading profit.'}
 
 
 def choose_receipt_transactions(audits: Sequence[Mapping[str, Any]], maximum: int) -> list[str]:

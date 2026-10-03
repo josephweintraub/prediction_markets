@@ -17,6 +17,7 @@ from analysis.diagnostics.profit_taking_source_audit import (
     choose_receipt_transactions, LEGACY_TOPIC, V2_TOPIC, full_source_support,
     retrieve_complete_transaction_groups, run_full_source_audit, merge_native_coverage,
     rejected_receipt_comparison, run_rejected_source_batch, decode_asset_transfers,
+    load_verified_settlement_surpluses,
     ERC20_TRANSFER_TOPIC, ERC1155_SINGLE_TOPIC, ERC1155_BATCH_TOPIC,
     GET_COLLATERAL_SELECTOR, GET_CTF_SELECTOR,
 )
@@ -187,7 +188,7 @@ def published_source(tmp_path: Path, records: list[dict]) -> tuple[Path, Path, P
         con.execute("""CREATE TABLE exclusions AS SELECT e.*,b.status exclusion_reason FROM events e
             JOIN batches b ON e.transaction_hash=b.transaction_hash AND e.exchange_address=b.exchange_address
             AND e.batch_number=b.batch_number WHERE b.status NOT IN ('accepted','unscoped_batch')""")
-        outputs={"batch_audit.parquet":"batches","batch_links.parquet":"accepted_links",
+        outputs={"own_actions.parquet":"own_actions","batch_audit.parquet":"batches","batch_links.parquet":"accepted_links",
                  "orphan_logs.parquet":"orphan_logs","source_exclusions.parquet":"exclusions"}
         for name,relation in outputs.items():
             con.execute(f"COPY {relation} TO '{source/name}' (FORMAT PARQUET)")
@@ -196,7 +197,7 @@ def published_source(tmp_path: Path, records: list[dict]) -> tuple[Path, Path, P
     status='complete' if not counts['rejected_relevant_batches'] and not counts['orphan_scoped_logs'] else 'blocked_source_reconciliation'
     summary={"status":status,"counts":counts,"raw_source":parquet_metadata(raw_path)[0]}
     (source/"summary.json").write_text(json.dumps(summary))
-    manifest={"status":status,"counts":counts,"inputs":{"market_tokens":fingerprint(tokens)},
+    manifest={"status":status,"counts":counts,"inputs":{"market_tokens":fingerprint(tokens),'raw_events':fingerprint(raw_path)},
               "outputs":{p.name:artifact_fingerprint(p) for p in source.iterdir()}}
     (source/"manifest.json").write_text(json.dumps(manifest))
     return source,raw_path,tokens
@@ -431,3 +432,170 @@ def test_audit_and_native_problem_spine_lineage_fail_before_rpc(tmp_path,monkeyp
     with pytest.raises(ValueError,match='token spine'):
         if mode=='support': full_source_support(source,tokens,10)
         else: run_rejected_source_batch(source,tokens,tmp_path/'native')
+
+
+def saved_surplus_proof(tmp_path,other_records=None):
+    original,receipt,collateral,ctf=rejected_case()
+    source,_,tokens=published_source(tmp_path,[*(other_records or []),*original])
+    result,native,transfers,wallets=rejected_receipt_comparison(original,receipt,collateral,ctf,COMPLEMENTS)
+    result['rpc_statuses']={'receipt':'available','collateral':'available','ctf':'available'}
+    proof=tmp_path/'proof';proof.mkdir()
+    for name,rows in [('original_rows',original),('normalized_native',native),('transfers',transfers),('wallet_collateral_flows',wallets)]:
+        pq.write_table(pa.Table.from_pylist(rows),proof/(name+'.parquet'))
+    (proof/'native_receipt.json').write_text(json.dumps(receipt))
+    (proof/'asset_getter_results.json').write_text(json.dumps({'collateral':'0x'+'00'*12+collateral[2:],'ctf':'0x'+'00'*12+ctf[2:]}))
+    (proof/'summary.json').write_text(json.dumps(result))
+    manifest={'status':'verified_native_observations_only',
+        'inputs':{'source_manifest':fingerprint(source/'manifest.json'),'source_exclusions':fingerprint(source/'source_exclusions.parquet'),
+                  'market_tokens':fingerprint(tokens)},
+        'outputs':{p.name:artifact_fingerprint(p) for p in proof.iterdir()}}
+    (proof/'manifest.json').write_text(json.dumps(manifest))
+    return proof/'manifest.json',tokens
+
+
+def test_surplus_loader_replays_native_event_set_and_payout_instead_of_trusting_amount(tmp_path):
+    manifest,tokens=saved_surplus_proof(tmp_path)
+    cases,originals,lineage=load_verified_settlement_surpluses([manifest],tokens)
+    assert len(cases)==1 and len(originals)==2 and len(lineage)==1
+    assert cases[0]['settlement_surplus_cash_micro']==8_000_000
+    assert cases[0]['effective_cash_micro']==83_700
+    assert cases[0]['original_taking_micro']==8_083_700
+    assert next(iter(lineage.values()))['status']=='verified_complete_native_sell_collateral_surplus'
+    with pytest.raises(ValueError,match='duplicates'):
+        load_verified_settlement_surpluses([manifest,manifest],tokens)
+
+
+@pytest.mark.parametrize('failure',['fingerprint','summary_amount','receipt_payout','complete_log_set','source_lineage'])
+def test_surplus_loader_fails_closed_on_changed_or_unreproducible_native_proof(tmp_path,failure):
+    manifest,tokens=saved_surplus_proof(tmp_path)
+    metadata=json.loads(manifest.read_text())
+    if failure=='source_lineage': metadata['inputs']['source_manifest']['sha256']='0'*64
+    elif failure in ('fingerprint','summary_amount'):
+        path=manifest.parent/'summary.json';summary=json.loads(path.read_text())
+        summary['matched_cash_raw']=83_701;path.write_text(json.dumps(summary))
+        if failure=='summary_amount':metadata['outputs'][path.name]=artifact_fingerprint(path)
+    else:
+        path=manifest.parent/'native_receipt.json';receipt=json.loads(path.read_text())
+        if failure=='receipt_payout':receipt['logs'][-2]['data']='0x'+f'{83_700:064x}'
+        else:receipt['logs'].pop()
+        path.write_text(json.dumps(receipt));metadata['outputs'][path.name]=artifact_fingerprint(path)
+    manifest.write_text(json.dumps(metadata))
+    with pytest.raises(ValueError,match='Settlement surplus'):
+        load_verified_settlement_surpluses([manifest],tokens)
+
+
+def test_full_selected_replay_restores_original_refund_and_exclusion_payloads_exactly(tmp_path):
+    from analysis.diagnostics.build_profit_taking_source import prepare_source_replay,reconcile_source
+    refund=[row('SELL',block=2,log=7,tx='refund'),
+            row('BUY',c=90,wallet='active',taker=EXCHANGE,block=2,log=8,tx='refund')]
+    proof,tokens=saved_surplus_proof(tmp_path,refund)
+    parent=Path(json.loads(proof.read_text())['inputs']['source_manifest']['path'])
+    con=duckdb.connect()
+    try:
+        counts,lineage=prepare_source_replay(con,parent,tokens)
+        replayed=con.execute('SELECT '+','.join(RAW_FIELDS)+' FROM exact_logs ORDER BY block_number,log_index').fetchall()
+        original=sorted([*refund,*rejected_case()[0]],key=lambda r:(r['block_number'],r['log_index']))
+        assert replayed==[tuple(r[k] for k in RAW_FIELDS) for r in original]
+        assert lineage['restored_original_logs']==4 and counts['distinct_log_rows']==4
+        cases,originals,_=load_verified_settlement_surpluses([proof],tokens)
+        result=reconcile_source(con,cases,originals)
+        assert result['accepted_own_actions']==4 and result['rejected_relevant_batches']==0
+        assert result['accepted_refund_batches']==1 and result['accepted_settlement_surplus_batches']==1
+    finally:con.close()
+
+
+@pytest.mark.parametrize('failure',['omitted_exclusions','omitted_own_action','unscoped','spine','duplicate_identity'])
+def test_source_replay_rejects_accepted_subset_population_or_identity_changes(tmp_path,failure):
+    from analysis.diagnostics.build_profit_taking_source import prepare_source_replay
+    records=[row('SELL',block=2,log=7,tx='ordinary'),
+             row('BUY',wallet='active',taker=EXCHANGE,block=2,log=8,tx='ordinary')]
+    proof,tokens=saved_surplus_proof(tmp_path,records)
+    parent=Path(json.loads(proof.read_text())['inputs']['source_manifest']['path'])
+    metadata=json.loads(parent.read_text())
+    if failure=='unscoped':metadata['counts']['unscoped_batches']=1
+    elif failure=='spine':metadata['inputs']['market_tokens']['sha256']='0'*64
+    else:
+        filename='source_exclusions.parquet' if failure=='omitted_exclusions' else 'own_actions.parquet'
+        path=parent.parent/filename;table=pq.read_table(path)
+        if failure=='duplicate_identity':
+            rows=table.to_pylist();rows[1]['log_index']=rows[0]['log_index'];table=pa.Table.from_pylist(rows,schema=table.schema)
+        else:table=table.slice(0,table.num_rows-1)
+        pq.write_table(table,path);metadata['outputs'][filename]=artifact_fingerprint(path)
+    parent.write_text(json.dumps(metadata))
+    con=duckdb.connect()
+    try:
+        with pytest.raises(ValueError):prepare_source_replay(con,parent,tokens)
+    finally:con.close()
+
+
+def test_fresh_replay_publication_records_proof_paths_counts_and_revalidates_native_evidence(tmp_path,monkeypatch,synthetic_git_provenance):
+    from analysis.diagnostics import build_profit_taking_source as builder
+    proof,tokens=saved_surplus_proof(tmp_path)
+    parent=Path(json.loads(proof.read_text())['inputs']['source_manifest']['path'])
+    raw_path=Path(json.loads(parent.read_text())['inputs']['raw_events']['path'])
+    for name in ('pilot','receipts'):
+        path=tmp_path/name;path.mkdir();(path/'manifest.json').write_text('{}')
+    monkeypatch.setattr(builder,'require_native_pilot',lambda *paths:None)
+    args=Namespace(raw_events=raw_path,market_tokens=tokens,source_pilot=tmp_path/'pilot',receipt_pilot=tmp_path/'receipts',
+        run_dir=tmp_path/'source-v2',temp_directory=tmp_path/'spill',threads=1,memory_limit='1GB',
+        surplus_receipt_manifest=[proof],source_replay_manifest=parent)
+    result=builder.run(args)
+    saved=json.loads((args.run_dir/'manifest.json').read_text())
+    assert result['status']=='complete' and result['counts']['accepted_own_actions']==2
+    assert saved['command_arguments']['surplus_receipt_manifest']==[str(proof)]
+    assert saved['source_extraction']['mode']=='complete_selected_original_log_replay'
+    assert saved['counts']['accepted_settlement_surplus_cash_micro']==8_000_000
+    assert (parent.parent/'manifest.json').is_file()
+    support,_=full_source_support(args.run_dir,tokens,10)
+    assert support['settlement_surplus_gates']['status']=='verified_complete_native_sell_collateral_surplus'
+    assert support['counts']['rejected_relevant_batches']==0
+
+
+def test_source_publication_reopens_native_proof_and_refuses_midrun_mutation(tmp_path,monkeypatch,synthetic_git_provenance):
+    from analysis.diagnostics import build_profit_taking_source as builder
+    proof,tokens=saved_surplus_proof(tmp_path)
+    parent=Path(json.loads(proof.read_text())['inputs']['source_manifest']['path'])
+    raw_path=Path(json.loads(parent.read_text())['inputs']['raw_events']['path'])
+    for name in ('pilot','receipts'):
+        path=tmp_path/name;path.mkdir();(path/'manifest.json').write_text('{}')
+    monkeypatch.setattr(builder,'require_native_pilot',lambda *paths:None)
+    def mutate_after_saved_outputs(message):
+        if message=='validating first extraction lineage':
+            (proof.parent/'native_receipt.json').write_text('{}')
+    monkeypatch.setattr(builder,'progress',mutate_after_saved_outputs)
+    args=Namespace(raw_events=raw_path,market_tokens=tokens,source_pilot=tmp_path/'pilot',receipt_pilot=tmp_path/'receipts',
+        run_dir=tmp_path/'source-v2',temp_directory=tmp_path/'spill',threads=1,memory_limit='1GB',
+        surplus_receipt_manifest=[proof],source_replay_manifest=parent)
+    with pytest.raises(ValueError,match='native proof artifact fingerprint'):
+        builder.run(args)
+    assert not args.run_dir.exists()
+
+
+def test_full_source_and_fifo_exclude_surplus_payment_from_trading_profit(tmp_path,monkeypatch,synthetic_git_provenance):
+    from analysis.diagnostics import build_profit_taking_source as builder
+    from analysis.diagnostics.build_profit_taking_ledger import build_ledger,parse_args
+    active=rejected_case()[0][-1]['maker']
+    earlier=[row('SELL',q=90_000,c=85_500,wallet='0x'+'44'*20,taker=active,block=0,log=1,tx='prior'),
+             row('BUY',q=90_000,c=85_500,wallet=active,taker=EXCHANGE,block=0,log=3,tx='prior')]
+    proof,tokens=saved_surplus_proof(tmp_path,earlier)
+    parent=Path(json.loads(proof.read_text())['inputs']['source_manifest']['path'])
+    raw_path=Path(json.loads(parent.read_text())['inputs']['raw_events']['path'])
+    for name in ('pilot','receipts'):
+        path=tmp_path/name;path.mkdir();(path/'manifest.json').write_text('{}')
+    monkeypatch.setattr(builder,'require_native_pilot',lambda *paths:None)
+    args=Namespace(raw_events=raw_path,market_tokens=tokens,source_pilot=tmp_path/'pilot',receipt_pilot=tmp_path/'receipts',
+        run_dir=tmp_path/'source-v2',temp_directory=tmp_path/'spill',threads=1,memory_limit='1GB',
+        surplus_receipt_manifest=[proof],source_replay_manifest=parent)
+    builder.run(args)
+    ledger_args=parse_args(['--own-actions',str(args.run_dir/'own_actions.parquet'),'--market-tokens',str(tokens),
+        '--source-manifest',str(args.run_dir/'manifest.json'),'--run-dir',str(tmp_path/'ledger'),
+        '--threads','1','--memory-limit','1GB','--batch-size','2'])
+    ledger=build_ledger(ledger_args)
+    rows=pq.read_table(tmp_path/'ledger/action_tags.parquet').to_pylist()
+    sale=next(r for r in rows if r['wallet']==active and r['side']=='SELL')
+    assert sale['gross_cash_micro']==83_700 and sale['settlement_surplus_cash_micro']==8_000_000
+    assert sale['net_sale_cash_micro']==83_700
+    assert sale['matched_profit_usdc']==pytest.approx(-0.0018)
+    assert sale['favorite_at_exit'] and sale['primary_exit_quantity_micro']==0
+    assert sale['gross_profitable_disposal_quantity_micro']==0
+    assert ledger['source_stage_gates']['settlement_surplus_gates']['status']=='verified_complete_native_sell_collateral_surplus'

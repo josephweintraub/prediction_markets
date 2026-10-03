@@ -58,7 +58,7 @@ def own(side: str, token: str, block: int, log: int, wallet: str, qty: int, cash
         source_role="active_aggregate" if active else "passive",source_status="verified_own_action",
         source_contract_version="legacy_reserved_making_v1",fee_rule="received_asset",
         aggregate_reconciled=active,original_maker_amount_filled=making,
-        original_taker_amount_filled=taking,refund_making_micro=0)
+        original_taker_amount_filled=taking,refund_making_micro=0,settlement_surplus_cash_micro=0)
 
 
 def fixture(tmp_path: Path):
@@ -255,6 +255,16 @@ def test_native_proof_if_present_must_match_saved_parent_evidence(tmp_path: Path
         build_contribution(args)
 
 
+def test_saved_ledger_surplus_proof_must_match_exact_source_proof_object(tmp_path: Path) -> None:
+    args=fixture(tmp_path)
+    ledger=json.loads(args.ledger_manifest.read_text())
+    ledger["source_stage_gates"]["settlement_surplus_gates"]["policy"]="changed proof policy"
+    args.ledger_manifest.write_text(json.dumps(ledger))
+    with pytest.raises(ValueError,match="Ledger settlement-surplus proof differs"):
+        build_contribution(args)
+    assert not args.run_dir.exists()
+
+
 def test_mechanism_summary_keeps_merge_sales_without_synthetic_buy_observations(tmp_path: Path) -> None:
     args=fixture(tmp_path)
     actions=pq.read_table(args.own_actions).to_pylist()
@@ -289,3 +299,74 @@ def test_mechanism_summary_keeps_merge_sales_without_synthetic_buy_observations(
     assert row["allocated_primary_merge_quantity_micro"]==pytest.approx(300)
     assert row["allocated_unmatched_merge_quantity_micro"]==pytest.approx(300)
     assert row["population"]=="all_own_actions_no_price_or_actor_filter"
+
+
+@pytest.mark.parametrize("mutate_receipt",[False,True])
+def test_positive_native_surplus_proof_is_reopened_before_contribution_publication(
+    tmp_path: Path,monkeypatch: pytest.MonkeyPatch,mutate_receipt: bool,
+) -> None:
+    """Reuse the actual synthetic native receipt fixture, not a mocked proof."""
+    from argparse import Namespace
+    import test_profit_taking_source_audit as native_fixture
+    from analysis.diagnostics import build_profit_taking_source as source_builder
+    from analysis.diagnostics import build_profit_taking_contribution as module
+
+    args=fixture(tmp_path)
+    native_root=tmp_path/"native-case"
+    native_root.mkdir()
+    original_published_source=native_fixture.published_source
+    def source_with_resolved_tokens(path,records):
+        source,raw,tokens=original_published_source(path,records)
+        rows=pq.read_table(tokens).to_pylist()
+        for record in rows: record["won"]=record["token_id"]=="1"
+        pq.write_table(pa.Table.from_pylist(rows),tokens)
+        manifest=json.loads((source/"manifest.json").read_text())
+        manifest["inputs"]["market_tokens"]=fingerprint(tokens)
+        (source/"manifest.json").write_text(json.dumps(manifest))
+        return source,raw,tokens
+    monkeypatch.setattr(native_fixture,"published_source",source_with_resolved_tokens)
+    monkeypatch.setattr(source_builder,"require_native_pilot",lambda *paths:None)
+    monkeypatch.setattr(source_builder.subprocess,"check_output",
+        lambda command,**kwargs:"synthetic-test-commit\n" if command[1]=="rev-parse" else "")
+    proof,tokens=native_fixture.saved_surplus_proof(native_root)
+    parent=Path(json.loads(proof.read_text())["inputs"]["source_manifest"]["path"])
+    raw=Path(json.loads(parent.read_text())["inputs"]["raw_events"]["path"])
+    for name in ("pilot","receipts"):
+        directory=native_root/name;directory.mkdir();(directory/"manifest.json").write_text("{}")
+    source=native_root/"source-verified"
+    source_builder.run(Namespace(raw_events=raw,market_tokens=tokens,
+        source_pilot=native_root/"pilot",receipt_pilot=native_root/"receipts",
+        run_dir=source,temp_directory=native_root/"spill",threads=1,memory_limit="1GB",
+        surplus_receipt_manifest=[proof],source_replay_manifest=parent))
+    ledger=native_root/"ledger-verified"
+    build_ledger(ledger_args(["--own-actions",str(source/"own_actions.parquet"),"--market-tokens",str(tokens),
+        "--source-manifest",str(source/"manifest.json"),"--run-dir",str(ledger),"--threads","1","--memory-limit","1GB"]))
+    args.own_actions=source/"own_actions.parquet"
+    args.batch_links=source/"batch_links.parquet"
+    args.source_manifest=source/"manifest.json"
+    args.action_tags=ledger/"action_tags.parquet"
+    args.ledger_manifest=ledger/"manifest.json"
+    args.market_tokens=tokens
+    original_summary=module.create_sport_contribution_summaries
+    changed=False
+    def mutate_after_classification(con,relation,**kwargs):
+        nonlocal changed
+        result=original_summary(con,relation,**kwargs)
+        if mutate_receipt and not changed:
+            changed=True
+            (proof.parent/"native_receipt.json").write_text("{}")
+        return result
+    monkeypatch.setattr(module,"create_sport_contribution_summaries",mutate_after_classification)
+    if mutate_receipt:
+        with pytest.raises(ValueError,match="native proof artifact fingerprint"):
+            build_contribution(args)
+        assert not args.run_dir.exists()
+    else:
+        manifest=build_contribution(args)
+        gate=manifest["parent_stage_gates"]["source"]["settlement_surplus_gates"]
+        assert gate["status"]=="verified_complete_native_sell_collateral_surplus"
+        assert len(gate["cases"])==1 and len(gate["proof_lineage"])==1
+        assert gate["cases"][0]["settlement_surplus_cash_micro"]==8_000_000
+        assert manifest["counts"]["own_order_event"]==manifest["counts"]["matched_execution"]==1
+        totals=pq.read_table(args.run_dir/"grain_totals.parquet").to_pylist()
+        assert {row["gross_cash_micro"] for row in totals}=={Decimal(83_700)}

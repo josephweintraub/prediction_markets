@@ -19,10 +19,13 @@ import sys
 from typing import Any
 
 import duckdb
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from analysis.diagnostics.profit_taking_actions import EXCHANGE_CONTRACTS, RAW_FIELDS
-from analysis.diagnostics.profit_taking_source_audit import parquet_metadata, validate_complements
+from analysis.diagnostics.profit_taking_source_audit import (
+    load_verified_settlement_surpluses, parquet_metadata, validate_complements,
+)
 from analysis.sports_game_dynamics.artifacts import artifact_fingerprint, fingerprint, fresh_run, quoted, write_json
 from production_guard import require_production_host
 
@@ -53,11 +56,18 @@ def prepare_source(con: duckdb.DuckDBPyConnection, raw_events: Path, market_toke
     con.execute("""CREATE TEMP TABLE selected_raw AS SELECT r.* FROM raw_source r
         JOIN selected_keys k USING(transaction_hash,exchange_address)""")
     counts["selected_raw_rows"]=count(con,"SELECT count(*) FROM selected_raw")
-    con.execute("CREATE TEMP TABLE exact_logs AS SELECT DISTINCT * FROM selected_raw")
+    con.execute("CREATE TEMP TABLE exact_log_rows AS SELECT DISTINCT * FROM selected_raw")
+    con.execute('CREATE TEMP VIEW exact_logs AS SELECT * FROM exact_log_rows')
     counts["distinct_log_rows"]=count(con,"SELECT count(*) FROM exact_logs")
     counts["exact_replays_removed"]=counts["selected_raw_rows"]-counts["distinct_log_rows"]
     con.execute("DROP TABLE selected_raw")
     con.execute("DROP TABLE selected_keys")
+    validate_exact_logs(con)
+    progress(f"exact log identities: {counts['distinct_log_rows']}; replays: {counts['exact_replays_removed']}")
+    return counts
+
+
+def validate_exact_logs(con: duckdb.DuckDBPyConnection) -> None:
     if count(con,"""SELECT count(*) FROM (SELECT transaction_hash,log_index,exchange_address
                      FROM exact_logs GROUP BY 1,2,3 HAVING count(*)<>1)"""):
         raise ValueError("Conflicting payloads under one original log identity")
@@ -75,12 +85,95 @@ def prepare_source(con: duckdb.DuckDBPyConnection, raw_events: Path, market_toke
     if count(con,"""SELECT count(*) FROM (SELECT transaction_hash,exchange_address FROM exact_logs
                      GROUP BY 1,2 HAVING count(DISTINCT block_number)<>1)"""):
         raise ValueError("One transaction/exchange group spans contradictory blocks")
-    progress(f"exact log identities: {counts['distinct_log_rows']}; replays: {counts['exact_replays_removed']}")
-    return counts
 
 
-def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
+def prepare_source_replay(con: duckdb.DuckDBPyConnection, source_manifest: Path,
+                          market_tokens: Path) -> tuple[dict[str,int],dict[str,Any]]:
+    """Restore the entire selected original-log population, never an accepted subset."""
+    if source_manifest.name!='manifest.json':
+        raise ValueError('Source replay requires the original extraction manifest.json')
+    parent=json.loads(source_manifest.read_text()); expected=parent.get('counts',{})
+    if parent.get('status') not in ('complete','blocked_source_reconciliation'):
+        raise ValueError('Source replay parent is not a published full extraction')
+    if parent.get('inputs',{}).get('market_tokens')!=fingerprint(market_tokens):
+        raise ValueError('Source replay token spine differs from the first full extraction')
+    required=('selected_transaction_exchange_keys','selected_raw_rows','distinct_log_rows','exact_replays_removed',
+              'accepted_own_actions','rejected_relevant_batches','unscoped_batches','orphan_scoped_logs','orphan_unscoped_logs')
+    if any(isinstance(expected.get(k),bool) or not isinstance(expected.get(k),int) or expected[k]<0 for k in required):
+        raise ValueError('Source replay parent lacks complete selected-population counts')
+    if any(expected[k] for k in ('unscoped_batches','orphan_scoped_logs','orphan_unscoped_logs')):
+        raise ValueError('Source replay cannot recover unscoped batches or orphan populations')
+    if expected['selected_raw_rows']-expected['exact_replays_removed']!=expected['distinct_log_rows']:
+        raise ValueError('Source replay parent raw/replay counts do not reconcile')
+    paths={name:source_manifest.parent/name for name in ('own_actions.parquet','source_exclusions.parquet','batch_audit.parquet','summary.json')}
+    for name,path in paths.items():
+        if parent.get('outputs',{}).get(name)!=artifact_fingerprint(path):
+            raise ValueError('Source replay artifact differs from the parent extraction: '+name)
+    summary=json.loads(paths['summary.json'].read_text())
+    if summary.get('counts')!=expected or summary.get('status')!=parent.get('status'):
+        raise ValueError('Source replay saved summary differs from its full extraction manifest')
+    own_count=pq.ParquetFile(paths['own_actions.parquet']).metadata.num_rows
+    exclusion_count=pq.ParquetFile(paths['source_exclusions.parquet']).metadata.num_rows
+    if own_count!=expected['accepted_own_actions'] or own_count+exclusion_count!=expected['distinct_log_rows']:
+        raise ValueError('Source replay cannot restore every selected original log')
+    validate_complements(pq.read_table(market_tokens,columns=['token_id','market_id','complement_token_id']).to_pylist())
+    con.execute(f"CREATE TEMP TABLE tokens AS SELECT token_id::VARCHAR token_id,market_id::VARCHAR market_id,"
+                f"complement_token_id::VARCHAR complement_token_id FROM read_parquet('{quoted(market_tokens)}')")
+    restored=','.join(('original_'+name+' AS '+name) if name in ('maker_amount_filled','taker_amount_filled') else name for name in RAW_FIELDS)
+    con.execute(f'''CREATE TEMP VIEW exact_logs AS
+        SELECT {restored} FROM read_parquet('{quoted(paths['own_actions.parquet'])}')
+        UNION ALL SELECT {','.join(RAW_FIELDS)} FROM read_parquet('{quoted(paths['source_exclusions.parquet'])}')''')
+    validate_exact_logs(con)
+    observed=count(con,'SELECT count(*) FROM exact_logs')
+    keys=count(con,'SELECT count(*) FROM (SELECT DISTINCT transaction_hash,exchange_address FROM exact_logs)')
+    if observed!=expected['distinct_log_rows'] or keys!=expected['selected_transaction_exchange_keys']:
+        raise ValueError('Source replay original-log or complete transaction population differs')
+    rejected=count(con,f"SELECT count(*) FROM read_parquet('{quoted(paths['batch_audit.parquet'])}') WHERE status NOT IN ('accepted','unscoped_batch')")
+    if rejected!=expected['rejected_relevant_batches']:
+        raise ValueError('Source replay rejected batch population differs')
+    counts={name:expected[name] for name in required[:4]}
+    lineage={'mode':'complete_selected_original_log_replay','parent_manifest':fingerprint(source_manifest),
+        'original_raw_events':parent['inputs']['raw_events'],'original_raw_source':summary['raw_source'],
+        'artifacts':{name:artifact_fingerprint(path) for name,path in paths.items()},
+        'restored_original_logs':observed,'restored_transaction_exchange_keys':keys,
+        'policy':'Restore original RAW_FIELDS amounts from every own action plus all excluded original rows. First raw extraction and exact replay removal remain the coverage provenance.'}
+    progress(f'complete source replay: {observed} original logs; {keys} transaction/exchange groups')
+    return counts,lineage
+
+
+def reconcile_source(con: duckdb.DuckDBPyConnection, surplus_cases: list[dict[str,Any]] | None = None,
+                     surplus_original_rows: list[dict[str,Any]] | None = None) -> dict[str,int]:
     """Exact SQL equivalent of the small verified reserved aggregate wrapper."""
+    cases=surplus_cases or []; original_rows=surplus_original_rows or []
+    if bool(cases)!=bool(original_rows):
+        raise ValueError('Settlement surplus cases require their complete original source groups')
+    schema=pa.schema([('active_execution_id',pa.string()),('settlement_surplus_cash_micro',pa.int64()),
+        ('effective_quantity_micro',pa.int64()),('effective_cash_micro',pa.int64()),
+        ('original_making_micro',pa.int64()),('original_taking_micro',pa.int64()),
+        ('settlement_surplus_proof_id',pa.string())])
+    con.register('incoming_surplus_cases',pa.Table.from_pylist(cases,schema=schema))
+    con.execute('''CREATE TEMP TABLE surplus_proofs AS SELECT active_execution_id,
+        settlement_surplus_cash_micro proof_surplus_cash_micro,
+        effective_quantity_micro proof_quantity_micro,effective_cash_micro proof_cash_micro,
+        original_making_micro proof_making_micro,original_taking_micro proof_taking_micro,
+        settlement_surplus_proof_id FROM incoming_surplus_cases''')
+    con.unregister('incoming_surplus_cases')
+    if cases:
+        if count(con,'SELECT count(*) FROM (SELECT active_execution_id FROM surplus_proofs GROUP BY 1 HAVING count(*)<>1)'):
+            raise ValueError('Duplicate settlement surplus proof execution identities')
+        con.register('incoming_surplus_originals',pa.Table.from_pylist(original_rows))
+        con.execute('CREATE TEMP TABLE surplus_originals AS SELECT '+','.join(RAW_FIELDS)+' FROM incoming_surplus_originals')
+        con.unregister('incoming_surplus_originals')
+        fields=','.join(RAW_FIELDS)
+        mismatch=count(con,f'''SELECT count(*) FROM (
+            (SELECT {fields} FROM exact_logs JOIN (SELECT DISTINCT transaction_hash,exchange_address
+               FROM surplus_originals) USING(transaction_hash,exchange_address)
+             EXCEPT SELECT {fields} FROM surplus_originals)
+            UNION ALL
+            (SELECT {fields} FROM surplus_originals EXCEPT SELECT {fields} FROM exact_logs))''')
+        if mismatch:
+            raise ValueError('Settlement surplus proof does not cover the exact complete raw transaction/exchange group')
+        con.execute('DROP TABLE surplus_originals')
     versions="CASE "+" ".join(f"WHEN lower(exchange_address)='{address}' THEN '{version}'"
                                for address,(version,_) in EXCHANGE_CONTRACTS.items())+" END"
     fees="CASE "+" ".join(f"WHEN lower(exchange_address)='{address}' THEN '{fee}'"
@@ -101,7 +194,8 @@ def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
          OR taker_amount_filled IS NULL OR maker_amount_filled<0 OR taker_amount_filled<0
          OR fee IS NULL OR fee<0) invalid_base
         FROM exact_logs""")
-    con.execute("DROP TABLE exact_logs")
+    con.execute('DROP VIEW exact_logs')
+    con.execute('DROP TABLE IF EXISTS exact_log_rows')
     con.execute("""CREATE TEMP TABLE links_candidate AS SELECT
         m.execution_id maker_execution_id,a.execution_id active_execution_id,
         m.transaction_hash,m.exchange_address,m.batch_number,
@@ -142,7 +236,19 @@ def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
           CASE WHEN side='BUY' THEN effective_cash_micro ELSE effective_quantity_micro END effective_making_micro,
           CASE WHEN side='BUY' THEN effective_quantity_micro ELSE effective_cash_micro END effective_taking_micro
           FROM summed)
-        SELECT *,original_making_micro-effective_making_micro refund_making_micro,
+        SELECT measured.*,original_making_micro-effective_making_micro refund_making_micro,
+          CASE WHEN side='SELL' AND source_contract_version='legacy_reserved_making_v1'
+               AND p.active_execution_id IS NOT NULL
+               AND p.proof_making_micro=measured.original_making_micro
+               AND p.proof_taking_micro=measured.original_taking_micro
+               AND p.proof_quantity_micro=measured.effective_quantity_micro
+               AND p.proof_cash_micro=measured.effective_cash_micro
+               AND p.proof_surplus_cash_micro>0
+               AND original_taking_micro-effective_taking_micro=p.proof_surplus_cash_micro
+               THEN p.proof_surplus_cash_micro ELSE 0 END::BIGINT settlement_surplus_cash_micro,
+          p.settlement_surplus_proof_id,
+          CASE WHEN settlement_surplus_cash_micro>0 THEN 'verified_complete_native_sell_collateral_surplus'
+               ELSE 'not_applicable' END settlement_surplus_proof_status,
           CASE WHEN market_id IS NULL AND scoped_passive_logs=0 THEN 'unscoped_batch'
                WHEN market_id IS NULL THEN 'scoped_passive_with_unscoped_active'
                WHEN passive_logs=0 THEN 'aggregate_without_maker_legs'
@@ -151,11 +257,11 @@ def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
                WHEN invalid_matches>0 THEN 'contradictory_match_assets_or_directions'
                WHEN effective_quantity_micro<=0 OR effective_cash_micro<0
                     OR effective_cash_micro>effective_quantity_micro THEN 'invalid_effective_execution_price'
-               WHEN original_taking_micro<>effective_taking_micro THEN 'aggregate_received_amount_mismatch'
+               WHEN original_taking_micro<>effective_taking_micro+settlement_surplus_cash_micro THEN 'aggregate_received_amount_mismatch'
                WHEN original_making_micro<effective_making_micro THEN 'reserved_making_below_effective_spending'
                WHEN side='BUY' AND fee_rule='received_asset' AND fee>=effective_quantity_micro THEN 'nonpositive_net_acquisition'
                WHEN side='SELL' AND fee>effective_cash_micro THEN 'sale_fee_exceeds_collateral_proceeds'
-               ELSE 'accepted' END status FROM measured""")
+               ELSE 'accepted' END status FROM measured LEFT JOIN surplus_proofs p USING(active_execution_id)""")
     con.execute("""CREATE TEMP TABLE orphan_logs AS SELECT e.* FROM events e
        LEFT JOIN batches b ON e.transaction_hash=b.transaction_hash AND e.exchange_address=b.exchange_address
                           AND e.batch_number=b.batch_number
@@ -166,7 +272,11 @@ def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
             "rejected_relevant_batches":count(con,"SELECT count(*) FROM batches WHERE status NOT IN ('accepted','unscoped_batch')"),
             "orphan_scoped_logs":count(con,"SELECT count(*) FROM orphan_logs JOIN tokens USING(token_id)"),
             "orphan_unscoped_logs":count(con,"SELECT count(*) FROM orphan_logs ANTI JOIN tokens USING(token_id)"),
-            "accepted_refund_batches":count(con,"SELECT count(*) FROM batches WHERE status='accepted' AND refund_making_micro>0")}
+            "accepted_refund_batches":count(con,"SELECT count(*) FROM batches WHERE status='accepted' AND refund_making_micro>0"),
+            "accepted_settlement_surplus_batches":count(con,"SELECT count(*) FROM batches WHERE status='accepted' AND settlement_surplus_cash_micro>0"),
+            "accepted_settlement_surplus_cash_micro":count(con,"SELECT coalesce(sum(settlement_surplus_cash_micro),0) FROM batches WHERE status='accepted'")}
+    if counts['accepted_settlement_surplus_batches']!=len(cases):
+        raise ValueError('Settlement surplus proofs do not match every accepted exceptional source batch')
     con.execute("""CREATE TEMP TABLE accepted_links AS SELECT l.maker_execution_id,l.active_execution_id,
          l.kind,l.quantity_micro,l.passive_cash_micro,l.active_cash_micro FROM links_candidate l
          JOIN batches b USING(active_execution_id) WHERE b.status='accepted'""")
@@ -178,7 +288,8 @@ def reconcile_source(con: duckdb.DuckDBPyConnection) -> dict[str,int]:
           CASE WHEN e.is_aggregate THEN 'active_aggregate' ELSE 'passive' END source_role,
           'verified_own_action' source_status,e.source_contract_version,e.fee_rule,e.is_aggregate aggregate_reconciled,
           e.maker_amount_filled original_maker_amount_filled,e.taker_amount_filled original_taker_amount_filled,
-          CASE WHEN e.is_aggregate THEN b.refund_making_micro ELSE 0 END::BIGINT refund_making_micro
+          CASE WHEN e.is_aggregate THEN b.refund_making_micro ELSE 0 END::BIGINT refund_making_micro,
+          CASE WHEN e.is_aggregate THEN b.settlement_surplus_cash_micro ELSE 0 END::BIGINT settlement_surplus_cash_micro
         FROM events e JOIN tokens t USING(token_id)
         JOIN batches b ON e.transaction_hash=b.transaction_hash AND e.exchange_address=b.exchange_address
                       AND e.batch_number=b.batch_number WHERE b.status='accepted'""")
@@ -220,7 +331,11 @@ def run(args: argparse.Namespace) -> dict[str,Any]:
         raise ValueError("Full source build requires at least 25GiB available")
     metadata,_=parquet_metadata(args.raw_events)
     require_native_pilot(args.source_pilot,args.receipt_pilot)
-    inputs=[args.raw_events,args.market_tokens,args.source_pilot,args.receipt_pilot]
+    proof_paths=getattr(args,'surplus_receipt_manifest',[]) or []
+    surplus_cases,surplus_originals,surplus_lineage=load_verified_settlement_surpluses(proof_paths,args.market_tokens)
+    replay_manifest=getattr(args,'source_replay_manifest',None)
+    inputs=[args.raw_events,args.market_tokens,args.source_pilot,args.receipt_pilot,*proof_paths]
+    if replay_manifest is not None:inputs.append(replay_manifest)
     with fresh_run(args.run_dir,inputs) as staging:
         con=duckdb.connect()
         try:
@@ -228,8 +343,14 @@ def run(args: argparse.Namespace) -> dict[str,Any]:
             con.execute(f"SET memory_limit='{args.memory_limit}'")
             con.execute(f"SET temp_directory='{quoted(args.temp_directory)}'")
             con.execute("SET max_temp_directory_size='12GB'")
-            counts=prepare_source(con,args.raw_events,args.market_tokens)
-            counts.update(reconcile_source(con))
+            replay_lineage=None
+            if replay_manifest is None:
+                counts=prepare_source(con,args.raw_events,args.market_tokens)
+            else:
+                counts,replay_lineage=prepare_source_replay(con,replay_manifest,args.market_tokens)
+                if metadata!=replay_lineage['original_raw_source']:
+                    raise ValueError('Source replay raw footer/vintage differs from the first extraction')
+            counts.update(reconcile_source(con,surplus_cases,surplus_originals))
             outputs={"own_actions.parquet":("own_actions","market_id,block_number,log_index,exchange_address"),
                      "batch_links.parquet":("accepted_links","active_execution_id,maker_execution_id"),
                      "batch_audit.parquet":("batches","block_number,log_index,exchange_address"),
@@ -254,17 +375,35 @@ def run(args: argparse.Namespace) -> dict[str,Any]:
             result={"analysis":"protocol_aware_sports_own_action_source","status":status,"counts":counts,
                     "raw_source":metadata,"grains":{"own_actions":"one original own OrderFilled log",
                     "batch_links":"one passive leg; active aggregate not duplicated"},
+                    "settlement_surplus_proofs":surplus_lineage,
+                    "source_extraction":replay_lineage or {'mode':'two_pass_raw_selected_transaction_extraction'},
+                    "settlement_cash_contract":"Effective amounts are matched execution cash. Verified legacy SELL excess settlement is preserved separately and excluded from trading profit.",
                     "limits":"Observed exchange actions, not complete holdings or causal counterfactuals."}
             write_json(staging/"summary.json",result)
-            progress("fingerprinting full raw source after scoped extraction")
+            progress("validating first extraction lineage" if replay_lineage else "fingerprinting full raw source after scoped extraction")
+            raw_input=replay_lineage['original_raw_events'] if replay_lineage else fingerprint(args.raw_events)
+            if any(case['raw_events']!=raw_input for case in surplus_lineage.values()):
+                raise ValueError('Settlement surplus proof raw-source vintage differs from the full source build')
+            if load_verified_settlement_surpluses(proof_paths,args.market_tokens)!=(surplus_cases,surplus_originals,surplus_lineage):
+                raise ValueError('Immutable settlement surplus proof changed during source publication')
+            if replay_lineage is not None:
+                if fingerprint(replay_manifest)!=replay_lineage['parent_manifest'] or any(
+                        artifact_fingerprint(replay_manifest.parent/name)!=value for name,value in replay_lineage['artifacts'].items()):
+                    raise ValueError('Immutable complete source replay input changed during publication')
             write_json(staging/"manifest.json",{"status":status,"created_utc":datetime.now(timezone.utc).isoformat(),
                 "code":{"commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
                         "dirty_status":subprocess.check_output(["git","status","--porcelain"],text=True)},
                 "environment":{"python":sys.version,"platform":platform.platform(),"duckdb":duckdb.__version__},
-                "inputs":{"raw_events":fingerprint(args.raw_events),"market_tokens":fingerprint(args.market_tokens),
+                "inputs":{"raw_events":raw_input,"market_tokens":fingerprint(args.market_tokens),
                           "source_pilot_manifest":fingerprint(args.source_pilot/"manifest.json"),
-                          "receipt_manifest":fingerprint(args.receipt_pilot/"manifest.json")},
-                "command_arguments":{k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
+                          "receipt_manifest":fingerprint(args.receipt_pilot/"manifest.json"),
+                          "surplus_receipt_manifests":[fingerprint(p) for p in proof_paths],
+                          "source_replay_manifest":fingerprint(replay_manifest) if replay_manifest else None},
+                "settlement_surplus_proofs":surplus_lineage,
+                "source_extraction":replay_lineage or {'mode':'two_pass_raw_selected_transaction_extraction'},
+                "command_arguments":{k:str(v) if isinstance(v,Path) else
+                    [str(p) if isinstance(p,Path) else p for p in v] if isinstance(v,list) else v
+                    for k,v in vars(args).items()},
                 "counts":counts,"outputs":{p.name:artifact_fingerprint(p) for p in sorted(staging.iterdir())}})
         finally:
             con.close()
@@ -277,6 +416,8 @@ def main() -> None:
         parser.add_argument("--"+name,type=Path,required=True)
     parser.add_argument("--threads",type=int,default=16)
     parser.add_argument("--memory-limit",default="100GB")
+    parser.add_argument('--surplus-receipt-manifest',type=Path,action='append',default=[])
+    parser.add_argument('--source-replay-manifest',type=Path)
     args=parser.parse_args()
     require_production_host()
     if Path("/home/ubuntu/prediction_markets") not in Path(__file__).resolve().parents:
@@ -284,6 +425,10 @@ def main() -> None:
     if any(Path("/mnt/data") not in p.resolve().parents for p in (
             args.raw_events,args.market_tokens,args.source_pilot,args.receipt_pilot,args.run_dir,args.temp_directory)):
         raise ValueError("Production paths must remain under /mnt/data")
+    if any(Path('/mnt/data') not in p.resolve().parents for p in args.surplus_receipt_manifest):
+        raise ValueError('Production settlement surplus proof paths must remain under /mnt/data')
+    if args.source_replay_manifest is not None and Path('/mnt/data') not in args.source_replay_manifest.resolve().parents:
+        raise ValueError('Production source replay path must remain under /mnt/data')
     result=run(args)
     print(json.dumps(result["counts"],sort_keys=True))
     if result["status"]!='complete':

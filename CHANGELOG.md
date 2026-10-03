@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-02 - Native-proven settlement reconciliation
+
+- Preserved legacy active SELL excess collateral separately from matched
+  execution cash, binary price and FIFO trading profit; required exact complete
+  native event and actual-payout evidence for every admitted case.
+- Added a gated full-population replay from saved original logs, retaining
+  original refund amounts, excluded records and first-extraction provenance.
+- Extended source and downstream publication checks to reopen the native proof.
+  The original blocked source stage remains immutable.
+
 ## 2026-10-02 - Two-grain profit-taking comparison
 
 - Approved matched execution and own-order-event calibration versions with the

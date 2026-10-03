@@ -20,14 +20,14 @@ def raw(side="BUY",token="1",q=100,c=40,*,wallet="passive",taker="active",log=1,
         fee,1,tx,log,exchange)))
 
 
-def setup(tmp_path:Path,records):
+def setup(tmp_path:Path,records,*,surplus_cases=None,surplus_original_rows=None):
     source=tmp_path/"raw.parquet"; tokens=tmp_path/"tokens.parquet"
     pq.write_table(pa.Table.from_pylist(records),source)
     pq.write_table(pa.Table.from_pylist([{"token_id":"1","market_id":"market","complement_token_id":"2"},
         {"token_id":"2","market_id":"market","complement_token_id":"1"}]),tokens)
     con=duckdb.connect()
     counts=prepare_source(con,source,tokens)
-    counts.update(reconcile_source(con))
+    counts.update(reconcile_source(con,surplus_cases,surplus_original_rows))
     return con,counts
 
 
@@ -128,3 +128,54 @@ def test_version_specific_fee_marker_and_original_source_amounts(tmp_path,exchan
     assert counts["accepted_batches"]==1
     assert con.execute("SELECT DISTINCT fee_rule,source_contract_version FROM own_actions").fetchall()==[(fee_rule,version)]
     con.close()
+
+
+def surplus_case(records):
+    active=records[-1]
+    return {'active_execution_id':f"{active['exchange_address']}:{active['transaction_hash']}:{active['log_index']}",
+        'settlement_surplus_cash_micro':8_000_000,'effective_quantity_micro':100,
+        'effective_cash_micro':40,'original_making_micro':active['maker_amount_filled'],
+        'original_taking_micro':active['taker_amount_filled'],'settlement_surplus_proof_id':'synthetic-native-proof'}
+
+
+def test_proven_legacy_sell_surplus_preserves_all_actions_and_separates_execution_cash(tmp_path):
+    records=[raw('BUY'),raw('SELL',c=8_000_040,wallet='active',taker=OLD,log=2)]
+    con,counts=setup(tmp_path,records,surplus_cases=[surplus_case(records)],surplus_original_rows=records)
+    assert counts['accepted_batches']==1 and counts['accepted_own_actions']==2
+    assert counts['accepted_settlement_surplus_batches']==1
+    assert counts['accepted_settlement_surplus_cash_micro']==8_000_000
+    assert con.execute('''SELECT taker_amount_filled,original_taker_amount_filled,
+        settlement_surplus_cash_micro FROM own_actions ORDER BY log_index''').fetchall()==[(100,100,0),(40,8_000_040,8_000_000)]
+    assert con.execute('SELECT settlement_surplus_proof_id FROM batches').fetchone()[0]=='synthetic-native-proof'
+    assert con.execute('SELECT settlement_surplus_proof_status FROM batches').fetchone()[0]=='verified_complete_native_sell_collateral_surplus'
+    con.close()
+
+
+def test_unproven_positive_sell_receiving_surplus_stays_rejected(tmp_path):
+    records=[raw('BUY'),raw('SELL',c=8_000_040,wallet='active',taker=OLD,log=2)]
+    con,counts=setup(tmp_path,records)
+    assert counts['rejected_relevant_batches']==1 and counts['accepted_own_actions']==0
+    assert counts['accepted_settlement_surplus_batches']==0
+    assert con.execute('SELECT status FROM batches').fetchone()[0]=='aggregate_received_amount_mismatch'
+    con.close()
+
+
+@pytest.mark.parametrize('failure',['BUY','V2','wrong_cash','wrong_quantity','negative_surplus'])
+def test_proof_never_relaxes_buy_surplus_v2_or_contradictory_amounts(tmp_path,failure):
+    exchange=NEW if failure=='V2' else OLD
+    active_side='BUY' if failure=='BUY' else 'SELL'
+    records=[raw('SELL' if active_side=='BUY' else 'BUY',exchange=exchange),
+             raw(active_side,c=8_000_040,q=100,wallet='active',taker=exchange,exchange=exchange,log=2)]
+    if failure=='BUY': records[-1]['taker_amount_filled']=8_000_100
+    proof=surplus_case(records)
+    if failure=='wrong_cash': proof['effective_cash_micro']=41
+    if failure=='wrong_quantity': proof['effective_quantity_micro']=101
+    if failure=='negative_surplus': proof['settlement_surplus_cash_micro']=-1
+    with pytest.raises(ValueError,match='do not match every accepted'):
+        setup(tmp_path,records,surplus_cases=[proof],surplus_original_rows=records)
+
+
+def test_complete_native_proof_cannot_match_only_a_subset_of_raw_group(tmp_path):
+    records=[raw('BUY'),raw('SELL',c=8_000_040,wallet='active',taker=OLD,log=2)]
+    with pytest.raises(ValueError,match='exact complete raw'):
+        setup(tmp_path,[*records,raw(token='99',log=3)],surplus_cases=[surplus_case(records)],surplus_original_rows=records)

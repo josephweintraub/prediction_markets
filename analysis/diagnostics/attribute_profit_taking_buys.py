@@ -19,7 +19,7 @@ import duckdb
 
 from analysis.diagnostics.profit_taking_actions import EXCHANGE_CONTRACTS
 from analysis.diagnostics.profit_taking_contribution import validate_executions
-from analysis.sports_game_dynamics.artifacts import require_columns
+from analysis.sports_game_dynamics.artifacts import INTEGER_TYPES, require_columns
 
 
 OWN_COLUMNS = (
@@ -27,6 +27,7 @@ OWN_COLUMNS = (
     "maker_amount_filled", "taker_amount_filled", "fee", "block_number",
     "transaction_hash", "log_index", "exchange_address", "source_role",
     "source_status", "source_contract_version", "fee_rule", "aggregate_reconciled",
+    "original_taker_amount_filled", "settlement_surplus_cash_micro",
 )
 TAG_COLUMNS = (
     "execution_id", "market_id", "token_id", "wallet", "side", "block_number",
@@ -35,6 +36,7 @@ TAG_COLUMNS = (
     "primary_exit_quantity_micro", "hedge_profitable_quantity_micro",
     "unmatched_disposal_quantity_micro", "primary_exit_fraction", "hedge_fraction",
     "unmatched_disposal_fraction", "history_status", "fee_rule", "source_contract_version",
+    "settlement_surplus_cash_micro",
 )
 LINK_COLUMNS = (
     "maker_execution_id", "active_execution_id", "kind", "quantity_micro",
@@ -75,6 +77,8 @@ def create_buy_attribution(
     times the link's gross quantity, divided by the original BUY's gross quantity.
     Aggregates with multiple legs use deterministic proportional sale allocation.
     Complement hedge fractions use qualified net received / total net received.
+    Verified legacy SELL settlement surplus is preserved separately and never
+    added to matched execution cash, price, or the supplied trading-profit tags.
 
     ``unknown_history_fraction`` narrowly denotes a favorite-priced BUY's share
     linked to favorite SELL quantity without observed FIFO acquisitions. The
@@ -90,7 +94,11 @@ def create_buy_attribution(
         (action_tags,TAG_COLUMNS,"One-row-per-action FIFO tags"),
         (batch_links,LINK_COLUMNS,"Verified complete batch links"),
     ):
-        require_columns(con,relation,columns,label)
+        observed=require_columns(con,relation,columns,label)
+        if relation in (own_actions,action_tags) and observed["settlement_surplus_cash_micro"] not in INTEGER_TYPES:
+            raise ValueError("Settlement surplus must use exact integer microcash")
+        if relation==own_actions and observed["original_taker_amount_filled"] not in INTEGER_TYPES:
+            raise ValueError("Original received settlement must use exact integer units")
     names={key:prefix+"_"+key for key in (
         "actions","direct_links","buy_tags","attribution_diagnostics",
         "matched_buy_tags","grain_reconciliation","matched_attribution_diagnostics",
@@ -113,6 +121,11 @@ def create_buy_attribution(
         OR ((fee_rule='received_asset' OR maker_asset_id<>'0') AND fee>taker_amount_filled)
         OR block_number IS NULL OR block_number<0
         OR transaction_hash IS NULL OR trim(transaction_hash)='' OR log_index IS NULL OR log_index<0
+        OR original_taker_amount_filled IS NULL OR settlement_surplus_cash_micro IS NULL
+        OR settlement_surplus_cash_micro<0
+        OR original_taker_amount_filled<>taker_amount_filled+settlement_surplus_cash_micro
+        OR (settlement_surplus_cash_micro>0 AND (source_role<>'active_aggregate'
+            OR maker_asset_id='0' OR fee_rule<>'received_asset'))
         OR exchange_address IS NULL OR trim(exchange_address)=''
         OR execution_id<>lower(exchange_address)||':'||lower(transaction_hash)||':'||log_index::VARCHAR""",
         "Own actions must carry verified source certificates and original identities")
@@ -130,6 +143,7 @@ def create_buy_attribution(
         CASE WHEN maker_asset_id='0' THEN maker_amount_filled ELSE taker_amount_filled END::BIGINT gross_cash_micro,
         s.fee::BIGINT fee_micro,s.block_number::BIGINT block_number,lower(s.transaction_hash) transaction_hash,
         s.log_index::BIGINT log_index,lower(s.exchange_address) exchange_address,s.source_role,s.fee_rule,s.source_contract_version,
+        s.settlement_surplus_cash_micro::BIGINT settlement_surplus_cash_micro,
         CASE WHEN maker_asset_id='0' THEN taker_amount_filled-
              CASE WHEN s.fee_rule='received_asset' THEN s.fee ELSE 0 END ELSE NULL END::BIGINT net_acquired_quantity_micro,
         t.primary_exit_quantity_micro,t.hedge_profitable_quantity_micro,t.unmatched_disposal_quantity_micro,
@@ -145,6 +159,7 @@ def create_buy_attribution(
         OR a.log_index IS DISTINCT FROM t.log_index OR a.exchange_address IS DISTINCT FROM lower(t.exchange_address)
         OR a.gross_quantity_micro IS DISTINCT FROM t.gross_quantity_micro
         OR a.gross_cash_micro IS DISTINCT FROM t.gross_cash_micro OR a.fee_micro IS DISTINCT FROM t.fee_micro
+        OR a.settlement_surplus_cash_micro IS DISTINCT FROM t.settlement_surplus_cash_micro
         OR a.fee_rule IS DISTINCT FROM t.fee_rule OR a.source_contract_version IS DISTINCT FROM t.source_contract_version
         OR (a.side='BUY' AND t.net_acquired_quantity_micro IS DISTINCT FROM a.net_acquired_quantity_micro)
         OR a.history_status IS DISTINCT FROM '{HISTORY_STATUS}'""",

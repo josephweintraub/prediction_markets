@@ -55,6 +55,22 @@ Validate exchange/version, log order, token identity, action compatibility,
 quantities, cash, refunds and fee units before extending recovery to production.
 Standalone or irreconcilable groups are separate unknown-coverage strata.
 
+Legacy active SELL aggregates can include excess collateral already present at
+the exchange. Admit such a case only when the complete native event set and
+actual collateral payout reconcile to the exact original batch. Preserve the
+original settlement amount and a separate `settlement_surplus_cash_micro` field;
+matched-leg cash alone determines execution price and FIFO trading profit. Do
+not classify an otherwise losing trade as profit-taking because of that excess
+payment. BUY surplus, V2 surplus and unproved cases remain rejected. Reopen the
+saved native evidence at downstream publication, not just initial admission.
+
+An explicit source replay may restore every original selected log from a saved
+full extraction, including original pre-refund amounts and all excluded rows.
+Require exact artifact fingerprints, token spine, unique log identities and
+complete transaction/group and row counts. Replay is unavailable when unscoped
+batches or orphan rows prevent complete restoration. Preserve the first raw
+extraction's provenance and never replay only its accepted subset.
+
 Legacy BUY fees are charged in received outcome tokens. V2 BUY fees are additional
 collateral spending with no deduction from received tokens. Both versions deduct
 SELL fees from collateral proceeds. Dispatch by verified emitting exchange and

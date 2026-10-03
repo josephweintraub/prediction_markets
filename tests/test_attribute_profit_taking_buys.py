@@ -15,14 +15,15 @@ V2="0xe111180000d2663c0091e4f400237545b87b996b"
 
 
 def action(tx: str,log: int,side: str,token: str,quantity: int,cash: int,
-           *,role: str="passive",wallet: str="wallet",fee: int=0,block: int=1,exchange: str=LEGACY) -> dict:
+           *,role: str="passive",wallet: str="wallet",fee: int=0,block: int=1,exchange: str=LEGACY,surplus: int=0) -> dict:
     return dict(execution_id=f"{exchange}:{tx}:{log}",market_id="m",maker=wallet,
         maker_asset_id="0" if side=="BUY" else token,taker_asset_id=token if side=="BUY" else "0",
         maker_amount_filled=cash if side=="BUY" else quantity,
         taker_amount_filled=quantity if side=="BUY" else cash,fee=fee,block_number=block,
         transaction_hash=tx,log_index=log,exchange_address=exchange,source_role=role,
         source_status="verified_own_action",source_contract_version="legacy_reserved_making_v1" if exchange==LEGACY else "ctf_exchange_v2_v1",
-        fee_rule="received_asset" if exchange==LEGACY else "collateral_extra_buy",aggregate_reconciled=role=="active_aggregate")
+        fee_rule="received_asset" if exchange==LEGACY else "collateral_extra_buy",aggregate_reconciled=role=="active_aggregate",
+        original_taker_amount_filled=(quantity if side=="BUY" else cash)+surplus,settlement_surplus_cash_micro=surplus)
 
 
 def tag(own: dict,*,primary: int=0,hedge: int=0,unmatched: int=0) -> dict:
@@ -39,7 +40,8 @@ def tag(own: dict,*,primary: int=0,hedge: int=0,unmatched: int=0) -> dict:
         hedge_profitable_quantity_micro=hedge,unmatched_disposal_quantity_micro=unmatched,
         primary_exit_fraction=primary/q,hedge_fraction=hedge/net if net else 0,
         unmatched_disposal_fraction=unmatched/q,history_status=HISTORY_STATUS,
-        fee_rule=own["fee_rule"],source_contract_version=own["source_contract_version"])
+        fee_rule=own["fee_rule"],source_contract_version=own["source_contract_version"],
+        settlement_surplus_cash_micro=own["settlement_surplus_cash_micro"])
 
 
 def link(maker: dict,active: dict,kind: str,q: int,maker_cash: int,active_cash: int) -> dict:
@@ -52,7 +54,8 @@ def connection(actions: list[dict],tags: list[dict],links: list[dict]) -> duckdb
     integer_fields={"maker_amount_filled","taker_amount_filled","fee","block_number","log_index",
                     "gross_quantity_micro","gross_cash_micro","fee_micro","net_acquired_quantity_micro",
                     "primary_exit_quantity_micro","hedge_profitable_quantity_micro","unmatched_disposal_quantity_micro",
-                    "quantity_micro","passive_cash_micro","active_cash_micro"}
+                    "quantity_micro","passive_cash_micro","active_cash_micro",
+                    "original_taker_amount_filled","settlement_surplus_cash_micro"}
     fractions={"primary_exit_fraction","hedge_fraction","unmatched_disposal_fraction"}
     for relation,columns,records in (("own",OWN_COLUMNS,actions),("tags",TAG_COLUMNS,tags),("links",LINK_COLUMNS,links)):
         schema=",".join(f"{name} "+("BIGINT" if name in integer_fields else "DOUBLE" if name in fractions
@@ -85,6 +88,51 @@ def normal_fixture() -> tuple[list[dict],list[dict],list[dict]]:
     seller=action("normal",1,"SELL","1",100,95,wallet="seller")
     buyer=action("normal",2,"BUY","1",100,95,role="active_aggregate",wallet="bot")
     return [seller,buyer],[tag(seller,primary=40,unmatched=10),tag(buyer)],[link(seller,buyer,"NORMAL",100,95,95)]
+
+
+def test_verified_legacy_active_sell_surplus_never_enters_buy_calibration_or_tag_fraction() -> None:
+    snapshots=[]
+    for surplus in (0,8_000_000):
+        buyer=action("surplus",1,"BUY","1",100,95,wallet="buyer")
+        seller=action("surplus",2,"SELL","1",100,95,role="active_aggregate",wallet="seller",surplus=surplus)
+        con=connection([buyer,seller],[tag(buyer),tag(seller,primary=30)],
+                       [link(buyer,seller,"NORMAL",100,95,95)])
+        try:
+            names=create_buy_attribution(con,"own","tags","links")
+            own=rows(con,names["buy_tags"])[buyer["execution_id"]]
+            matched=rows(con,names["matched_buy_tags"])[buyer["execution_id"]+":buy_passive"]
+            snapshots.append((own["price"],own["gross_cash_micro"],own["exit_fraction"],matched["price"],matched["exit_fraction"]))
+            assert con.execute(f"SELECT settlement_surplus_cash_micro FROM {names['actions']} WHERE side='SELL'").fetchone()[0]==surplus
+        finally:
+            con.close()
+    assert snapshots[0]==snapshots[1]==(.95,95,.3,.95,.3)
+
+
+@pytest.mark.parametrize("failure",["buy","passive","v2","negative","null","taking","tag","unmatched_cash"])
+def test_adapter_rejects_invalid_or_unmatched_settlement_surplus(failure: str) -> None:
+    buyer=action("surplus-invalid",1,"BUY","1",100,95,wallet="buyer")
+    seller=action("surplus-invalid",2,"SELL","1",100,95,role="active_aggregate",wallet="seller",surplus=8_000_000)
+    tags=[tag(buyer),tag(seller)]
+    links=[link(buyer,seller,"NORMAL",100,95,95)]
+    if failure=="buy":
+        buyer["settlement_surplus_cash_micro"]=1;buyer["original_taker_amount_filled"]+=1
+        tags[0]["settlement_surplus_cash_micro"]=1
+    elif failure=="passive": seller["source_role"]="passive";seller["aggregate_reconciled"]=False
+    elif failure=="v2":
+        for record in (buyer,seller):
+            record.update(exchange_address=V2,execution_id=record["execution_id"].replace(LEGACY,V2),
+                          source_contract_version="ctf_exchange_v2_v1",fee_rule="collateral_extra_buy")
+        tags=[tag(buyer),tag(seller)];links=[link(buyer,seller,"NORMAL",100,95,95)]
+    elif failure=="negative": seller["settlement_surplus_cash_micro"]=-1;tags[1]["settlement_surplus_cash_micro"]=-1
+    elif failure=="null": seller["settlement_surplus_cash_micro"]=None;tags[1]["settlement_surplus_cash_micro"]=None
+    elif failure=="taking": seller["original_taker_amount_filled"]+=1
+    elif failure=="tag": tags[1]["settlement_surplus_cash_micro"]+=1
+    else: links[0]["active_cash_micro"]+=1
+    con=connection([buyer,seller],tags,links)
+    try:
+        with pytest.raises(ValueError): create_buy_attribution(con,"own","tags","links")
+    finally:
+        con.close()
 
 
 def test_normal_passive_favorite_sale_to_original_active_buy() -> None:
