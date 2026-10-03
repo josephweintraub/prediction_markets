@@ -1,6 +1,7 @@
 # Terminal-pattern alternatives diagnostics
 
-Status: production and independent artifact QA passed; lifecycle closure pending.
+Status: production and independent artifact QA complete. Final shutdown
+verification is recorded locally after the root stops the instance.
 
 ## Contract
 
@@ -65,6 +66,8 @@ literal end-window counts/cash. A bounded audit of saved market sufficient
 statistics added 21 zero-failure gates for event argmax/ties, whole-event
 removal, concentration, common membership and original/selected weights.
 No raw logs, own-action histories or FIFO records were rescanned by QA.
+All 45 independent checks returned zero failures. New and baseline manifests
+were byte-unchanged before and after QA; the saved baseline reference matched.
 
 Support counts (supported / withheld): primary tail moments 609 / 39,
 terminal contrasts 141 / 21, cent-band conditional means 3,165 / 3,315,
@@ -225,3 +228,17 @@ These are verified implementation properties, not evidence that smoothing
 causes an upward endpoint. This stage uses literal windows and the verified
 own-action source; it does not reproduce or validate legacy buyer inference,
 old kernel estimates, or their uncertainty bands.
+
+## Lifecycle handoff
+
+Both agents reported no remaining remote process, transfer or EC2 need.
+Root's pre-stop process check found no research workload, notebook or transfer;
+the dedicated spill directory was empty. No completed stage or report changed.
+The canonical code and findings were committed and pushed on
+`codex/terminal-pattern-diagnostics` before shutdown.
+
+Root performs AWS stop and stopped-state verification outside the instance.
+The exact resulting state/time belongs in
+`output/terminal_pattern_diagnostics_v1/lifecycle_status.json` in the local
+aggregate bundle; this pre-shutdown canonical record does not assert a future
+AWS state.
