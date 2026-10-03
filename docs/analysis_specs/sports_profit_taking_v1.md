@@ -1,6 +1,6 @@
 # Sports profit-taking and calibration contributions
 
-Status: implementation and source reconciliation, 2026-10-02. Do not overwrite
+Status: both calibration grains approved; production source recovery, 2026-10-02. Do not overwrite
 the completed tennis investigation or change the canonical trade pipeline.
 
 ## Question and estimand
@@ -98,17 +98,27 @@ episodes or causal effects from these labels. Preserve unknown-history support.
 
 ## Calibration decomposition
 
-The observation is an original actual BUY execution, not a matched lot link.
-The wallet-history unit is an own-order log, including one corrected active
-aggregate. Its passive matched legs are genuine individual executions, distinct
-from the FIFO acquisition-lot links. The root has asked the user to confirm
-retaining the existing matched-trade calibration unit versus using one active
-own-order VWAP observation. The latter is a tested prototype, not an approved
-change to the primary result. Freeze the final grain before production estimation.
+The user approved both calibration grains on 2026-10-02:
+
+- **Matched execution:** one actual wallet BUY per genuine matching leg. NORMAL
+  produces one BUY; MINT produces two complementary BUYs; MERGE produces none.
+- **Own order:** one original own OrderFilled BUY log, including one corrected
+  active aggregate with its gross execution VWAP. This is an own-action event,
+  not an entire order hash aggregated across transactions.
+
+Both versions use identical own-action FIFO/profit labels and full histories.
+Allocate the own-action tagged fractions uniformly across genuine legs, then
+apply the focal BUY observation's price-regime gate. This deliberately measures
+the allocation of profitable own-action mechanisms, not independently certified
+profitability at each constituent leg's price. Preserve crossing-price-class
+diagnostics. Do not recompute per-leg profitability in just one version and
+confound the grain comparison. Reconcile gross quantity and cash across grains;
+count-weighting and price bins may change, while the underlying BUY exposure
+does not. No FIFO acquisition-lot link becomes another calibration observation.
 Let `r_i=Y_i-P_i`, `w_i` its original weight, `e_i` the fraction paired with a
 profitable exposure-reducing direct favorite sale, and `h_i` its profitable
 complementary-hedge fraction. Require `0<=e_i,h_i` and `e_i+h_i<=1`.
-The primary direct component additionally requires the focal BUY's own-order
+The primary direct component additionally requires the focal BUY observation's
 price above 0.5, while the hedge component requires its price below 0.5. Keep
 qualified sale quantities crossing an active counterparty's aggregate price
 class in the reconciliation diagnostics rather than silently relabeling them.
