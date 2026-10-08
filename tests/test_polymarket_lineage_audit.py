@@ -570,3 +570,64 @@ def test_canonical_price_exclusions_reconcile_without_execution_claim():
         assert "not certified execution price" in result["price_note"]
     finally:
         con.close()
+
+
+def diagnostic_values():
+    common = {"timestamp": 100, "conditionId": "token", "usdcSize": 40.0, "price": 0.4,
+              "outcome": "YES", "eventSlug": "event", "year_month": "2026-03"}
+    return [{**common, "proxyWallet": "wallet_a", "counterparty": "wallet_b", "side": "BUY", "is_maker": True},
+            {**common, "proxyWallet": "wallet_b", "counterparty": "wallet_a", "side": "SELL", "is_maker": False}]
+
+
+@pytest.mark.parametrize("field,value", [("timestamp", 101), ("eventSlug", "backfilled-event")])
+def test_membership_diagnostics_isolate_single_field_representation(field, value):
+    rows = diagnostic_values()
+    changed = [{**row, field: value} for row in rows]
+    con = audit.connection()
+    try:
+        register(con, "left_values", rows)
+        register(con, "right_values", changed)
+        full = audit.multiplicity_difference(con, "left_values", "right_values", audit.VALUE_FIELDS)
+        diagnostic = audit.field_membership_diagnostics(con, "left_values", "right_values")
+        assert full == {"left_only_rows": 2, "right_only_rows": 2}
+        assert diagnostic["per_field_marginal"][field] == full
+        assert diagnostic["full_payload_drop_one_field"][field] == {"left_only_rows": 0, "right_only_rows": 0}
+        assert all(not any(counts.values()) for name, counts in diagnostic["per_field_marginal"].items() if name != field)
+        assert all(any(counts.values()) for name, counts in diagnostic["full_payload_drop_one_field"].items() if name != field)
+        assert "never relaxes" in diagnostic["note"]
+    finally:
+        con.close()
+
+
+@pytest.mark.parametrize("swap_role", [False, True])
+def test_membership_diagnostics_distinguish_matching_marginals_from_role_correlation(swap_role):
+    rows = diagnostic_values()
+    changed = [{**row, "side": "SELL" if row["side"] == "BUY" else "BUY",
+                "is_maker": not row["is_maker"] if swap_role else row["is_maker"]} for row in rows]
+    con = audit.connection()
+    try:
+        register(con, "left_values", rows)
+        register(con, "right_values", changed)
+        diagnostic = audit.field_membership_diagnostics(con, "left_values", "right_values")
+        assert audit.multiplicity_difference(con, "left_values", "right_values", audit.VALUE_FIELDS) == {
+            "left_only_rows": 2, "right_only_rows": 2}
+        assert all(not any(counts.values()) for counts in diagnostic["per_field_marginal"].values())
+        resolved_omissions = [name for name, counts in diagnostic["full_payload_drop_one_field"].items() if not any(counts.values())]
+        assert resolved_omissions == ([] if swap_role else ["side"])
+    finally:
+        con.close()
+
+
+def test_membership_diagnostics_preserve_duplicate_counts():
+    rows = diagnostic_values()
+    con = audit.connection()
+    try:
+        register(con, "left_values", rows + [dict(rows[0])])
+        register(con, "right_values", rows)
+        diagnostic = audit.field_membership_diagnostics(con, "left_values", "right_values")
+        assert all(counts == {"left_only_rows": 1, "right_only_rows": 0}
+                   for counts in diagnostic["per_field_marginal"].values())
+        assert all(counts == {"left_only_rows": 1, "right_only_rows": 0}
+                   for counts in diagnostic["full_payload_drop_one_field"].values())
+    finally:
+        con.close()

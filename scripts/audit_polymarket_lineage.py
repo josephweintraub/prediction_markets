@@ -685,6 +685,28 @@ def multiplicity_difference(con, left: str, right: str, fields: tuple[str, ...])
         (SELECT count(*) FROM (SELECT {selected} FROM {right} EXCEPT ALL SELECT {selected} FROM {left})) right_only_rows""")
 
 
+def field_membership_diagnostics(con, left: str, right: str) -> dict:
+    """Scalar diagnostics preserve multiplicities and never pair individual rows."""
+    columns = ','.join(qname(field) for field in VALUE_FIELDS)
+    # Freeze the bounded value views once; subsequent diagnostics touch these
+    # small in-memory tables rather than reopening any large Parquet source.
+    con.execute(f"CREATE TEMP TABLE lineage_diag_left AS SELECT {columns} FROM {left}")
+    try:
+        con.execute(f"CREATE TEMP TABLE lineage_diag_right AS SELECT {columns} FROM {right}")
+        try:
+            marginal, drop_one = {}, {}
+            for field in VALUE_FIELDS:
+                marginal[field] = multiplicity_difference(con, "lineage_diag_left", "lineage_diag_right", (field,))
+                remaining = tuple(other for other in VALUE_FIELDS if other != field)
+                drop_one[field] = multiplicity_difference(con, "lineage_diag_left", "lineage_diag_right", remaining)
+            return {"per_field_marginal": marginal, "full_payload_drop_one_field": drop_one,
+                    "note": "Counts only; no row pairing, rounding or tolerance. Omitting a field diagnostically never relaxes the full eleven-field acceptance gate."}
+        finally:
+            con.execute("DROP TABLE lineage_diag_right")
+    finally:
+        con.execute("DROP TABLE lineage_diag_left")
+
+
 def audit_window(inputs: dict[str, str], window: dict, frozen_infos: list[dict] | None = None) -> dict:
     if window["status"] != "preflight_complete":
         raise AuditBlocked("a blocked preflight cannot authorize body reads")
@@ -805,6 +827,8 @@ def audit_window(inputs: dict[str, str], window: dict, frozen_infos: list[dict] 
         for gate in ("expanded_to_root_membership", "distinct_root_to_clean_membership"):
             if any(output[gate].values()):
                 output["gates"].append({"gate": gate, **output[gate]})
+        if any(output["expanded_to_root_membership"].values()):
+            output["expanded_to_root_field_diagnostics"] = field_membership_diagnostics(con, "expanded", "root_transformed")
         output["clean_removal"] = {
             "removed_expanded_value_rows": output["root_transformed"]["row_count"]-output["clean"]["row_count"],
             "removed_expanded_recorded_cash": output["root_transformed"]["expanded_recorded_cash"]-output["clean"]["expanded_recorded_cash"],
