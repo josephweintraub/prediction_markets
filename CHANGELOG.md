@@ -6,6 +6,8 @@
   with immutable scalar outputs, explicit scope gates and fixture tests.
 - Kept source metadata quality distinct from admitted trade integrity, and native
   identity distinct from expanded wallet rows and actual matching legs.
+- Qualified unsupported replay/partial-fill certainty in the methods reference;
+  published-row validation is distinct from native completeness certification.
 - Preserved the existing canon and completed analyses; no refresh or rebuild is
   part of this validation stage.
 

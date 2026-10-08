@@ -20,15 +20,17 @@ are built and run without encoding an expected sign.
 
 - **Canonical trade set:** `/mnt/data/pipeline_output/trades_clean.parquet` (EC2) —
   **2,036,128,538 rows through 2026-06-23** (resolution refresh completed 2026-07-04).
-  Cleaning removed only full-row (all-11-column)
-  exact duplicates (~4%, ingestion replays); multi-counterparty partial fills are real and
-  retained. Raw set kept for diffing at `/mnt/data/pipeline_root_output/trades.parquet`.
+  Cleaning applies full-row value DISTINCT within each month, removing roughly 4% of
+  expanded wallet rows. Native log identities are absent at that stage: equal published
+  values do not independently establish ingestion replay, and retention of genuine
+  partial fills requires native-identity reconciliation. The preserved expanded set is
+  kept for diffing at `/mnt/data/pipeline_root_output/trades.parquet`.
 - **Resolution-censoring caveat (read before any recency analysis):** `trades_clean` contains
-  only markets that had **resolved by build time** (Stage-4 INNER JOIN against Gamma closed
-  markets). Recent months are therefore censored toward fast-resolving markets — at the
+  only markets that had **resolved by build time** (Stage-4 INNER JOIN against the cached
+  token-level market resolutions). Recent months are therefore censored toward fast-resolving markets — at the
   June 2026 build, ~7.5% of events / ~12.2% of dollars were absent, concentrated in
   long-horizon judgment markets. End-of-sample or across-time comparisons must be
-  horizon-matched or carry this caveat explicitly. Refresh path: re-pull Gamma resolutions,
+  horizon-matched or carry this caveat explicitly. Refresh path: re-pull authoritative resolutions,
   rerun pipeline stages 4/6 from stored raw events (no Polygon re-fetch needed).
 - **Native market metadata:** `/mnt/data/learnability/native/` —
   `native_market_meta.parquet` (Gamma re-pull 2026-06-21; 1.44M markets; **closed markets
@@ -51,7 +53,13 @@ are built and run without encoding an expected sign.
   markets (June-2026 refresh gap), so no filter may rely on trades' `eventSlug` alone.
 - **Pipeline trust:** the trade set was externally cross-validated (2026-06-22) against an
   independently collected dataset — near-total token coverage and resolution agreement.
-  Re-validate after any pipeline change, not before each analysis.
+  Those checks address observed token coverage and outcome agreement, not complete log
+  collection, duplicate attribution, or economic direction. Revalidate affected gates
+  when inputs, transformations, or sample definitions change; matching counts alone
+  do not certify the data. The frozen read-only audit contract is
+  [`polymarket_data_certification_v1.json`](analysis_specs/polymarket_data_certification_v1.json).
+  Full published-row integrity and bounded native-lineage checks are distinct scopes;
+  neither alone establishes whole-history native completeness or correct wallet actions.
 - **Wallet-direction warning (2026-10-02):** a retained maker-side `OrderFilled`
   record establishes the maker's own action from its collateral/outcome asset fields.
   It does not establish the named counterparty's economic action. The exchange can
@@ -171,4 +179,5 @@ Recorded only so they are not rediscovered and re-anchored on:
 - **"FLB disappeared in the newest data" / per-category collapse headlines.** Resolution-
   censoring composition artifacts (see caveat above). Retired 2026-07.
 - **"~17% duplicate / ~20% wash trading in the trade set."** Partial-fill counting artifact;
-  the real replay rate was ~4%, removed in `trades_clean`. Retired 2026-06.
+  the later roughly 4% value-row removal rate must not be described as an independently
+  certified ingestion-replay rate. Retired 2026-06.
