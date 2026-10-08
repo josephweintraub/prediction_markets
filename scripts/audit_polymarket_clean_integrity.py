@@ -120,7 +120,8 @@ def _record(con: Any, sql: str) -> dict[str, Any]:
     return dict(zip((item[0] for item in cursor.description), cursor.fetchone()))
 
 
-def prepare_spines(con: Any, flags: Path, token_map: Path) -> dict[str, Any]:
+def prepare_spines(con: Any, flags: Path, token_map: Path, *,
+                   published_view_only: bool = False) -> dict[str, Any]:
     con.execute(f"CREATE TEMP VIEW flags_source AS SELECT * FROM read_parquet('{_quoted(flags)}')")
     con.execute(f"CREATE TEMP VIEW tokens_source AS SELECT * FROM read_parquet('{_quoted(token_map)}')")
     # Blank cache token rows are inventoried, never admitted to the lookup.
@@ -153,11 +154,11 @@ def prepare_spines(con: Any, flags: Path, token_map: Path) -> dict[str, Any]:
             HAVING min(winning_outcome) IS DISTINCT FROM max(winning_outcome)
                OR min(is_updown) IS DISTINCT FROM max(is_updown))) conflicting_market_flag_groups
     """)
-    gate_names = [
-        "duplicate_valid_token_keys", "invalid_valid_token_metadata", "invalid_flag_rows",
+    structural_gates = [
+        "duplicate_valid_token_keys", "invalid_flag_rows",
         "duplicate_flag_keys", "conflicting_market_flag_groups"]
-    checks["gates_passed"] = all(checks[key] == 0 for key in gate_names)
-    if checks["gates_passed"]:
+    published_gates = structural_gates + ["invalid_token_metadata_affected_flag_rows"]
+    if all(checks[key] == 0 for key in structural_gates):
         # Join only after both key sets passed uniqueness, so this cannot fan out.
         checks.update(_record(con, """SELECT count(*) flag_lookup_rows,
             count(*) FILTER(WHERE t.token_id IS NULL) flags_missing_token_map,
@@ -166,9 +167,14 @@ def prepare_spines(con: Any, flags: Path, token_map: Path) -> dict[str, Any]:
         checks.update(_record(con, """SELECT count(*) flags_winner_absent_from_token_map
             FROM flags f WHERE NOT EXISTS (SELECT 1 FROM tokens t
                 WHERE t.market_id=f.market_id AND t.outcome=f.winning_outcome)"""))
-        checks["gates_passed"] = all(checks[key] == 0 for key in (
-            "flags_missing_token_map", "flags_market_mismatch", "flags_winner_absent_from_token_map"))
-        gate_names.extend(("flags_missing_token_map", "flags_market_mismatch", "flags_winner_absent_from_token_map"))
+        published_gates.extend(("flags_missing_token_map", "flags_market_mismatch", "flags_winner_absent_from_token_map"))
+    checks["source_metadata_health_scope"] = "All nonblank cached token IDs; null/blank token rows are separately inventoried and excluded from lookup"
+    checks["source_metadata_healthy"] = checks["invalid_valid_token_metadata"] == checks["duplicate_valid_token_keys"] == 0
+    checks["published_metadata_gates_passed"] = all(checks[key] == 0 for key in published_gates)
+    checks["strict_metadata_gates_passed"] = checks["published_metadata_gates_passed"] and checks["source_metadata_healthy"]
+    checks["audit_scope"] = "published_view_only" if published_view_only else "strict_cached_metadata"
+    checks["gates_passed"] = checks["published_metadata_gates_passed"] if published_view_only else checks["strict_metadata_gates_passed"]
+    gate_names = published_gates if published_view_only else published_gates + ["invalid_valid_token_metadata"]
     checks["failed_gate_counts"] = {key: checks[key] for key in gate_names if checks[key] != 0}
     return checks
 
@@ -240,6 +246,7 @@ def scan_partition(con: Any, item: dict[str, Any]) -> dict[str, Any]:
 def run_audit(clean: Path, flags: Path, token_map: Path, run_dir: Path, *,
               months: tuple[str, ...] | None = None, inventory_only: bool = False,
               spine_only: bool = False,
+              published_view_only: bool = False,
               expected_months: tuple[str, ...] = CANONICAL_MONTHS,
               expected_rows: int = CANONICAL_ROWS, provenance: dict[str, Any] | None = None) -> dict[str, Any]:
     clean, flags, token_map, run_dir = (path.resolve() for path in (clean, flags, token_map, run_dir))
@@ -250,8 +257,10 @@ def run_audit(clean: Path, flags: Path, token_map: Path, run_dir: Path, *,
             raise AuditBlocked("Output overlaps an input")
     run_dir.mkdir(parents=True, exist_ok=False)
     summary: dict[str, Any] = {
-        "schema_version": 1, "stage": "polymarket_published_clean_integrity_v1", "status": "incomplete",
+        "schema_version": 2, "stage": "polymarket_published_clean_integrity_v2", "status": "incomplete",
         "certification_status": "not_certified", "scanned_months": [], "scanned_rows": 0,
+        "audit_scope": "published_view_only" if published_view_only else "strict_cached_metadata",
+        "source_metadata_healthy": None,
         "positive_finite_cash": 0.0, "resource_contract": {"threads": 4, "memory_limit": "8GB", "spill": "0B"},
         "provenance": provenance or {"execution": "local_fixture"},
         "limitations": ["Published legacy wallet rows do not certify native economic direction or collection completeness.",
@@ -284,8 +293,13 @@ def run_audit(clean: Path, flags: Path, token_map: Path, run_dir: Path, *,
         con.execute("SET temp_directory=''")
         con.execute("SET TimeZone='UTC'")
         stage = "spine_preflight"
-        spine_checks = prepare_spines(con, flags, token_map)
+        spine_checks = prepare_spines(con, flags, token_map, published_view_only=published_view_only)
         atomic_json(run_dir / "spine_checks.json", spine_checks)
+        summary["source_metadata_healthy"] = spine_checks["source_metadata_healthy"]
+        summary["source_metadata_health_scope"] = spine_checks["source_metadata_health_scope"]
+        summary["source_invalid_valid_token_metadata"] = spine_checks["invalid_valid_token_metadata"]
+        summary["source_invalid_token_metadata_affected_flag_rows"] = spine_checks["invalid_token_metadata_affected_flag_rows"]
+        summary["published_metadata_gates_passed"] = spine_checks["published_metadata_gates_passed"]
         if not spine_checks["gates_passed"]:
             summary["blocking_gate_counts"] = spine_checks["failed_gate_counts"]
             raise AuditBlocked("Canonical spine preflight failed")
@@ -293,7 +307,7 @@ def run_audit(clean: Path, flags: Path, token_map: Path, run_dir: Path, *,
             stage = "spine_inventory_reopen"
             if inspect_inventory(clean, flags, token_map, expected_months, expected_rows) != inventory:
                 raise AuditBlocked("Frozen input inventory changed during spine preflight")
-            summary["status"] = "spine_complete_clean_rows_unscanned"
+            summary["status"] = "published_spine_complete_clean_rows_unscanned" if published_view_only else "spine_complete_clean_rows_unscanned"
             return summary
         for item in inventory["clean_files"]:
             if item["month"] not in chosen:
@@ -317,7 +331,10 @@ def run_audit(clean: Path, flags: Path, token_map: Path, run_dir: Path, *,
         if inspect_inventory(clean, flags, token_map, expected_months, expected_rows) != inventory:
             raise AuditBlocked("Frozen input inventory changed during audit")
         summary["full_universe_scan_completed"] = summary["full_universe_scan_requested"]
-        summary["status"] = "published_integrity_complete" if summary["full_universe_scan_completed"] else "pilot_complete_full_scan_incomplete"
+        if published_view_only:
+            summary["status"] = "published_view_integrity_complete" if summary["full_universe_scan_completed"] else "published_view_pilot_complete_full_scan_incomplete"
+        else:
+            summary["status"] = "published_integrity_complete" if summary["full_universe_scan_completed"] else "pilot_complete_full_scan_incomplete"
         summary["certification_status"] = "published_view_integrity_only" if summary["full_universe_scan_completed"] else "not_certified_pilot_only"
         summary.pop("active_month", None)
     except BaseException as error:
@@ -343,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token-map", type=Path, default=Path("/mnt/data/pipeline_data/token_map.parquet"))
     parser.add_argument("--run-dir", type=Path, required=True)
     parser.add_argument("--month", action="append", help="Only these complete months; omission requests every frozen month")
+    parser.add_argument("--published-view-only", action="store_true",
+                        help="Audit published rows/required spines; retain and report unhealthy unflagged cached metadata separately")
     scopes = parser.add_mutually_exclusive_group()
     scopes.add_argument("--inventory-only", action="store_true")
     scopes.add_argument("--spine-only", action="store_true", help="Read skinny metadata spines only; no clean trade bodies")
@@ -361,13 +380,17 @@ def main(argv: list[str] | None = None) -> int:
     summary = run_audit(args.clean, args.flags, args.token_map, args.run_dir,
         months=tuple(args.month) if args.month else None, inventory_only=args.inventory_only,
         spine_only=args.spine_only,
+        published_view_only=args.published_view_only,
         provenance={"canonical_head": head, "script_path": str(Path(__file__).resolve()),
                     "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), "command": sys.argv})
     print(json.dumps({"status": summary["status"], "scanned_rows": summary["scanned_rows"],
                       "run_dir": str(args.run_dir)}, allow_nan=False))
     if summary["status"] == "interrupted":
         return 130
-    return 0 if summary["status"] in ("published_integrity_complete", "pilot_complete_full_scan_incomplete", "metadata_complete_rows_unscanned", "spine_complete_clean_rows_unscanned") else 1
+    return 0 if summary["status"] in ("published_integrity_complete", "pilot_complete_full_scan_incomplete",
+        "metadata_complete_rows_unscanned", "spine_complete_clean_rows_unscanned",
+        "published_spine_complete_clean_rows_unscanned", "published_view_integrity_complete",
+        "published_view_pilot_complete_full_scan_incomplete") else 1
 
 
 if __name__ == "__main__":

@@ -199,6 +199,56 @@ class CleanIntegrityTests(unittest.TestCase):
         self.assertEqual(checks["invalid_token_metadata_affected_flag_rows"], 1)
         self.assertEqual(checks["invalid_token_metadata_affected_flag_keys"], 1)
 
+    def add_four_invalid_unpublished_metadata_rows(self) -> None:
+        self.token_rows.extend({"token_id": "unpublished-invalid-" + str(index),
+                               "condition_id": "inactive-market", "outcome": ""} for index in range(4))
+
+    def test_strict_default_keeps_four_unpublished_metadata_defects_blocked(self) -> None:
+        self.add_four_invalid_unpublished_metadata_rows()
+        self.publish()
+        result = self.execute()
+        self.assertEqual(result["status"], "blocked_integrity")
+        self.assertEqual(result["audit_scope"], "strict_cached_metadata")
+        self.assertFalse(result["source_metadata_healthy"])
+        self.assertTrue(result["published_metadata_gates_passed"])
+        self.assertEqual(result["blocking_gate_counts"], {"invalid_valid_token_metadata": 4})
+        self.assertEqual(result["scanned_rows"], 0)
+
+    def test_explicit_published_scope_preserves_unhealthy_source_but_certifies_only_view(self) -> None:
+        self.add_four_invalid_unpublished_metadata_rows()
+        self.publish()
+        result = self.execute(published_view_only=True)
+        self.assertEqual(result["status"], "published_view_integrity_complete")
+        self.assertEqual(result["audit_scope"], "published_view_only")
+        self.assertEqual(result["certification_status"], "published_view_integrity_only")
+        self.assertFalse(result["source_metadata_healthy"])
+        self.assertEqual(result["source_invalid_valid_token_metadata"], 4)
+        checks = json.loads((self.run / "spine_checks.json").read_text())
+        self.assertEqual(checks["valid_token_rows"], 6)  # No invalid token entries were discarded.
+        self.assertEqual(checks["invalid_token_metadata_unpublished_rows"], 4)
+        self.assertTrue(checks["published_metadata_gates_passed"])
+        self.assertFalse(checks["strict_metadata_gates_passed"])
+
+    def test_published_scope_still_fails_clean_rows_using_invalid_unflagged_tokens(self) -> None:
+        self.add_four_invalid_unpublished_metadata_rows()
+        self.rows = [trade(conditionId="unpublished-invalid-0")]
+        self.publish()
+        result = self.execute(published_view_only=True)
+        self.assertEqual(result["status"], "blocked_integrity")
+        self.assertEqual(self.part()["checks"]["missing_flag_rows"], 1)
+        self.assertEqual(self.part()["checks"]["missing_token_map_rows"], 0)
+        self.assertEqual(self.part()["checks"]["token_outcome_mismatch"], 1)
+
+    def test_published_scope_still_blocks_invalid_flagged_metadata(self) -> None:
+        self.token_rows[0]["outcome"] = ""
+        self.publish()
+        result = self.execute(published_view_only=True)
+        self.assertEqual(result["status"], "blocked_integrity")
+        self.assertEqual(result["failure_stage"], "spine_preflight")
+        self.assertFalse(result["published_metadata_gates_passed"])
+        self.assertEqual(result["source_invalid_token_metadata_affected_flag_rows"], 1)
+        self.assertEqual(result["scanned_rows"], 0)
+
     def test_pilot_explicitly_does_not_certify_full_universe(self) -> None:
         self.months = ("2022-11", "2022-12")
         self.rows = [trade(), trade("2022-12")]
@@ -238,8 +288,8 @@ class CleanIntegrityTests(unittest.TestCase):
     def test_spine_only_reopens_frozen_inputs_before_success(self) -> None:
         self.publish()
         original = audit.prepare_spines
-        def preflight_and_mutate(con, flags, token_map):
-            result = original(con, flags, token_map)
+        def preflight_and_mutate(con, flags, token_map, **kwargs):
+            result = original(con, flags, token_map, **kwargs)
             self.flag_rows[0]["question"] = "changed"
             write(self.flags, audit.FLAGS_SCHEMA, self.flag_rows)
             return result
