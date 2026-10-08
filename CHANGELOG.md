@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-08 - Read-only Polymarket data certification audits
+
+- Added frozen-source published-view integrity and bounded native-lineage audits,
+  with immutable scalar outputs, explicit scope gates and fixture tests.
+- Kept source metadata quality distinct from admitted trade integrity, and native
+  identity distinct from expanded wallet rows and actual matching legs.
+- Preserved the existing canon and completed analyses; no refresh or rebuild is
+  part of this validation stage.
+
 ## 2026-10-03 - Terminal-pattern alternatives diagnostics
 
 - Added a frozen exploratory diagnostic stage reusing the verified two-grain

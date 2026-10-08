@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "status": "read_only_validation_in_progress",
+  "question": "Can the existing frozen Polymarket data and its published analysis samples be reconciled to preserved source records without unexplained loss, duplication, contradictory outcomes or mislabeled economic actions?",
+  "baseline_canonical_commit": "e7ce00d070ae7055de5c23ab51f03b4d6124efef",
+  "scope": "Existing historical canon and its separate legacy-expanded and native-action sports lineages. Kalshi is excluded. This audit does not refresh date coverage or replace existing data.",
+  "observational_units": {
+    "native_identity": ["emitting_exchange", "transaction_hash", "log_index"],
+    "legacy_published_view": "Maker row plus inferred opposite-action counterparty row; not certified own-wallet actions.",
+    "native_own_order": "One verified own-wallet OrderFilled action, with aggregate execution/refund reconciliation.",
+    "native_matched_execution": "Actual recovered matching leg; NORMAL has one BUY, MINT two complementary BUYs, MERGE no BUY."
+  },
+  "phase_1": {
+    "published_integrity": "Inventory and schema checks, then serial monthly scalar scans for required fields, units, UTC partition consistency, token/outcome coverage, and count/cash reconciliation.",
+    "native_lineage": "Complete deterministic timestamp windows, expanded to all relevant blocks and boundary seconds, with source identities retained through the canonical transformation.",
+    "predeclared_windows_utc": [
+      {"start": "2026-03-01T18:00:00Z", "end_exclusive": "2026-03-01T18:01:00Z", "purpose": "Pre-March-25-cutoff lineage"},
+      {"start": "2026-06-22T18:00:00Z", "end_exclusive": "2026-06-22T18:01:00Z", "purpose": "Post-new-exchange-migration lineage"}
+    ],
+    "native_classification": "Separate identical native replays, conflicting payloads at one identity, exchange-facing aggregates, nonaggregate logs sharing transaction/order, mapping failures, unresolved markets and value-equal records with different identities.",
+    "inference": "A bounded window certifies that window only. Repeated order hashes do not, by themselves, establish distinct economic executions. Matching metadata does not establish final artifact membership."
+  },
+  "initial_resource_contract": {
+    "threads_per_query": 4,
+    "memory_limit_per_process": "8GB",
+    "disk_spill": "disabled",
+    "max_selected_row_group_rows_per_large_relation_per_window": 2000000,
+    "max_initial_audit_output_bytes": 1073741824,
+    "publication": "New immutable run directories and atomic scalar checkpoints only. No large exports."
+  },
+  "acceptance_gates": [
+    "Every required input has an explicit schema, grain, frozen identity and inventory.",
+    "No null or conflicting native identity is admitted as certified; exact replays and conflicts are separate.",
+    "All records in an audited window receive a mutually reconcilable inclusion or exclusion status.",
+    "Published token joins have zero unmatched, duplicate-key fanout or contradictory outcome rows.",
+    "Exact timestamps are validated by required-key coverage, not total-row equality.",
+    "Source-to-published counts and cash reconcile at the stated observation unit.",
+    "Economic-direction assertions require own-order or full native-batch evidence.",
+    "Incomplete or failed stages remain visibly incomplete; certification is never inferred from a normal exit alone."
+  ],
+  "not_authorized_by_this_contract": [
+    "Overwriting or rebuilding the canon",
+    "Changing the economic observation grain of existing analyses",
+    "Updating outcomes or collecting new market/block data",
+    "Expanding storage or deleting existing artifacts",
+    "Publishing revised scientific results before reconciliation"
+  ],
+  "later_required_for_full_certification": [
+    "Exhaustive bounded-window native identity and exclusion reconciliation across the declared history",
+    "Independent collection-completeness evidence for block ranges and every relevant emitting exchange",
+    "Full sports membership/filter waterfall and reopened native recovery proofs",
+    "Documented treatment of unresolved markets, ambiguous records and provider-clock limitations",
+    "Reviewed versioned corrections and downstream result comparisons if measured defects warrant rebuilding"
+  ],
+  "infrastructure_owner": "root only; finish transfers, confirm every agent/process is idle, stop EC2, and verify stopped after this task"
+}
