@@ -342,7 +342,8 @@ def verify_snapshots(infos: list[dict]) -> None:
                 raise AuditBlocked(f"frozen input changed after reads: {frozen['relation']}/{field}")
 
 
-def preflight(inputs: dict[str, str], con, stream_filtered: bool = False) -> dict:
+def preflight(inputs: dict[str, str], con, stream_filtered: bool = False,
+              windows: tuple = WINDOWS) -> dict:
     output = {"schema_version": 1, "status": "preflight_complete", "baseline_commit": BASELINE_COMMIT,
               "environment": {"python": sys.version, "platform": sys.platform,
                               "duckdb": duckdb.__version__, "pyarrow": pa.__version__},
@@ -383,7 +384,7 @@ def preflight(inputs: dict[str, str], con, stream_filtered: bool = False) -> dic
             output["blocks"].append({"stage": "all_month_boundary_proof", "reason": str(error)})
             output["preflight_peak_rss_bytes"] = peak_rss_bytes()
             return output
-    for name, begin, finish in WINDOWS:
+    for name, begin, finish in windows:
         window = {"name": name, "start_utc": begin, "end_utc_exclusive": finish,
                   "resource_scope": output["resource_scope"], "selections": {}, "status": "preflight_complete"}
         output["windows"].append(window)

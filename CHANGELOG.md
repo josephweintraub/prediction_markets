@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-08 - Single-transaction wallet construction diagnostic
+
+- Added a bounded read-only follow-up contract for the first implicated native
+  transaction in the frozen March reconciliation window.
+- Required complete preserved-source context, exact candidate multiplicities,
+  explicit collision uncertainty and separate native versus synthetic roles.
+- Kept canon replacement, new collection and scientific reruns out of scope;
+  the original failed certification evidence remains unchanged.
+
 ## 2026-10-08 - Read-only Polymarket data certification audits
 
 - Added frozen-source published-view integrity and bounded native-lineage audits,

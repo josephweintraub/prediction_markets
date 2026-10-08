@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "status": "approved_read_only_diagnostic_not_data_certification",
+  "question": "Where does the expected legacy wallet-row construction first diverge from the frozen published data for one deterministically selected implicated transaction?",
+  "parent_contract": "polymarket_data_certification_v1.json",
+  "baseline_audit_head": "7a179b7cabfd34749b70b254c21340559ba3fa81",
+  "production_source_baseline": "e7ce00d070ae7055de5c23ab51f03b4d6124efef",
+  "source_blobs_verified_before_implementation": {
+    "pipeline/transform/build_trades.py": "19bacf3c87494b782ca1c87213f0e8d72191ecb5",
+    "pipeline/refresh.py": "79e99631b1e919d1aa171db31217e76fc361cfe8"
+  },
+  "scope": {
+    "inputs": "The same frozen raw, resolved, root-expanded, published-clean, timestamp, token-map and resolution-cache inputs as the parent certification audit.",
+    "window_start_utc": "2026-03-01T18:00:00Z",
+    "window_end_utc_exclusive": "2026-03-01T18:01:00Z",
+    "previous_cache_fence_blocks_inclusive": [83633984, 83634015],
+    "preflight": "Recompute footer/schema/clock fences and freeze input identity under the existing caps. Root reviews this fresh immutable manifest before any large-relation body read.",
+    "source_context": "Read every admitted raw/resolved row from complete fence blocks, not an isolated log or row group. Root/clean candidate context covers the entire minute, including all blocks sharing a timestamp.",
+    "native_identity": ["lower(emitting_exchange)", "transaction_hash", "log_index"],
+    "observation_unit": "Native source record and its expected legacy maker/synthetic-counterparty representation. This is not a new economic-execution estimand.",
+    "weighting_or_significance": "None; exact identity, payload and multiplicity diagnosis only.",
+    "completeness": "Transaction completeness is relative to the frozen preserved OrderFilled relation. Independent receipt, token-transfer, chain collection and economic-counterparty-action completeness are not established."
+  },
+  "selection": {
+    "candidate_signature": ["timestamp", "conditionId", "usdcSize", "price", "side", "outcome", "is_maker", "year_month"],
+    "implication": "An exact candidate-signature class whose expected wallet/counterparty multiset differs from the root-expanded class.",
+    "ordering": ["block_number ascending", "transaction_hash ascending"],
+    "rule": "Select the first implicated transaction under the frozen ordering. Preserve ambiguity or absent candidates for that first transaction; never skip to an easier unique example.",
+    "association_warning": "The eight-field signature is candidate association only. Missing published native IDs prevent independently proven published transaction membership. Do not pair by row order, price/time alone, rounding or normalized wallet strings.",
+    "collisions": "Retain every native ID/role/transaction contributing to each selected signature, and every root/clean candidate payload class with exact multiplicity. No silent candidate truncation."
+  },
+  "required_evidence": [
+    "Every preserved raw log in the chosen source transaction, including existing aggregate exclusions, rank removals, absent mapping/resolution entries and price exclusions.",
+    "Exact native payload, cached timestamp and mapped metadata for each record; own-maker direction only when asset fields support it.",
+    "Expected eleven-field maker and synthetic-counterparty rows, with is_maker=false explicitly labeled inferred opposite action rather than verified economic action.",
+    "Whole-minute expected/root/clean candidate-class multiplicities and all contributing source identities, with collision uncertainty explicit.",
+    "Full eleven-field exact differences remain binding and data_certified=false; event-label omission or candidate signatures never relax that gate.",
+    "Separate source-history note on the known refresh.py label replacement; do not assume or replay an unproven historical cache/run linkage.",
+    "Committed script/helper hashes, exact count/fetch predicates, frozen input identities, stage completion and measured CPU/RSS/wall profile."
+  ],
+  "hard_gates": [
+    "Production guard, expected canonical head, committed unchanged diagnostic/helper sources and unchanged production source blobs.",
+    "Complete published layout, schema and footer coverage; valid unique cached clock and touched metadata cardinality.",
+    "No conflicting native identities or differing-payload/emitter ties at the minimum log index of canonical rank-eligible transaction/order groups. Identical replay multiplicity is recorded separately.",
+    "Exact count/byte gates before fetch and identical predicates for count and fetch; never LIMIT or truncate to fit.",
+    "Full selected source transaction and complete same-second candidate context; no invented correspondence for ambiguous classes.",
+    "Input snapshots reopened after all reads; mutation, interruption, resource refusal or incomplete execution stays incomplete.",
+    "Immutable new run directories, finite exact JSON serialization and no data/cache/pipeline writes."
+  ],
+  "resources": {
+    "database_memory_limit": "4GB",
+    "threads": 4,
+    "disk_spill": "0B",
+    "maximum_overlapping_compressed_footprint_bytes": 8589934592,
+    "maximum_planned_two_pass_large_input_bytes": 17179869184,
+    "maximum_filtered_rows_per_relation": 2000000,
+    "maximum_combined_estimated_arrow_payload_bytes": 536870912,
+    "maximum_trace_evidence_bytes": 8388608,
+    "maximum_total_output_bytes": 67108864,
+    "previous_stage09_planning_only": {
+      "overlapping_compressed_footprint_bytes": 6352671173,
+      "planned_two_pass_large_input_bytes": 12705342346,
+      "combined_arrow_payload_estimate_bytes": 19043756,
+      "separate_metadata_cache_file_bytes": 715903514,
+      "measured_window_peak_rss_bytes": 2137960448
+    },
+    "io_note": "Footprint and projected-pass estimates are not measured physical I/O. Record actual resource profile; resource failure cannot be converted into certification."
+  },
+  "code_boundaries": [
+    "scripts/audit_polymarket_wallet_transaction.py",
+    "tests/test_polymarket_wallet_transaction.py",
+    "scripts/audit_polymarket_lineage.py: backward-compatible preflight windows keyword and supplied-window loop only"
+  ],
+  "publication": {
+    "remote_run_root": "/mnt/data/runs/2026-10-08_polymarket_wallet_transaction_trace_v1",
+    "local_compact_artifacts": "output/polymarket_wallet_transaction_trace_2026-10-08_v1",
+    "existing_completed_artifacts": "Never overwritten or reinterpreted as passing",
+    "reader_report": "Technical audit evidence and chat explanation, not a new scientific-results report"
+  },
+  "not_authorized": ["Canon rebuild or replacement", "New RPC/API data collection", "Economic-grain changes", "Scientific estimation reruns", "Storage expansion or deletion", "Whole-history prevalence claims from this transaction"],
+  "infrastructure": "Root alone manages lifecycle/storage. Agents use only explicitly assigned already-running workloads. Finish transfers, confirm no remaining dependencies, stop EC2 and verify stopped before completing this task."
+}
