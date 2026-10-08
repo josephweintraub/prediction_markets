@@ -320,3 +320,253 @@ def test_help_and_guard_work_without_site_dependencies(tmp_path):
     assert blocked.returncode != 0
     assert "canonical EC2" in blocked.stderr
     assert not (tmp_path / "never-created").exists()
+
+
+def all_month_inputs(tmp_path):
+    inputs = fixture_inputs(tmp_path)
+    seed = pq.read_table(Path(inputs["clean"]) / "year_month=2026-03" / "data.parquet",
+                         partitioning=None).to_pylist()
+    for month in audit.canonical_months():
+        for relation in ("root_transformed", "clean"):
+            directory = Path(inputs[relation]) / f"year_month={month}"
+            if directory.exists():
+                continue
+            directory.mkdir()
+            rows = [{**row, "timestamp": audit.month_bounds(month)[0] + 3600, "year_month": month}
+                    for row in seed]
+            table = pa.Table.from_pylist(rows)
+            pq.write_table(table if relation == "clean" else table.drop(["year_month"]),
+                           directory / "data.parquet")
+    return inputs
+
+
+def test_streamed_mode_materializes_whole_exact_minute_from_broad_month_groups(tmp_path):
+    inputs = all_month_inputs(tmp_path)
+    # A broad group spans a whole month; only two records belong to the frozen minute.
+    for relation in ("root_transformed", "clean"):
+        path = Path(inputs[relation]) / "year_month=2026-03" / "data.parquet"
+        table = pq.read_table(path, partitioning=None)
+        rows = table.to_pylist()
+        extra = [{**rows[0], "timestamp": audit.month_bounds("2026-03")[0] + i}
+                 for i in range(100)]
+        pq.write_table(pa.Table.from_pylist(rows + extra, schema=table.schema), path)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    assert preflight["status"] == "preflight_complete"
+    assert len(preflight["published_month_proofs"]["clean"]) == 44
+    window = preflight["windows"][0]
+    assert window["selections"]["clean"]["selected_rows"] == 102
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    result = audit.audit_window(inputs, window, frozen)
+    assert result["status"] == "bounded_reconciliation_complete", result
+    assert result["filtered_footprints"]["clean"]["filtered_rows"] == 2
+    assert result["filtered_footprints"]["clean"]["fetched_rows"] == 2
+    assert result["peak_rss_bytes"] > 0
+    query = audit.selected_query(window["selections"]["clean"], audit.VALUE_FIELDS, "clean", "2026-03")
+    assert "LIMIT" not in query.upper() and 'WHERE "timestamp">=' in query
+
+
+@pytest.mark.parametrize("changes,match", [
+    ({"raw": {"filtered_rows": 2_000_001, "arrow_payload_estimate_bytes": 1}}, "exact filtered rows"),
+    ({"raw": {"filtered_rows": 1, "arrow_payload_estimate_bytes": 536_870_913}}, "Arrow payload"),
+])
+def test_streamed_count_and_buffer_caps_never_truncate(changes, match):
+    with pytest.raises(audit.AuditBlocked, match=match):
+        audit.enforce_stream_footprints(changes)
+
+
+def test_streamed_utf8_estimator_counts_nulls_multibyte_and_hive_offsets(tmp_path):
+    con = audit.connection()
+    try:
+        rows = [{field: "é" for field in audit.VALUE_FIELDS} for _ in range(2)]
+        for index, row in enumerate(rows):
+            row.update(timestamp=100, usdcSize=1.0, price=0.5, is_maker=True)
+        rows[1]["proxyWallet"] = None
+        register(con, "values_fixture", rows)
+        counts = audit.streamed_footprint(con, "SELECT * FROM values_fixture", "clean")
+        assert counts["filtered_rows"] == 2
+        assert counts["utf8_payload_bytes"] == 26  # Seven string fields, one null.
+        table = audit.fetch_streamed(con, "SELECT * FROM values_fixture", counts)
+        assert table.num_rows == 2 and table.nbytes <= counts["arrow_payload_estimate_bytes"]
+        wrong = {**counts, "filtered_rows": 1}
+        with pytest.raises(audit.AuditBlocked, match="count differs"):
+            audit.fetch_streamed(con, "SELECT * FROM values_fixture", wrong)
+    finally:
+        con.close()
+
+
+@pytest.mark.parametrize("bad_timestamp", [None, audit.epoch("2026-03-01T18:00:00Z")])
+def test_neighbor_month_cannot_hide_null_or_window_boundary_rows(tmp_path, bad_timestamp):
+    inputs = all_month_inputs(tmp_path)
+    path = Path(inputs["clean"]) / "year_month=2026-02" / "data.parquet"
+    table = pq.read_table(path, partitioning=None)
+    rows = table.to_pylist()
+    rows[0]["timestamp"] = bad_timestamp
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
+    con = audit.connection()
+    try:
+        result = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    assert result["status"] == "preflight_blocked"
+    assert result["blocks"][0]["stage"] == "all_month_boundary_proof"
+
+
+def test_snapshot_mutation_blocks_after_scalar_stage_and_preserves_rss(tmp_path):
+    inputs = all_month_inputs(tmp_path)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    path = Path(inputs["raw"])
+    table = pq.read_table(path)
+    rows = table.to_pylist()
+    rows[0]["fee"] = 1
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path, row_group_size=1)
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    assert result["status"] == "blocked"
+    assert "frozen input changed" in result["reason"]
+    assert result["peak_rss_bytes"] > 0
+    assert not any("fetched_rows" in item for item in result["filtered_footprints"].values())
+
+
+def test_streamed_rejection_before_fetch_never_publishes_success(tmp_path, monkeypatch):
+    inputs = all_month_inputs(tmp_path)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    monkeypatch.setattr(audit, "MAX_ROWS", 1)
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    assert result["status"] == "blocked" and "exact filtered rows" in result["reason"]
+    assert not any("fetched_rows" in item for item in result["filtered_footprints"].values())
+    assert result["peak_rss_bytes"] > 0
+
+
+@pytest.mark.parametrize("relative", ["extra.parquet", "year_month=2026-03/nested/extra.parquet", "extra.txt"])
+def test_exact_published_layout_rejects_paths_canonical_glob_could_omit(tmp_path, relative):
+    inputs = all_month_inputs(tmp_path)
+    path = Path(inputs["clean"]) / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    table = pq.read_table(Path(inputs["clean"]) / "year_month=2026-03/data.parquet", partitioning=None)
+    pq.write_table(table, path)
+    con = audit.connection()
+    try:
+        result = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    assert result["status"] == "preflight_blocked"
+    assert "layout" in result["blocks"][0]["reason"]
+
+
+def test_post_preflight_partition_file_addition_is_not_silently_omitted(tmp_path):
+    inputs = all_month_inputs(tmp_path)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    month = Path(inputs["clean"]) / "year_month=2026-03"
+    pq.write_table(pq.read_table(month / "data.parquet", partitioning=None), month / "additional.parquet")
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    assert result["status"] == "blocked"
+    assert "directory/file set changed" in result["reason"]
+    assert not result["filtered_footprints"]
+
+
+def test_streamed_query_preserves_wrong_physical_root_month_for_reconciliation(tmp_path):
+    inputs = all_month_inputs(tmp_path)
+    path = Path(inputs["root_transformed"]) / "year_month=2026-03/data.parquet"
+    table = pq.read_table(path, partitioning=None)
+    pq.write_table(table.append_column("year_month", pa.array(["WRONG"] * table.num_rows)), path)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    assert result["status"] == "bounded_reconciliation_failed"
+    assert result["expanded_to_root_membership"] == {"left_only_rows": 2, "right_only_rows": 2}
+
+
+@pytest.mark.parametrize("zero_rows", [1, 2])
+def test_actual_collateral_join_keys_block_hijack_and_reproduced_fanout(tmp_path, zero_rows):
+    inputs = all_month_inputs(tmp_path)
+    token_table = pq.read_table(inputs["token_map"])
+    rows = token_table.to_pylist()
+    rows.extend({**rows[0], "token_id": "0"} for _ in range(zero_rows))
+    pq.write_table(pa.Table.from_pylist(rows, schema=token_table.schema), inputs["token_map"])
+    if zero_rows == 2:
+        # Reproduce the original pipeline's duplicated resolved and transformed
+        # rows; clean remains full-value DISTINCT. Reproduction must not pass QA.
+        table = pq.read_table(inputs["resolved"])
+        pq.write_table(pa.concat_tables([table, table]), inputs["resolved"], row_group_size=1)
+        for month in ("2026-03", "2026-06"):
+            path = Path(inputs["root_transformed"]) / f"year_month={month}/data.parquet"
+            table = pq.read_table(path, partitioning=None)
+            pq.write_table(pa.concat_tables([table, table]), path, row_group_size=1)
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    if zero_rows == 1:
+        assert result["status"] == "blocked_metadata_integrity"
+        assert result["metadata_integrity"]["invalid_touched_token_metadata"] == 1
+    else:
+        assert result["status"] == "blocked_metadata_fanout"
+        assert any(gate["gate"] == "token_map_duplicate_touched_keys" for gate in result["gates"])
+
+
+@pytest.mark.parametrize("other_winner", ["NO", None, ""])
+def test_resolution_tokens_for_touched_market_must_share_one_nonblank_winner(tmp_path, other_winner):
+    inputs = all_month_inputs(tmp_path)
+    table = pq.read_table(inputs["token_map"])
+    rows = table.to_pylist()
+    rows.append({**rows[0], "token_id": "2", "outcome": "NO"})
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), inputs["token_map"])
+    table = pq.read_table(inputs["resolutions"])
+    rows = table.to_pylist()
+    rows.append({**rows[0], "token_id": "2", "winning_outcome": other_winner})
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), inputs["resolutions"])
+    con = audit.connection()
+    try:
+        preflight = audit.preflight(inputs, con, stream_filtered=True)
+    finally:
+        con.close()
+    frozen = [info for infos in preflight["inventories"].values() for info in infos]
+    result = audit.audit_window(inputs, preflight["windows"][0], frozen)
+    assert result["status"] == "blocked_metadata_integrity"
+    assert result["metadata_integrity"]["conflicting_market_winner_groups"] == 1
+
+
+def test_canonical_price_exclusions_reconcile_without_execution_claim():
+    con = audit.connection()
+    try:
+        rows = [resolved(native()), resolved(native(tx="invalid", log=2, quantity=1_000_000, cash=2_000_000)),
+                resolved(native(tx="aggregate", log=3, quantity=1_000_000, cash=2_000_000,
+                                exchange=audit.NEW_EXCHANGES[0], taker=audit.NEW_EXCHANGES[0]))]
+        register(con, "resolved", rows)
+        register(con, "timestamp_slice", [{"block_number": 2, "timestamp": 100}])
+        audit.create_expansion(con, "resolved", "expanded")
+        result = audit.stage6_price_summary(con, "resolved", "expanded")
+        assert result["current_resolved_native_rows"] == 3
+        assert result["potential_expanded_rows"] == 6
+        assert result["canonical_price_excluded_native_rows"] == 2
+        assert result["canonical_price_excluded_expanded_rows"] == 4
+        assert result["price_excluded_exchange_facing_records"] == 1
+        assert result["admitted_expanded_rows"] == 2 and result["count_reconciles"]
+        assert "not certified execution price" in result["price_note"]
+    finally:
+        con.close()

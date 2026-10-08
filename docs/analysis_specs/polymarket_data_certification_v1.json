@@ -29,6 +29,22 @@
     "max_initial_audit_output_bytes": 1073741824,
     "publication": "New immutable run directories and atomic scalar checkpoints only. No large exports."
   },
+  "explicit_followup_scopes": {
+    "published_view_only": "Preserve the strict source-quality failure. Retain all nonblank source-token lookup entries and report source health separately; published flag/token/outcome coverage remains a hard per-row gate. This scope cannot certify the whole metadata cache.",
+    "stream_filtered_windows": {
+      "reason": "Original footer-only stage failed its physical row-group caps because block/timestamp values are mixed across large groups; no body rows were read in that stage.",
+      "window_choice": "The same two predeclared UTC minutes; no sampling or narrower window is permitted to fit caps.",
+      "max_unique_overlapping_compressed_footprint_per_window_bytes": 8589934592,
+      "max_planned_two_pass_large_input_read_estimate_per_window_bytes": 17179869184,
+      "io_note": "These are frozen overlapping input footprints and conservative planned-pass estimates, not measured physical I/O. Metadata/cache queries are recorded separately.",
+      "max_exact_filtered_rows_per_relation": 2000000,
+      "max_combined_estimated_arrow_payload_bytes": 536870912,
+      "materialization_gate": "Exact filtered counts and conservative UTF-8/fixed-width/offset/validity byte estimates must pass before fetching any Arrow table; no LIMIT or truncation.",
+      "database_memory_limit": "4GB",
+      "peak_rss": "Record actual process high-water mark; footer and payload estimates are not a hard process-memory guarantee.",
+      "completeness": "Freeze all overlapping groups; validate all published month footer bounds, exact timestamp coverage, identical count/fetch predicates, whole boundary seconds and post-read input identity."
+    }
+  },
   "acceptance_gates": [
     "Every required input has an explicit schema, grain, frozen identity and inventory.",
     "No null or conflicting native identity is admitted as certified; exact replays and conflicts are separate.",
