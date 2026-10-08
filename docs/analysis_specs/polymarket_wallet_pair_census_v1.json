@@ -43,6 +43,8 @@
     "disk_spill": "0B",
     "maximum_rows_per_relation_leaf": 25000000,
     "maximum_combined_logical_payload_bytes_per_leaf": 17179869184,
+    "maximum_planned_read_footprint_bytes": 8796093022208,
+    "maximum_admission_nodes": 4096,
     "maximum_compact_output_bytes": 268435456,
     "output_policy": "New immutable versioned stages; atomic publication, no overwrite, final input-identity reopen required.",
     "no_arrow_body_materialization": true,

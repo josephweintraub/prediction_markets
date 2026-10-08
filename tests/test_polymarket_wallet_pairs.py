@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import copy
 from collections import Counter
+from contextlib import redirect_stderr
 import hashlib
+import io
 import json
 import os
 import random
@@ -212,6 +214,27 @@ class PairCensusTests(unittest.TestCase):
         with self.assertRaisesRegex(lineage.AuditBlocked, "complete UTC second"):
             census.split_seconds(10, 11)
 
+    def test_read_budget_exact_boundary_and_rejected_charge_preserve_totals(self):
+        budget = {"admission_compressed_footprint_bytes": 0, "grouping_compressed_footprint_bytes": 0,
+                  "planned_original_read_footprint_bytes": 0, "admission_nodes": 0}
+        census.reserve_read(budget, "admission", "root", census.MAX_READ_FOOTPRINT-1)
+        census.reserve_read(budget, "grouping", "root", 1)
+        self.assertEqual(budget["planned_original_read_footprint_bytes"], census.MAX_READ_FOOTPRINT)
+        census.reserve_read(budget, "admission", "clean", 0)
+        with self.assertRaisesRegex(lineage.AuditBlocked, "before the next query"):
+            census.reserve_read(budget, "grouping", "clean", 1)
+        self.assertEqual(budget["planned_original_read_footprint_bytes"], census.MAX_READ_FOOTPRINT)
+        self.assertEqual(budget["grouping_compressed_footprint_bytes"], 1)
+        self.assertEqual(budget["blocked_original_query"]["requested_compressed_footprint_bytes"], 1)
+
+    def test_admission_node_exact_boundary_blocks_before_increment(self):
+        budget = {"admission_nodes": census.MAX_ADMISSION_NODES-1}
+        census.begin_admission(budget)
+        self.assertEqual(budget["admission_nodes"], census.MAX_ADMISSION_NODES)
+        with self.assertRaisesRegex(lineage.AuditBlocked, "admission-node budget"):
+            census.begin_admission(budget)
+        self.assertEqual(budget["admission_nodes"], census.MAX_ADMISSION_NODES)
+
     def test_invalid_rows_are_counted_then_refused(self):
         for changes in ({"side": "OTHER"}, {"is_maker": None}, {"usdcSize": float("nan")},
                         {"year_month": "2026-04"}, {"proxyWallet": ""}):
@@ -351,12 +374,17 @@ class ApprovalAndSnapshotTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             months = (MONTH, "2026-04")
             manifest = self.fixture_preflight(directory, months=months)
-            with patch.object(lineage, "canonical_months", return_value=months):
+            progress = io.StringIO()
+            with patch.object(lineage, "canonical_months", return_value=months), redirect_stderr(progress):
                 result = census.run_census(manifest)
             self.assertEqual(result["status"], "published_pair_census_complete")
             self.assertEqual(result["completed_months"], list(months))
             self.assertEqual(result["global"]["support"]["root"]["row_count"], 4)
             self.assertTrue(result["final_input_identity_reopened"])
+            events = [json.loads(line) for line in progress.getvalue().splitlines()]
+            self.assertEqual([event["month"] for event in events], list(months))
+            self.assertEqual(events[-1]["planned_original_read_footprint_bytes"], result["planned_original_read_footprint_bytes"])
+            self.assertEqual(events[-1]["admission_nodes"], result["admission_nodes"])
 
     def test_parquet_backed_empty_intervals_are_preserved_with_footer_proof(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -458,6 +486,86 @@ class ApprovalAndSnapshotTests(unittest.TestCase):
             self.assertEqual(first["split_kind"], "complete_utc_days")
             self.assertEqual((first["lower_inclusive"], first["upper_exclusive"]), lineage.month_bounds(MONTH))
             self.assertEqual(result["splits"][1]["split_kind"], "integer_second_bisection")
+            self.assertFalse(result["final_input_identity_reopened"])
+
+    def test_budget_blocks_before_next_admission_and_retains_partial_support(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = self.fixture_preflight(directory)
+            root_bytes = manifest["initial_plan"][0]["selections"]["root"]["overlapping_compressed_bytes"]
+            with patch.object(lineage, "canonical_months", return_value=(MONTH,)), \
+                    patch.object(census, "MAX_READ_FOOTPRINT", root_bytes), \
+                    patch.object(census, "leaf_support", wraps=census.leaf_support) as reads:
+                result = census.run_census(manifest)
+            self.assertEqual(result["status"], "blocked_census")
+            self.assertEqual(reads.call_count, 1)
+            self.assertEqual(set(result["active_admission"]), {"root"})
+            self.assertEqual(result["planned_original_read_footprint_bytes"], root_bytes)
+            self.assertEqual(result["grouping_compressed_footprint_bytes"], 0)
+            self.assertEqual(result["blocked_original_query"]["stage"], "admission")
+            self.assertFalse(result["final_input_identity_reopened"])
+            blocked = {**manifest, "status": result["status"], "census": result}
+            census.write_immutable(Path(directory) / "blocked_stage", blocked)
+            saved = json.loads((Path(directory) / "blocked_stage" / "summary.json").read_bytes())
+            self.assertEqual(saved["status"], "blocked_census")
+            self.assertEqual(saved["census"]["planned_original_read_footprint_bytes"], root_bytes)
+
+    def test_budget_blocks_before_second_grouping_query_and_retains_totals(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = self.fixture_preflight(directory)
+            selected = manifest["initial_plan"][0]["selections"]
+            root_bytes = selected["root"]["overlapping_compressed_bytes"]
+            clean_bytes = selected["clean"]["overlapping_compressed_bytes"]
+            limit = 2*root_bytes + clean_bytes
+            charges = []
+            original = census.reserve_read
+
+            def record(budget, stage, name, footprint):
+                charges.append((stage, name))
+                return original(budget, stage, name, footprint)
+
+            with patch.object(lineage, "canonical_months", return_value=(MONTH,)), \
+                    patch.object(census, "MAX_READ_FOOTPRINT", limit), \
+                    patch.object(census, "reserve_read", side_effect=record):
+                result = census.run_census(manifest)
+            self.assertEqual(result["status"], "blocked_census")
+            self.assertEqual(charges, [("admission", "root"), ("admission", "clean"), ("grouping", "root"), ("grouping", "clean")])
+            self.assertEqual(result["planned_original_read_footprint_bytes"], limit)
+            self.assertEqual(result["admission_compressed_footprint_bytes"], root_bytes+clean_bytes)
+            self.assertEqual(result["grouping_compressed_footprint_bytes"], root_bytes)
+            self.assertEqual(result["blocked_original_query"]["stage"], "grouping")
+            self.assertFalse(result["final_input_identity_reopened"])
+
+    def test_node_budget_blocks_before_any_admission_body_query(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = self.fixture_preflight(directory)
+            with patch.object(lineage, "canonical_months", return_value=(MONTH,)), \
+                    patch.object(census, "MAX_ADMISSION_NODES", 0), \
+                    patch.object(census, "leaf_support", wraps=census.leaf_support) as reads:
+                result = census.run_census(manifest)
+            self.assertEqual(result["status"], "blocked_census")
+            self.assertEqual(reads.call_count, 0)
+            self.assertEqual(result["admission_nodes"], 0)
+            self.assertEqual(result["planned_original_read_footprint_bytes"], 0)
+            self.assertFalse(result["final_input_identity_reopened"])
+
+    def test_recursive_child_budget_failure_preserves_parent_admission(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = self.fixture_preflight(directory, second_pair=True)
+            item = manifest["initial_plan"][0]
+            item["lower_inclusive"], item["upper_exclusive"] = SECOND, SECOND+2
+            parent_cost = sum(selected["overlapping_compressed_bytes"] for selected in item["selections"].values())
+            with patch.object(lineage, "canonical_months", return_value=(MONTH,)), \
+                    patch.object(census, "MAX_ROWS", 2), \
+                    patch.object(census, "MAX_READ_FOOTPRINT", parent_cost), \
+                    patch.object(census, "leaf_support", wraps=census.leaf_support) as reads:
+                result = census.run_census(manifest)
+            self.assertEqual(result["status"], "blocked_census")
+            self.assertEqual(reads.call_count, 2)
+            self.assertEqual(len(result["splits"]), 1)
+            self.assertEqual(result["splits"][0]["support"]["root"]["row_count"], 4)
+            self.assertEqual(result["planned_original_read_footprint_bytes"], parent_cost)
+            self.assertEqual(result["grouping_compressed_footprint_bytes"], 0)
+            self.assertEqual(result["admission_nodes"], 2)
             self.assertFalse(result["final_input_identity_reopened"])
 
     def test_output_no_overwrite_and_finite_exact_json(self):

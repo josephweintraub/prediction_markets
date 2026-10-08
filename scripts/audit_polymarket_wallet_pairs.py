@@ -29,6 +29,8 @@ MAX_ROWS = 25_000_000
 MAX_PAYLOAD = 16 * 1024**3
 MAX_OUTPUT = 256 * 1024**2
 MAX_SUMMARY = 1024**2
+MAX_READ_FOOTPRINT = 8 * 1024**4
+MAX_ADMISSION_NODES = 4096
 COMMON = ("timestamp", "conditionId", "usdcSize", "price", "outcome", "eventSlug", "year_month")
 WALLETS = ("proxyWallet", "counterparty", "side")
 CATEGORIES = ("correct_only", "copied_only", "both_compatible", "neither")
@@ -37,6 +39,8 @@ CAPS = {"duckdb_memory_limit": "64GB", "threads": 4, "disk_spill": "0B",
         "maximum_rows_per_relation_leaf": MAX_ROWS,
         "maximum_combined_logical_payload_bytes_per_leaf": MAX_PAYLOAD,
         "maximum_compact_output_bytes": MAX_OUTPUT,
+        "maximum_planned_read_footprint_bytes": MAX_READ_FOOTPRINT,
+        "maximum_admission_nodes": MAX_ADMISSION_NODES,
         "no_arrow_body_materialization": True,
         "disabled_optimizers": OPTIMIZERS_DISABLED}
 
@@ -367,12 +371,34 @@ def pair_metrics(con, relation: str, *, omit_label: bool = False) -> dict:
         con.execute("DROP TABLE IF EXISTS pair_capacity")
 
 
-def audit_leaf(con, support: dict) -> dict:
+def begin_admission(budget: dict) -> None:
+    if budget["admission_nodes"] >= MAX_ADMISSION_NODES:
+        raise lineage.AuditBlocked("admission-node budget exhausted before the next original-data query")
+    budget["admission_nodes"] += 1
+
+
+def reserve_read(budget: dict, stage: str, name: str, footprint: int) -> None:
+    used = budget["admission_compressed_footprint_bytes"] + budget["grouping_compressed_footprint_bytes"]
+    if footprint < 0 or stage not in {"admission", "grouping"}:
+        raise lineage.AuditBlocked("invalid original-data read budget charge")
+    if used + footprint > MAX_READ_FOOTPRINT:
+        budget["blocked_original_query"] = {"stage": stage, "relation": name,
+            "requested_compressed_footprint_bytes": footprint,
+            "previously_reserved_compressed_footprint_bytes": used}
+        raise lineage.AuditBlocked("planned original-data read budget exhausted before the next query")
+    budget[stage + "_compressed_footprint_bytes"] += footprint
+    budget["planned_original_read_footprint_bytes"] = used + footprint
+
+
+def audit_leaf(con, support: dict, *, read_budget: dict | None = None,
+               footprints: dict | None = None) -> dict:
     if not admitted(support):
         raise lineage.AuditBlocked("leaf was not admitted by scalar resource gates")
     values = columns(lineage.VALUE_FIELDS)
     try:
         for name in ("root", "clean"):
+            if read_budget is not None:
+                reserve_read(read_budget, "grouping", name, footprints[name])
             con.execute(f"CREATE TEMP TABLE {name}_groups AS " + grouping_query(name))
         cleaning = lineage.scalar(con, f"""SELECT
           (SELECT coalesce(sum(multiplicity-1),0) FROM root_groups) root_value_row_surplus,
@@ -424,7 +450,7 @@ def run_census(manifest: dict) -> dict:
     result = {"status": "incomplete", "data_certified": False, "leaves": [], "splits": [],
               "months": {}, "completed_months": [], "final_input_identity_reopened": False,
               "admission_compressed_footprint_bytes": 0, "grouping_compressed_footprint_bytes": 0,
-              "admission_nodes": 0}
+              "planned_original_read_footprint_bytes": 0, "admission_nodes": 0}
     started, usage = time.monotonic(), resource.getrusage(resource.RUSAGE_SELF)
     con = connection()
     try:
@@ -441,15 +467,18 @@ def run_census(manifest: dict) -> dict:
                     current = {name: [info for info in infos if info["partition_month"] == month]
                                for name, infos in manifest["inventories"].items()}
                     selections = {name: overlap(infos, lower, upper) for name, infos in current.items()}
-                    footprint = sum(item["overlapping_compressed_bytes"] for item in selections.values())
-                    result["admission_compressed_footprint_bytes"] += footprint
-                    result["admission_nodes"] += 1
+                    footprints = {name: item["overlapping_compressed_bytes"] for name, item in selections.items()}
+                    result.pop("active_admission", None)
+                    begin_admission(result)
                     leaf_views(con, manifest["inventories"], month, lower, upper)
                     plans = {name: {"admission": scan_plan(con, support_query(name + "_leaf", month),
                                       empty_overlap=selections[name]["overlapping_physical_rows"] == 0)}
                              for name in ("root", "clean")}
-                    support = {name: leaf_support(con, name + "_leaf", month) for name in ("root", "clean")}
+                    support = {}
                     result["active_admission"] = support
+                    for name in ("root", "clean"):
+                        reserve_read(result, "admission", name, footprints[name])
+                        support[name] = leaf_support(con, name + "_leaf", month)
                     if not admitted(support):
                         if (lower, upper) == lineage.month_bounds(month):
                             children = [(value, min(value+86400, upper)) for value in range(lower, upper, 86400)]
@@ -464,8 +493,7 @@ def run_census(manifest: dict) -> dict:
                     for name in ("root", "clean"):
                         plans[name]["grouping"] = scan_plan(con, grouping_query(name),
                             empty_overlap=selections[name]["overlapping_physical_rows"] == 0)
-                    leaf = audit_leaf(con, support)
-                    result["grouping_compressed_footprint_bytes"] += footprint
+                    leaf = audit_leaf(con, support, read_budget=result, footprints=footprints)
                     result["leaves"].append({**result["active_leaf"], "metrics": leaf, "source_scan_plans": plans})
                     month_results.append(leaf)
                     if len(exact_json(result)) > MAX_OUTPUT:
@@ -481,7 +509,9 @@ def run_census(manifest: dict) -> dict:
             # month-only inventory would falsely treat neighboring months as new.
             verify_frozen(frozen)
             print(json.dumps({"stage": "month_complete", "month": month,
-                              "leaf_count": len(month_results), "elapsed_seconds": round(time.monotonic()-started, 3)}),
+                              "leaf_count": len(month_results), "elapsed_seconds": round(time.monotonic()-started, 3),
+                              "planned_original_read_footprint_bytes": result["planned_original_read_footprint_bytes"],
+                              "admission_nodes": result["admission_nodes"]}),
                   file=sys.stderr, flush=True)
         result["global"] = sum_records(list(result["months"].values()))
         for name in ("root", "clean"):
