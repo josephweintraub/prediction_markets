@@ -43,6 +43,20 @@
       "database_memory_limit": "4GB",
       "peak_rss": "Record actual process high-water mark; footer and payload estimates are not a hard process-memory guarantee.",
       "completeness": "Freeze all overlapping groups; validate all published month footer bounds, exact timestamp coverage, identical count/fetch predicates, whole boundary seconds and post-read input identity."
+    },
+    "full_required_block_cache_coverage": {
+      "scope": "Every row in the frozen resolved native input, joined only after timestamp-cache validity and key uniqueness pass.",
+      "expected_resolved_rows": 1057311726,
+      "expected_cache_rows": 27117476,
+      "planned_body_passes": "One cache block/timestamp projection, then one resolved block-number projection; scalar cache checks run in memory.",
+      "projected_compressed_column_bytes": 267138151,
+      "io_note": "Projected compressed column bytes exclude footer and engine/OS overhead and are not measured physical I/O.",
+      "database_memory_limit": "8GB",
+      "threads": 4,
+      "spill": "0B",
+      "gates": "Exact physical schemas/footer counts, valid unique cache keys, nondecreasing clock by block, valid required native block IDs, zero missing required rows/blocks, row conservation and final input-identity reopen.",
+      "failure": "Any incomplete execution, input mutation, integrity failure or memory failure stays uncertified. No timestamp approximation or new RPC collection.",
+      "limitation": "Coverage and internal cache clock consistency do not establish independent chain truth or historical published timestamp equality."
     }
   },
   "acceptance_gates": [

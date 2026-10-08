@@ -8,6 +8,8 @@
   identity distinct from expanded wallet rows and actual matching legs.
 - Qualified unsupported replay/partial-fill certainty in the methods reference;
   published-row validation is distinct from native completeness certification.
+- Added a separate frozen required-block timestamp-cache coverage audit and
+  scalar-only field diagnostics that never relax exact lineage acceptance gates.
 - Preserved the existing canon and completed analyses; no refresh or rebuild is
   part of this validation stage.
 
