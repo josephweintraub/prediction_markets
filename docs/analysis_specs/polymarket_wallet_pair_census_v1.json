@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-08",
+  "question": "Determine whether published maker/nonmaker wallet rows obey reversed-wallet construction or copied-wallet construction across the complete frozen published history.",
+  "scope": "Read-only structural census of existing root and clean published rows, plus independent source/runtime/provenance diagnosis. This is not native collection completeness, economic-action certification, or a canon repair.",
+  "inputs": {
+    "root": "/mnt/data/pipeline_root_output/trades.parquet",
+    "clean": "/mnt/data/pipeline_output/trades_clean.parquet"
+  },
+  "months": {"first": "2022-11", "last": "2026-06", "count": 44},
+  "units": {
+    "observation": "Published wallet row at exact full-value multiplicity; not an independently identified execution.",
+    "common_class": ["timestamp", "conditionId", "usdcSize", "price", "outcome", "eventSlug", "year_month"],
+    "wallet_class": ["proxyWallet", "counterparty", "side"],
+    "correct_construction": "Each maker row predicts a nonmaker row with flipped BUY/SELL, is_maker=false, proxyWallet=maker counterparty, and counterparty=maker proxyWallet.",
+    "copied_construction": "Each maker row predicts a nonmaker row with flipped BUY/SELL and is_maker=false, retaining both maker wallet fields.",
+    "weight": "Exact row multiplicity; no dollar-weighted or causal estimand.",
+    "uncertainty": "Exhaustive frozen-artifact counts, not a statistical sample; no standard errors or significance tests."
+  },
+  "outputs": {
+    "primary": "Exact maker-predicted versus observed nonmaker multiset differences under both constructions, by month and whole history.",
+    "compatibility": "Common-class counts and nonmaker-row-weighted support classified correct-only, copied-only, both-compatible, or neither; preserve empty-role and ambiguous classes.",
+    "label_diagnostic": "Repeat class comparison omitting eventSlug, separately labeled; never replaces full-field gates.",
+    "cleaning": "Exact full eleven-field root DISTINCT versus clean multiset differences and root value-row surplus, reconciled within complete UTC-second leaves.",
+    "support": "Row counts, role counts, gross recorded cash, leaf bounds, admission gates, input identities, runtime and peak RSS."
+  },
+  "interpretation_rules": [
+    "Class compatibility does not establish individual native pairing or historical writer membership.",
+    "Both-compatible classes can include self-wallet rows or collisions among distinct reciprocal maker wallet pairs.",
+    "Nonmaker excess relative to a construction is a structural incompatibility count, not identified erroneous wallets or economic volume.",
+    "Synthetic nonmaker opposite-side inference remains unverified economic action even if the published wallet fields are structurally consistent.",
+    "Do not infer sports-result impact without each report's separate input and flag lineage."
+  ],
+  "execution": {
+    "host": "Canonical EC2 checkout with verified mounted /mnt/data",
+    "mode": "Preflight then root-reviewed, expected-commit and approved-manifest-digest-bound body",
+    "serialization": "One production stage at a time; source-only and local fixture reviews may run independently.",
+    "leaf_policy": "Whole small UTC month when admitted; otherwise complete UTC days, recursively bisected at integer seconds as needed. No omitted leaves or second splitting.",
+    "duckdb_memory_limit": "64GB",
+    "disabled_optimizer": "common_subplan",
+    "optimizer_note": "Disable the projection-sharing pass that reproduces the frozen Stage6 wallet discrepancy; verify census outputs against independent Python multiset fixtures.",
+    "threads": 4,
+    "disk_spill": "0B",
+    "maximum_rows_per_relation_leaf": 25000000,
+    "maximum_combined_logical_payload_bytes_per_leaf": 17179869184,
+    "maximum_compact_output_bytes": 268435456,
+    "output_policy": "New immutable versioned stages; atomic publication, no overwrite, final input-identity reopen required.",
+    "no_arrow_body_materialization": true,
+    "resource_note": "DuckDB limit is not a hard process RSS guarantee; scalar-only summaries and observed RSS are recorded. Preflight estimates physical overlaps and full body plan before authorization."
+  },
+  "prohibited": [
+    "Modification of existing data, caches, pipeline writers or scientific estimates",
+    "New API/RPC/chain collection",
+    "Unreviewed storage expansion, scratch datasets or disk spill",
+    "Dropping collisions, irregular rows, inconvenient periods or unresolved classes",
+    "Replacing failed certification with wallet-pair compatibility"
+  ]
+}

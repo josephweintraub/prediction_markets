@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-08 - Wallet construction runtime and published-pair audits
+
+- Added a synthetic-only probe of the frozen Stage6 SQL, with exact field
+  comparisons, optimizer controls and isolated runtime-version evidence.
+- Defined an exhaustive read-only ROOT/CLEAN wallet-pair census with immutable
+  inputs, bounded serial leaves, exact multiplicities and explicit ambiguity.
+- Kept software reproduction, published-value structure and native economic
+  actions separate; no production environment, canon or scientific results
+  are replaced by these diagnostic stages.
+
 ## 2026-10-08 - Single-transaction wallet construction diagnostic
 
 - Added a bounded read-only follow-up contract for the first implicated native
