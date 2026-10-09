@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-09 - Verified repair-capacity archive workflow
+
+- Added a fixed-scope, two-phase archive for the three explicitly approved
+  historical trade and quote-tick directories, retaining a frozen admission.
+- Required exact file membership, size and Dropbox content-hash verification
+  for all data and control files before separate manifest-driven local removal.
+- Added fixture tests for missing hashes, source changes, path/link safety,
+  failed transfers, immutable controls and interrupted removal recovery.
+
 ## 2026-10-09 - Stage6 wallet-projection safeguard
 
 - Disabled the implicated shared-subplan optimization on the Stage6 connection,
