@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-09 - Immutable historical wallet repair
+
+- Added a frozen-census-bound ROOT/CLEAN repair that swaps only the synthetic
+  counterparty wallet pair, preserving original schemas and row multiplicities.
+- Required separately reviewed capacity admission, bounded complete-second
+  leaf validation, exact full-row/non-wallet reconciliation and atomic publication.
+- Added enforced COPY write ceilings, original-input reopen and fixture/oracle
+  coverage; kept saved flags, code maps, analysis bases and estimates unadopted.
+
 ## 2026-10-09 - Verified repair-capacity archive workflow
 
 - Added a fixed-scope, two-phase archive for the three explicitly approved
