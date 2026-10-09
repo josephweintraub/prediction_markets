@@ -313,6 +313,11 @@ class RepairManifestTests(unittest.TestCase):
         self.manifest["environment"]["duckdb"] = "0.0.0"
         self.refuse()
 
+    def test_parquet_input_is_refused_before_any_open(self):
+        with mock.patch.object(Path, "open", side_effect=AssertionError("must not open data")):
+            with self.assertRaisesRegex(audit.ReviewBlocked, "metadata inputs"):
+                audit.read_saved(self.base / "never.parquet", 1024)
+
 
 if __name__ == "__main__":
     unittest.main()

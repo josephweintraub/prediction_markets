@@ -96,6 +96,7 @@ def finite(token):
 
 def read_saved(path, limit, *, text=False):
     path = Path(path)
+    require(path.suffix == (".txt" if text else ".json"), "only explicit JSON/time-text metadata inputs are allowed")
     require(path.is_file() and not path.is_symlink(), "regular non-symlink metadata required")
     before = path.stat()
     require(0 < before.st_size <= limit, "metadata size bound exceeded or empty")
