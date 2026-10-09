@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-09 - Stage6 wallet-projection safeguard
+
+- Disabled the implicated shared-subplan optimization on the Stage6 connection,
+  preserving existing optimizer settings and the exact trade-expansion SQL.
+- Added a production-host entry guard and synthetic regression coverage for both
+  wallet fields, all other output fields, timestamp joins and thread settings.
+- Kept historical tables, flags, encoded analysis bases and scientific results
+  unchanged while the separately scoped repair capacity decision is pending.
+
 ## 2026-10-09 - MLB pre-filter sample repair
 
 - Added a frozen-source MLB exact-input rebuild that defers price and inferred-buyer

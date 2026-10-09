@@ -552,13 +552,28 @@ def run_stage4():
 # Stage 6: Final transform
 # ---------------------------------------------------------------------------
 
+def _guard_stage6_wallet_projection(con):
+    """Prevent DuckDB's shared-subplan optimizer from aliasing wallet columns."""
+    if not con.execute("SELECT 1 FROM duckdb_optimizers() WHERE name='common_subplan'").fetchone():
+        return
+    disabled = con.execute("SELECT current_setting('disabled_optimizers')").fetchone()[0]
+    names = [name.strip() for name in disabled.split(",") if name.strip()]
+    if "common_subplan" not in names:
+        names.append("common_subplan")
+        con.execute("SET disabled_optimizers = ?", [",".join(names)])
+
+
 def run_stage6():
     """Maker+taker expansion, timestamps, final schema → trades.parquet + market_resolutions.parquet"""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from production_guard import require_production_host
+    require_production_host()
     log.info("=" * 60)
     log.info("STAGE 6: Final transform")
     log.info("=" * 60)
 
     con = get_con()
+    _guard_stage6_wallet_projection(con)
     usdc_scale = 10 ** USDC_DECIMALS
     ctf_scale = 10 ** CTF_TOKEN_DECIMALS
 
