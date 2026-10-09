@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-09 - MLB pre-filter sample repair
+
+- Added a frozen-source MLB exact-input rebuild that defers price and inferred-buyer
+  exclusions until separately saved all-trades and filtered samples are derived.
+- Preserved the existing accepted market/timing cohort and historical artifacts;
+  required full legacy payload retention, exact timestamps, unique joins and
+  sequential exclusion reconciliation before immutable publication.
+- Added an independent saved-artifact checker and a concise LaTeX count renderer
+  bound to its completed receipt. No new scientific estimators or native wallet
+  reconstruction are included in this repair.
+
 ## 2026-10-08 - Wallet construction runtime and published-pair audits
 
 - Added a synthetic-only probe of the frozen Stage6 SQL, with exact field
