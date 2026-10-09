@@ -6,6 +6,12 @@
   comparisons, optimizer controls and isolated runtime-version evidence.
 - Defined an exhaustive read-only ROOT/CLEAN wallet-pair census with immutable
   inputs, bounded serial leaves, exact multiplicities and explicit ambiguity.
+- Added a synthetic test of the existing bot classifier on correct and copied
+  wallet constructions, retaining missing medians and absent-wallet flags.
+- Added a saved-evidence LaTeX renderer with count, lineage and immutable-output
+  gates; reader-facing findings remain separate from technical manifests.
+- Added metadata-only final census QA for complete interval coverage, frozen
+  inputs, exact count laws, bounded scan receipts and durable exit-status binding.
 - Kept software reproduction, published-value structure and native economic
   actions separate; no production environment, canon or scientific results
   are replaced by these diagnostic stages.
