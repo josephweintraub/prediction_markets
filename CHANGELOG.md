@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-09 - Saved historical-repair evidence QA
+
+- Added a metadata-only checker binding all 88 repaired files and 616 time
+  leaves to the frozen original census, exact count laws and execution receipts.
+- Required strict claim schemas, producer-source identities and zero recorded
+  full-row/non-wallet differences without claiming independent trade certification.
+- Kept downstream adoption pending and rejected contradictory completion,
+  certification and exit-status evidence in fixture tests.
+
 ## 2026-10-09 - Immutable historical wallet repair
 
 - Added a frozen-census-bound ROOT/CLEAN repair that swaps only the synthetic
