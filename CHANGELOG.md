@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-10 - Polymarket-only replication of September 28 FLB specifications
+
+- Added a table-by-table replication contract for the full supplied writeup,
+  preserving its archive taker-direction normalization and separating BUY
+  observation comparisons from claims about native wallet actions.
+- Froze user-selected native categories and exact claim-price fixed effects;
+  documented source-clock, provider-cohort and uncertainty reconstructions.
+- Began fresh, guarded, immutable input and estimation tooling without replacing
+  repaired trade tables, current sports results or legacy shared paths.
+
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 
 - Completed versioned paired wallet flags, coherent sports inputs and five
