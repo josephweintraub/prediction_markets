@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from types import MappingProxyType
 from typing import Any, Mapping
 
 import duckdb
@@ -325,9 +326,138 @@ def copy_parquet(con, query, path, ceiling=CAPS["maximum_cache_bytes"], *, ledge
     return info
 
 
-def array_batches(con, query):
+def array_batches(con, query, columns=None):
     for batch in con.execute(query).fetch_record_batch(CAPS["batch_rows"]):
-        yield {name: batch.column(index).to_numpy(zero_copy_only=False) for index, name in enumerate(batch.schema.names)}
+        selected = batch.schema.names if columns is None else columns
+        indices = [batch.schema.get_field_index(name) for name in selected]
+        require(all(index >= 0 for index in indices), "requested batch column missing")
+        yield {name: batch.column(index).to_numpy(zero_copy_only=False)
+               for name, index in zip(selected, indices)}
+
+
+def regression_batches(con, query, spec, feature_count, *, claim_fe=False, projection_only=False):
+    """Same SQL/batch stream; projection skips unused centered moments.
+
+    Named-column conversion deliberately does not change SQL projection or join
+    planning. This preserves the existing query's ordering behavior; it does not
+    assert a global order guarantee for the joined relation.
+    """
+    clocks, effects = spec["clocks"], spec["effects"]
+    selected = None
+    if projection_only:
+        selected = ["n_rows", *[f"a{i}" for i in range(feature_count)],
+                    *[effect + "_active" for effect in effects]]
+        if not claim_fe:
+            selected.append("tail")
+    p = 4 if claim_fe else 2 * (len(clocks) + int(not effects))
+    for raw in array_batches(con, query, columns=selected):
+        n = raw["n_rows"].astype(np.int64)
+        mean = np.column_stack([raw[f"a{i}"] / n for i in range(feature_count)])
+        if claim_fe:
+            x, y = mean[:, :4], mean[:, 4:6]
+        else:
+            h = raw["tail"]
+            controls = mean[:, [0 if clock == "xL" else 1 for clock in clocks]]
+            x, _ = engine.tail_varying_design(controls, clocks, h, intercept=not effects)
+            y = mean[:, 2:4]
+        batch = {"x": x, "y": y, "weights": n.astype(float), "observation_counts": n,
+                 "codes": {effect: raw[effect + "_active"].astype(np.int64) for effect in effects}}
+        if projection_only:
+            yield batch
+            continue
+        within = np.zeros((len(n), feature_count, feature_count))
+        for i in range(feature_count):
+            for j in range(i, feature_count):
+                within[:, i, j] = raw[f"c{i}_{j}"]
+                within[:, j, i] = within[:, i, j]
+        if claim_fe:
+            within_xx, within_xy, within_yy = within[:, :4, :4], within[:, :4, 4:6], within[:, 4:6, 4:6]
+        else:
+            transform = np.zeros((len(n), p, 2))
+            block = p // 2
+            offset = 1 if not effects else 0
+            for tail in (0, 1):
+                for index, clock in enumerate(clocks):
+                    transform[:, tail * block + offset + index, 0 if clock == "xL" else 1] = h == tail
+            within_xx = np.einsum("npi,nij,nqj->npq", transform, within[:, :2, :2], transform)
+            within_xy = np.einsum("npi,niq->npq", transform, within[:, :2, 2:4])
+            within_yy = within[:, 2:4, 2:4]
+        batch.update({"clusters": raw["event_cluster"], "tail": raw.get("tail"),
+                      "within_xx": within_xx, "within_xy": within_xy, "within_yy": within_yy})
+        yield batch
+
+
+def capture_projection_batches(batch_factory, *, expected_groups, expected_observations,
+                               column_count, target_count, code_names,
+                               persistent_bytes, batch_workspace_bytes):
+    """Freeze one admitted grouped-mean stream, never trade or Arrow batches."""
+    code_names = tuple(code_names)
+    require(expected_groups > 0 and expected_observations >= expected_groups
+            and column_count > 0 and target_count > 0 and len(code_names) == len(set(code_names))
+            and persistent_bytes >= 0 and batch_workspace_bytes >= 0,
+            "invalid projection capture admission dimensions/counts")
+    retained_per_group = 8 * (column_count + target_count + 2 + len(code_names))
+    maximum_batches = (expected_groups + CAPS["batch_rows"] - 1) // CAPS["batch_rows"]
+    python_overhead = maximum_batches * 65_536
+    construction_workspace = batch_workspace_bytes + 2 * CAPS["batch_rows"] * retained_per_group
+    admission_bytes = (expected_groups * retained_per_group + python_overhead
+                       + persistent_bytes + construction_workspace)
+    require(admission_bytes <= CAPS["numpy_memory_bytes"], "frozen projection cache exceeds admitted 32GB budget before capture")
+    batches, owners = [], set()
+    groups, observations, owned_bytes = 0, 0, 0
+    for batch in batch_factory():
+        require(set(batch) == {"x", "y", "weights", "observation_counts", "codes"},
+                "projection capture must contain only lean numeric fields")
+        require(set(batch["codes"]) == set(code_names), "projection capture code names differ")
+        n = batch["observation_counts"]
+        size = len(n)
+        require(0 < size <= CAPS["batch_rows"] and len(batches) < maximum_batches,
+                "projection capture batch count/size exceeds admitted bound")
+        require(batch["x"].shape == (size, column_count) and batch["y"].shape == (size, target_count)
+                and batch["weights"].shape == (size,) and n.shape == (size,)
+                and np.issubdtype(n.dtype, np.integer) and np.all(n > 0)
+                and np.all(n <= np.iinfo(np.int64).max) and np.all(n <= expected_observations),
+                "projection capture dimensions/counts differ")
+        # Prove the vectorized signed sum cannot wrap before using it; the
+        # running total is a Python integer, so accumulation across batches is exact.
+        require(size * int(n.max()) <= np.iinfo(np.int64).max,
+                "projection capture batch observation sum can overflow")
+        require(all(np.all(np.isfinite(batch[name])) for name in ("x", "y", "weights")),
+                "projection capture contains nonfinite numeric fields")
+        require(np.array_equal(batch["weights"], n), "projection capture frequency weights differ from counts")
+        require(all(value.shape == (size,) and np.issubdtype(value.dtype, np.integer)
+                    and np.all(value >= 0) and np.all(value <= np.iinfo(np.int64).max)
+                    for value in batch["codes"].values()), "projection capture codes must be integer arrays")
+        # Copies sever every Arrow/raw-mean base reference, including unused mean
+        # columns. All retained buffers are owned C-contiguous numeric arrays.
+        frozen = {name: np.array(batch[name], dtype=np.int64 if name == "observation_counts" else np.float64,
+                                 order="C", copy=True)
+                  for name in ("x", "y", "weights", "observation_counts")}
+        frozen["codes"] = {name: np.array(batch["codes"][name], dtype=np.int64, order="C", copy=True)
+                           for name in code_names}
+        for value in [frozen[name] for name in ("x", "y", "weights", "observation_counts")]+list(frozen["codes"].values()):
+            require(value.base is None and value.flags.owndata and value.flags.c_contiguous,
+                    "projection capture retained a non-owned buffer")
+            if id(value) not in owners:
+                owners.add(id(value))
+                owned_bytes += value.nbytes
+            value.setflags(write=False)
+        groups += size
+        observations += int(n.sum(dtype=np.int64))
+        require(groups <= expected_groups and observations <= expected_observations,
+                "projection capture exceeds source group/observation counts")
+        require(owned_bytes + python_overhead + persistent_bytes + construction_workspace
+                <= CAPS["numpy_memory_bytes"], "frozen projection cache actual owned buffers exceed admitted budget")
+        frozen["codes"] = MappingProxyType(frozen["codes"])
+        batches.append(MappingProxyType(frozen))
+    require(groups == expected_groups and observations == expected_observations,
+            "projection capture source group/observation counts differ")
+    return batches, {"groups":groups, "observations":observations, "batches":len(batches),
+        "retained_bytes_per_group":retained_per_group, "unique_owned_buffer_bytes":owned_bytes,
+        "python_overhead_reserved_bytes":python_overhead, "construction_workspace_bytes":construction_workspace,
+        "persistent_reserved_bytes":persistent_bytes, "admitted_total_bytes":admission_bytes,
+        "maximum_numpy_bytes":CAPS["numpy_memory_bytes"], "order":"first unchanged-query batch stream",
+        "owned_contiguous_read_only":True}
 
 
 def compact_joint(result, stage, key, artifacts, ledger=None):
@@ -503,7 +633,8 @@ def regression_model(con, cache, cache_view, spec, model_id, stage, artifacts, l
             for row in rows(con, f"SELECT tail,{counts_sql} FROM {inputs.ident(cache_view)} GROUP BY 1 ORDER BY 1")}
     group_count, observation_count, cluster_count = con.execute(f"SELECT count(*),coalesce(sum(n_rows),0),count(DISTINCT event_cluster) FROM {inputs.ident(cache_view)}").fetchone()
     persistent = 8 * (sum(levels.values()) * (p + q) + max(levels.values(), default=0) * (p + q + 1) + cluster_count * p * q * 6)
-    require(persistent + CAPS["batch_rows"] * (raw_width ** 2 + p ** 2 + p * q + 30) * 8 <= CAPS["numpy_memory_bytes"], "model arrays exceed admitted 32GB budget")
+    batch_workspace = CAPS["batch_rows"] * (raw_width ** 2 + p ** 2 + p * q + 30) * 8
+    require(persistent + batch_workspace <= CAPS["numpy_memory_bytes"], "model arrays exceed admitted 32GB budget")
     print(json.dumps({"stage": "model_start", "model_id": model_id, "observations": int(observation_count),
                       "groups": int(group_count), "clusters": int(cluster_count), "effect_levels": levels}), flush=True)
     if not observation_count:
@@ -514,43 +645,27 @@ def regression_model(con, cache, cache_view, spec, model_id, stage, artifacts, l
                             "cluster_count_adjusted": None, "influence": None}
                            for target in TARGETS for clock in spec["report_clocks"]]}
 
-    def replay():
+    def replay(projection_only=False):
         ledger.charge(cache["bytes"], "projection_or_moments:" + model_id)
-        for raw in array_batches(con, query):
-            n = raw["n_rows"].astype(np.int64)
-            mean = np.column_stack([raw[f"a{i}"] / n for i in range(raw_width)])
-            within = np.zeros((len(n), raw_width, raw_width))
-            for i in range(raw_width):
-                for j in range(i, raw_width):
-                    within[:, i, j] = raw[f"c{i}_{j}"]
-                    within[:, j, i] = within[:, i, j]
-            if claim_fe:
-                x, y = mean[:, :4], mean[:, 4:6]
-                within_xx, within_xy, within_yy = within[:, :4, :4], within[:, :4, 4:6], within[:, 4:6, 4:6]
-            else:
-                h = raw["tail"]
-                controls = mean[:, [0 if clock == "xL" else 1 for clock in clocks]]
-                x, _ = engine.tail_varying_design(controls, clocks, h, intercept=not effects)
-                y = mean[:, 2:4]
-                transform = np.zeros((len(n), p, 2))
-                block = p // 2
-                offset = 1 if not effects else 0
-                for tail in (0, 1):
-                    for index, clock in enumerate(clocks):
-                        transform[:, tail * block + offset + index, 0 if clock == "xL" else 1] = h == tail
-                within_xx = np.einsum("npi,nij,nqj->npq", transform, within[:, :2, :2], transform)
-                within_xy = np.einsum("npi,niq->npq", transform, within[:, :2, 2:4])
-                within_yy = within[:, 2:4, 2:4]
-            yield {"x": x, "y": y, "weights": n.astype(float), "observation_counts": n,
-                "codes": {effect: raw[effect + "_active"].astype(np.int64) for effect in effects},
-                "clusters": raw["event_cluster"], "tail": raw.get("tail"),
-                "within_xx": within_xx, "within_xy": within_xy, "within_yy": within_yy}
+        yield from regression_batches(con, query, spec, raw_width,
+            claim_fe=claim_fe, projection_only=projection_only)
 
     def projection_progress(value):
         print(json.dumps({"stage": "projection_iteration", "model_id": model_id, **value}), flush=True)
-    absorber = (engine.absorb_categorical_effects(replay, term_names=term_names, target_names=TARGETS,
-        level_counts=levels, tolerance=CAPS["projection_tolerance"], max_iterations=2 if len(effects)==1 else CAPS["maximum_projection_iterations"],
-        memory_limit_bytes=CAPS["numpy_memory_bytes"] // 2, progress=projection_progress) if effects else None)
+    absorber, projection_cache = None, None
+    if effects:
+        captured, projection_cache = capture_projection_batches(lambda: replay(projection_only=True),
+            expected_groups=group_count, expected_observations=observation_count,
+            column_count=p, target_count=q, code_names=effects,
+            persistent_bytes=persistent, batch_workspace_bytes=batch_workspace)
+        print(json.dumps({"stage":"projection_capture_complete", "model_id":model_id, **projection_cache}), flush=True)
+        try:
+            absorber = engine.absorb_categorical_effects(lambda: iter(captured), term_names=term_names, target_names=TARGETS,
+                level_counts=levels, tolerance=CAPS["projection_tolerance"], max_iterations=2 if len(effects)==1 else CAPS["maximum_projection_iterations"],
+                memory_limit_bytes=CAPS["numpy_memory_bytes"] // 2, progress=projection_progress)
+        finally:
+            captured.clear()
+            projection_cache["released_before_full_moment_replay"] = True
     moments = engine.RegressionMoments(term_names, TARGETS)
     original_within_y = np.zeros((q, q))
     original_within_x = np.zeros(p)
@@ -599,6 +714,7 @@ def regression_model(con, cache, cache_view, spec, model_id, stage, artifacts, l
     result = engine.finalize_clustered_regression(fit, scores, fit_statistics_by_group=fit_stats or None)
     joint = compact_joint(result, stage, model_id, artifacts, ledger)
     joint["metadata"].update({"group_count": group_count, "admitted_allocation_bytes": persistent,
+                              "projection_cache":projection_cache,
                               "grouped_within_moment_definition": cache["within_moment_definition"],
                               "moment_restoration": "group mean contribution n*mean_i*mean_j + centered c_i_j; never subtract raw second moments",
                               "event_score_restoration": "n*Xmean_residual*(Ymean_residual-Xmean_residual*beta) + withinXY-withinXX*beta",

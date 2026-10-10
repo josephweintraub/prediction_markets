@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -90,6 +91,12 @@ class EndToEndFixtureTests(unittest.TestCase):
                     self.assertEqual(sum(item["rank"] for item in meta["residualized_continuous_design_by_tail"].values()),
                                      meta["residualized_design_rank"])
                     self.assertIn("unknown",meta["combined_absorbed_fixed_effect_rank"])
+                    if model["spec"]["effects"]:
+                        captured = meta["projection_cache"]
+                        self.assertEqual(captured["groups"],meta["group_count"])
+                        self.assertEqual(captured["observations"],meta["n"])
+                        self.assertTrue(captured["released_before_full_moment_replay"])
+                        self.assertLessEqual(captured["admitted_total_bytes"],driver.CAPS["numpy_memory_bytes"])
                 reconciliation = result["sample"]["duration_reconciliation"]
                 self.assertEqual(reconciliation["source"], reconciliation["group_cache"])
                 self.assertTrue(reconciliation["matches_accepted_input_support"])
@@ -137,6 +144,182 @@ class EndToEndFixtureTests(unittest.TestCase):
                 self.assertEqual(info["raw_source_count"], expected + 1)
                 self.assertEqual(ledger.scans["sports_observation_cache"]["charged_bytes"], 10)
                 self.assertEqual(con.execute("SELECT count(*) FROM sports_base WHERE r<0").fetchone()[0], 0)
+            finally:
+                con.close()
+
+
+class LeanProjectionFixtureTests(unittest.TestCase):
+    def test_projection_capture_admission_ownership_and_source_count_gates(self):
+        source = {"x":np.array([[1.,2.],[3.,4.],[5.,6.]]), "y":np.array([[7.],[8.],[9.]]),
+                  "weights":np.array([2.,3.,4.]), "observation_counts":np.array([2,3,4]),
+                  "codes":{"category":np.array([2,0,1])}}
+        kwargs = {"expected_groups":3, "expected_observations":9, "column_count":2,
+                  "target_count":1, "code_names":("category",), "persistent_bytes":128,
+                  "batch_workspace_bytes":256}
+        calls = []
+        def replay():
+            calls.append(True)
+            yield source
+        with patch.dict(driver.CAPS,{"batch_rows":3, "numpy_memory_bytes":100}):
+            with self.assertRaisesRegex(ValueError,"before capture"):
+                driver.capture_projection_batches(replay,**kwargs)
+        self.assertEqual(calls,[])
+        with patch.dict(driver.CAPS,{"batch_rows":3, "numpy_memory_bytes":100_000}):
+            captured, stats = driver.capture_projection_batches(replay,**kwargs)
+            self.assertEqual(stats["unique_owned_buffer_bytes"],3*8*(2+1+2+1))
+            self.assertEqual(stats["groups"],3)
+            self.assertEqual(stats["observations"],9)
+            self.assertEqual(set(captured[0]),{"x","y","weights","observation_counts","codes"})
+            for name in ("x","y","weights","observation_counts"):
+                value = captured[0][name]
+                np.testing.assert_array_equal(value,source[name])
+                self.assertIsNone(value.base)
+                self.assertTrue(value.flags.owndata and value.flags.c_contiguous)
+                self.assertFalse(value.flags.writeable)
+            np.testing.assert_array_equal(captured[0]["codes"]["category"],source["codes"]["category"])
+            source["x"][0,0] = -100
+            self.assertEqual(captured[0]["x"][0,0],1)
+            with self.assertRaises(ValueError):
+                captured[0]["codes"]["category"][0] = 1
+            with self.assertRaises(TypeError):
+                captured[0]["x"] = source["x"]
+            with self.assertRaises(TypeError):
+                captured[0]["codes"]["category"] = source["codes"]["category"]
+            with self.assertRaisesRegex(ValueError,"source group/observation counts differ"):
+                driver.capture_projection_batches(replay,**{**kwargs,"expected_observations":10})
+            with self.assertRaisesRegex(ValueError,"exceeds source group/observation counts"):
+                driver.capture_projection_batches(replay,**{**kwargs,"expected_observations":8})
+            invalid = {**source,"x":np.full((3,2),np.nan)}
+            with self.assertRaisesRegex(ValueError,"nonfinite"):
+                driver.capture_projection_batches(lambda:iter([invalid]),**kwargs)
+
+    def assert_replay_equivalent(self, con, query, spec, width, levels, *, claim_fe=False):
+        def full():
+            return driver.regression_batches(con, query, spec, width, claim_fe=claim_fe)
+        def lean():
+            return driver.regression_batches(con, query, spec, width, claim_fe=claim_fe, projection_only=True)
+        left, right = list(full()), list(lean())
+        self.assertEqual(len(left), len(right))
+        for complete, projected in zip(left, right):
+            self.assertEqual(set(projected), {"x", "y", "weights", "observation_counts", "codes"})
+            for name in ("x", "y", "weights", "observation_counts"):
+                np.testing.assert_array_equal(complete[name], projected[name])
+            for name in levels:
+                np.testing.assert_array_equal(complete["codes"][name], projected["codes"][name])
+            self.assertIn("within_xx", complete)
+            self.assertIn("within_xy", complete)
+            self.assertIn("within_yy", complete)
+            self.assertIn("clusters", complete)
+        if not levels:
+            return
+        kwargs = {"term_names":tuple(f"t{i}" for i in range(left[0]["x"].shape[1])),
+                  "target_names":driver.TARGETS, "level_counts":levels,
+                  "tolerance":driver.CAPS["projection_tolerance"],
+                  "max_iterations":2 if len(levels) == 1 else driver.CAPS["maximum_projection_iterations"]}
+        full_progress, lean_progress = [], []
+        original = driver.engine.absorb_categorical_effects(full, progress=full_progress.append, **kwargs)
+        projected = driver.engine.absorb_categorical_effects(lean, progress=lean_progress.append, **kwargs)
+        self.assertEqual(original.diagnostics(), projected.diagnostics())
+        self.assertEqual(full_progress, lean_progress)
+        for a, b in zip(original.effects, projected.effects):
+            np.testing.assert_array_equal(a, b)
+        for name in ("original_y_sum", "original_yty", "original_x_squared_norms"):
+            np.testing.assert_array_equal(getattr(original, name), getattr(projected, name))
+
+    def test_same_query_projection_preserves_mean_fields_all_five_specs_and_a1(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                _, _, _ = fixture(con, temporary)
+                stage = Path(temporary) / "cache"
+                stage.mkdir()
+                cache = driver.make_duration_cache(con, stage, driver.ReadLedger(), 0)
+                for spec in driver.model_specs():
+                    query, levels = driver.remap_effect_codes(con, "duration_groups", spec["effects"], "lean_test_"+str(spec["column"]))
+                    with self.subTest(column=spec["column"]):
+                        with patch.object(driver, "array_batches", wraps=driver.array_batches) as batches:
+                            self.assert_replay_equivalent(con, query, spec, 4, levels)
+                        for call in batches.call_args_list:
+                            self.assertEqual(call.args[1], query)
+                            selected = call.kwargs["columns"]
+                            if selected is not None:
+                                self.assertFalse(any(name.startswith("c") and name[1:2].isdigit() for name in selected))
+                                self.assertNotIn("event_cluster", selected)
+                con.execute("CREATE TEMP VIEW claim_features AS SELECT *,CASE WHEN bin=10 THEN 1 ELSE 0 END H FROM analysis_base WHERE NOT is_maker")
+                claim_cache = driver.group_cache(con, "claim_features", stage/"lean_claim_groups.parquet",
+                    ("event_cluster", "claim_code"), ("H", "H*xL", "xR", "H*xR", "payoff", "roi"))
+                spec = {"clocks":["xL", "xR"], "effects":["claim_code"]}
+                query, levels = driver.remap_effect_codes(con, "lean_claim_groups", spec["effects"], "lean_test_claim")
+                self.assert_replay_equivalent(con, query, spec, claim_cache["feature_count"], levels, claim_fe=True)
+            finally:
+                con.close()
+
+    def test_bounded_same_query_full_vs_lean_projection_benchmark(self):
+        # Two complete repeats of a balanced three-FE projection. This is a
+        # deterministic 131,072-group synthetic cache, not a real-data sample.
+        with tempfile.TemporaryDirectory() as temporary:
+            index = np.arange(131_072, dtype=np.int64)
+            tail = index % 2
+            n = 2 + index % 3
+            features = np.column_stack((.2+(index%53)/53, .4+(index%71)/71,
+                                        50*np.sin(index/17), 100*np.cos(index/29)))
+            columns = {"event_cluster":[f"fixture:{i//64}" for i in index], "tail":tail,
+                       "n_rows":n, "cat_code_active":(index//2)%8+8*tail,
+                       "price_code_active":(index//16)%64+64*tail,
+                       "month_code_active":(index//1024)%4+4*tail}
+            columns.update({f"a{i}":features[:,i]*n for i in range(4)})
+            centered = np.column_stack((.01+(index%11)/100, .02+(index%13)/100,
+                                        .3+(index%17)/10, .5+(index%19)/10))
+            columns.update({f"c{i}_{j}":centered[:,i]*centered[:,j]*(n-1)
+                            for i in range(4) for j in range(i,4)})
+            path = Path(temporary)/"synthetic_groups.parquet"
+            pq.write_table(pa.table(columns), path, compression="zstd")
+            con = duckdb.connect()
+            try:
+                con.execute("SET threads=4")
+                con.execute("SET preserve_insertion_order=true")
+                query = "SELECT * FROM read_parquet("+driver.inputs.literal(path)+")"
+                spec = driver.model_specs()[4]
+                levels = {"cat_code":16, "price_code":128, "month_code":8}
+                kwargs = {"term_names":("D1:xL", "D1:xR", "D10:xL", "D10:xR"),
+                          "target_names":driver.TARGETS, "level_counts":levels,
+                          "tolerance":driver.CAPS["projection_tolerance"],
+                          "max_iterations":driver.CAPS["maximum_projection_iterations"]}
+                # Warm identical SQL and both conversions; then alternate modes
+                # so disk-cache warming is not awarded solely to the lean path.
+                for lean in (False, True):
+                    list(driver.regression_batches(con, query, spec, 4, projection_only=lean))
+                def projection():
+                    return driver.regression_batches(con, query, spec, 4, projection_only=True)
+                capture_begin = time.perf_counter()
+                captured, capture_stats = driver.capture_projection_batches(projection,
+                    expected_groups=len(index), expected_observations=int(n.sum()),
+                    column_count=4, target_count=2, code_names=spec["effects"],
+                    persistent_bytes=8*(sum(levels.values())*6+max(levels.values())*7),
+                    batch_workspace_bytes=driver.CAPS["batch_rows"]*8*(4**2+4**2+4*2+30))
+                capture_seconds = time.perf_counter()-capture_begin
+                elapsed, fitted = {"full":[], "lean":[], "frozen":[]}, {"full":[], "lean":[], "frozen":[]}
+                for mode in ("full", "lean", "frozen", "frozen", "lean", "full"):
+                    begin = time.perf_counter()
+                    result = driver.engine.absorb_categorical_effects(
+                        (lambda:iter(captured)) if mode == "frozen" else
+                        (lambda: driver.regression_batches(con, query, spec, 4, projection_only=mode == "lean")), **kwargs)
+                    elapsed[mode].append(time.perf_counter()-begin)
+                    fitted[mode].append(result)
+                for result in fitted["full"]+fitted["lean"]+fitted["frozen"]:
+                    self.assertEqual(result.diagnostics(), fitted["full"][0].diagnostics())
+                    for a, b in zip(result.effects, fitted["full"][0].effects):
+                        np.testing.assert_array_equal(a, b)
+                evidence = {"benchmark":"same_query_lean_projection", "groups":len(index),
+                    "parquet_bytes":path.stat().st_size, "full_seconds":elapsed["full"], "lean_seconds":elapsed["lean"],
+                    "frozen_seconds":elapsed["frozen"], "capture_seconds":capture_seconds,
+                    "full_median_seconds":float(np.median(elapsed["full"])),
+                    "lean_median_seconds":float(np.median(elapsed["lean"])),
+                    "frozen_median_seconds":float(np.median(elapsed["frozen"])), "capture_stats":capture_stats,
+                    "diagnostics_exactly_equal":True, "effect_arrays_exactly_equal":True,
+                    "projection_iterations":fitted["full"][0].iterations}
+                captured.clear()
+                print(json.dumps(evidence, sort_keys=True), flush=True)
             finally:
                 con.close()
 

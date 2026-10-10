@@ -1,6 +1,6 @@
 # September 28 FLB writeup: Polymarket-only replication
 
-Status: inputs and sports metadata accepted; estimation resource retry pending.
+Status: inputs and sports metadata accepted; validated projection-cache retry pending.
 
 ## Contract and authority
 
@@ -106,8 +106,50 @@ verified shutdown remain pending.
 - Execution exited 1 after 2:42.44; peak RSS 63,447,124 KiB; no swaps. Free disk
   after failure was 75,779,145,728 bytes. Observed available RAM after failure
   was 264,425,848,832 bytes, with 267,392,999,424 bytes total and no swap.
-- A bounded memory-only retry is being reviewed: 192 GB DuckDB plus 32 GB
+- A bounded memory-only retry was admitted: 192 GB DuckDB plus 32 GB
   NumPy, 224 GB total budget, with at least 240 GB available RAM required.
   The 16 GB spill/transient bounds, 3 GB accepted cache, 8 GB total publication,
   60 GB disk reservation and 8 TB read ceiling remain unchanged. No sample,
   estimator, weighting or uncertainty definition changes.
+
+## Preserved incomplete third estimate and validated projection caching
+
+- Sports metadata v3 reopened and accepted under source
+  `5f1fb327cca7974aad165f08d9beb4b48200aed9`. Its output fingerprints, provider
+  coverage and exclusion census exactly match the preceding admitted versions.
+- Estimation v3 built the sports and lossless duration caches, then completed
+  the first four duration specifications on 140,293,451 records and 201,288
+  event/market clusters. These are incomplete-run diagnostics, not released results.
+- The full model retained 3,180,741 exact normalized price levels. Its repeated
+  fixed-effect projections unnecessarily reconstructed covariance/cluster fields
+  and replayed the same grouped query at every update. Root interrupted only the
+  verified estimator, preserving its stage and execution evidence before syncing
+  any new source. No accepted estimates were published.
+- Preserved stage:
+  `/mnt/data/runs/.2026-10-10_kaushik_polymarket_estimates_v3.staging-ls5xs33j`.
+  Execution: 2026-10-10 21:56:11 to 22:52:52 UTC; exit 130, `KeyboardInterrupt`.
+  Local receipts and logs are in `interrupted_estimate_v3/`.
+- The reviewed optimization freezes only lossless grouped X/Y means, integer
+  observation counts, frequency weights and effect codes from the unchanged
+  first query stream. It admits retained buffers plus construction, Python and
+  existing absorber/workspace reservations against the unchanged 32 GB NumPy
+  ceiling; owned arrays and mappings are read-only. Exact groups/N reconcile.
+  The captured buffers are released before the unchanged full-moment, event-score
+  and R-squared replays. No trade-body arrays or covariance/string fields are retained.
+- The production-sized full-model admission estimate is about 2.17 GB under
+  the existing 32 GB ceiling. This is a resource estimate, not observed production
+  allocation or a timing guarantee. SQL, sample definitions, exact price levels,
+  tolerance, iteration limit, rank and uncertainty gates remain unchanged.
+- Independent local QA passed 106 tests in 49.636 seconds. Dense five-model/A1
+  oracles and uncached-full/uncached-lean/frozen-lean comparisons preserve
+  coefficients, event scores, covariance, R-squared and projection diagnostics.
+  Cap-boundary, malformed/overflow counts, mutation, source-count and
+  release-before-full-replay checks pass. No new global join-order guarantee or
+  independent raw/native-action certification is claimed.
+- A separately guarded saved-score auditor is ready to reconcile every accepted
+  joint covariance, named contrast, uncertainty interval, influence diagnostic
+  and saved count/support grid after production. It reads saved scores and
+  summary metadata, not raw trades, and records those limitations explicitly.
+
+Fresh source-bound sports metadata, estimation v4, saved-score QA, final report,
+publication and verified shutdown remain pending.

@@ -1,10 +1,11 @@
 # Kaushik September 28 FLB writeup: Polymarket replication v1
 
-**Status:** draft execution contract, 10 October 2026. The scientific definitions
-and user-selected controls below are frozen. Root's metadata-only footer/schema
-inspection has verified the available duration fields; complete production source
-admission remains pending. This document authorizes no estimates from unadmitted
-inputs. It is a Polymarket-only replication of the specifications in the 12-page September 28,
+**Status:** frozen execution contract, 10 October 2026. The scientific definitions
+and user-selected controls below are frozen. The versioned input build has
+reopened and passed its schema, hash, count and support gates; complete estimation
+and independent saved-score QA remain pending. This is not certification of
+native actions, exact timestamps or whole-history collection completeness.
+This document authorizes no estimates from unadmitted inputs. It is a Polymarket-only replication of the specifications in the 12-page September 28,
 2026 writeup, with explicit category, sports-cohort and display adaptations. It
 does not promise identical paper observations or numerical reproduction.
 

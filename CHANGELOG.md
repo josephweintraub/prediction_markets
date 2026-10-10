@@ -23,6 +23,9 @@
 - Preserved a subsequent total-spill-cap failure and admitted a memory-only
   retry on the existing instance, keeping disk, read, output and scientific
   limits unchanged and saving actual RAM admission evidence.
+- Preserved an incomplete slow fit and validated bounded, immutable grouped-mean
+  projection caching without changing samples, exact prices, convergence gates,
+  final moments, event scores or uncertainty; added independent saved-score QA.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 
