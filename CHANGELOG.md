@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-10 - Historical wallet repair publication and approved storage cleanup
+
+- Archived and content-verified the three approved historical/quote datasets in
+  Dropbox, then removed only their manifest-listed local copies; retained raw
+  sources, current tables and completed research runs without disk expansion.
+- Published separately versioned corrected ROOT/CLEAN copies after exact
+  wallet/non-wallet preservation gates and completed saved-evidence QA.
+- Recorded execution and recovery receipts, added a legacy-wallet warning to the
+  methods reference, and kept existing flags, bases and scientific results unadopted.
+
 ## 2026-10-09 - Saved historical-repair evidence QA
 
 - Added a metadata-only checker binding all 88 repaired files and 616 time

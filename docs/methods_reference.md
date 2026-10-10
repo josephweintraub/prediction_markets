@@ -60,6 +60,14 @@ are built and run without encoding an expected sign.
   [`polymarket_data_certification_v1.json`](analysis_specs/polymarket_data_certification_v1.json).
   Full published-row integrity and bounded native-lineage checks are distinct scopes;
   neither alone establishes whole-history native completeness or correct wallet actions.
+- **Wallet-identity warning (2026-10-09):** legacy ROOT/CLEAN synthetic
+  counterparty wallet identities are unsafe for wallet attribution. Stage 6 has
+  a writer safeguard; historical correction requires the separate immutable
+  repair to finish and its saved-evidence QA to pass. Do not silently mix
+  corrected inputs with existing wallet flags, wallet codes, or analysis bases.
+  Correcting identity does not establish native economic actions, collection
+  completeness, or ingestion replay status. See the
+  [wallet-attribution repair run record](runs/2026-10-09_wallet_attribution_repair_v1.md).
 - **Wallet-direction warning (2026-10-02):** a retained maker-side `OrderFilled`
   record establishes the maker's own action from its collateral/outcome asset fields.
   It does not establish the named counterparty's economic action. The exchange can
