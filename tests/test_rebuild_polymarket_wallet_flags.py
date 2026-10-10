@@ -552,6 +552,25 @@ class RebuildTests(unittest.TestCase):
 
 
 class ProductionAdmissionTests(unittest.TestCase):
+    def test_fixed_spill_capacity_and_reserve_admission(self):
+        self.assertEqual(rebuild.CAPS["spill_bytes"], 60 * 1024**3)
+        self.assertEqual(rebuild.CAPS["memory_limit"], "160GB")
+        self.assertEqual(rebuild.CAPS["threads"], 8)
+        required_free = 88_046_829_568  # 60GiB spill + 2GiB output + 20GiB free floor.
+        with tempfile.TemporaryDirectory(dir=Path(tempfile.gettempdir()).resolve()) as directory:
+            root = Path(directory)
+            usage = rebuild.shutil.disk_usage(root)
+            with patch.object(rebuild.shutil, "disk_usage", return_value=usage._replace(free=required_free)):
+                plan, fresh, target, _, _ = fixture_plan(root)
+            self.assertEqual(fresh["required_free_bytes"], required_free)
+            self.assertIn("60GiB spill per connection", fresh["resource_contract"])
+            with patch.object(rebuild.shutil, "disk_usage", return_value=usage._replace(free=required_free - 1)), \
+                 self.assertRaisesRegex(rebuild.RebuildBlocked, "insufficient output/spill capacity"):
+                rebuild.preflight(plan, Path(fresh["datasets"]["legacy"]["root"]),
+                    Path(fresh["datasets"]["corrected"]["root"]),
+                    {name: (Path(info["path"]), info["expected_content_sha256"])
+                     for name, info in fresh["historical_flags"].items()}, target, fresh["binding"], fresh["source"])
+
     def test_cli_body_requires_reviewed_digest_before_guard_or_data(self):
         args = []
         for name in ("repair-manifest", "repair-qa", "legacy-clean", "corrected-clean", "learnability-flags", "pipeline-data-flags", "run-dir"):

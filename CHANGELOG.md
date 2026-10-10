@@ -7,6 +7,8 @@
   separately reviewed immutable publication.
 - Kept frozen content and stable file identities strict across EC2 restarts,
   recording historical device-number changes while binding the current device.
+- Increased the bounded classifier spill allowance after a recorded cap failure,
+  retaining the same classifier and separately reviewing the free-space reserve.
 - Added coherent embedded-flag refresh and nine-sport sample reconciliation,
   separating restored MLB coverage, historical flag provenance and wallet
   identity correction while preserving native exact inputs and older studies.

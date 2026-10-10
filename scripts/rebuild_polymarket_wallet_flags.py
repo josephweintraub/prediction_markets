@@ -47,7 +47,7 @@ FLAG_TYPES = {"proxyWallet": "string", "n_trades": "int64", "trades_per_active_d
 SOURCE_PATHS = ("scripts/rebuild_polymarket_wallet_flags.py", "tests/test_rebuild_polymarket_wallet_flags.py",
                 "analysis/bot_filter.py", "scripts/repair_polymarket_wallet_attribution.py",
                 "scripts/audit_polymarket_lineage.py", "production_guard.py")
-CAPS = {"memory_limit": "160GB", "threads": 8, "spill_bytes": 20 * 1024**3,
+CAPS = {"memory_limit": "160GB", "threads": 8, "spill_bytes": 60 * 1024**3,
         "maximum_output_bytes": 2 * 1024**3, "minimum_free_bytes": 20 * 1024**3,
         "maximum_read_bytes": 1024**4, "maximum_metadata_bytes": 16 * 1024**2,
         "maximum_footer_bytes": 8 * 1024**2, "maximum_files": 256, "maximum_row_groups": 100_000}
@@ -309,7 +309,7 @@ def preflight(plan: list[dict], legacy_root: Path, corrected_root: Path, histori
               "datasets": datasets, "historical_flags": flags, "trade_input_bytes": trade_bytes,
               "planned_read_bytes": planned, "required_free_bytes": required_free, "observed_free_bytes": free,
               "read_contract": "8 full-file charges per CLEAN plus historical/output reserves; each scan is charged before execution; 1TiB maximum.",
-              "resource_contract": "Serial classifier connections; 160GB DuckDB managed memory, 8 threads, 20GiB spill per connection; no full-corpus pandas. RSS can exceed managed memory.",
+              "resource_contract": f"Serial classifier connections; 160GB DuckDB managed memory, 8 threads, {CAPS['spill_bytes'] // 1024**3}GiB spill per connection; no full-corpus pandas. RSS can exceed managed memory.",
               "output_contract": "At most 2GiB total persistent outputs, enforced COPY file ceilings and final size gate; immutable no-replace publication, inputs reopened before publication."}
     require(len(encoded(result)) <= CAPS["maximum_metadata_bytes"], "complete preflight metadata exceeds bound")
     return result
