@@ -5,6 +5,8 @@
 - Added paired original/corrected CLEAN wallet-flag recomputation with the
   unchanged classifier, exact wallet membership/count checks and bounded,
   separately reviewed immutable publication.
+- Kept frozen content and stable file identities strict across EC2 restarts,
+  recording historical device-number changes while binding the current device.
 - Added coherent embedded-flag refresh and nine-sport sample reconciliation,
   separating restored MLB coverage, historical flag provenance and wallet
   identity correction while preserving native exact inputs and older studies.

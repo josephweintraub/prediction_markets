@@ -379,6 +379,58 @@ class RebuildTests(unittest.TestCase):
         with self.assertRaisesRegex(rebuild.RebuildBlocked, "metadata|identity"):
             rebuild.dataset_snapshot(Path(fresh["datasets"]["legacy"]["root"]), plan, "legacy")
 
+    def test_historical_device_only_difference_is_recorded_and_content_bound(self):
+        plan, fresh, _, _, _ = fixture_plan(self.root)
+        historical = deepcopy(plan)
+        old_stat = historical[0]["legacy"]["expected"]["stat"]
+        old_stat["device"] += 1
+        current = fresh["datasets"]["legacy"]["files"][0]
+        snapshot = rebuild.dataset_snapshot(Path(fresh["datasets"]["legacy"]["root"]), historical, "legacy")
+        admitted = snapshot["files"][0]
+        self.assertEqual(admitted["stat"], current["stat"])
+        self.assertEqual(admitted["footer_sha256"], current["footer_sha256"])
+        self.assertEqual(admitted["expected_content_sha256"], current["expected_content_sha256"])
+        self.assertEqual(admitted["historical_device"]["recorded"], old_stat["device"])
+        self.assertEqual(admitted["historical_device"]["current"], current["stat"]["device"])
+        self.assertTrue(admitted["historical_device"]["differs"])
+        self.assertIn("not persistent", admitted["historical_device"]["comparison_note"])
+        self.assertIn("strictly bound", admitted["historical_device"]["comparison_note"])
+        rebuild.verify_content([admitted], {"read_bytes": 0, "charges": []}, "fixture")
+        wrong_hash = deepcopy(admitted)
+        wrong_hash["expected_content_sha256"] = "0" * 64
+        with self.assertRaisesRegex(rebuild.RebuildBlocked, "content hash"):
+            rebuild.verify_content([wrong_hash], {"read_bytes": 0, "charges": []}, "fixture")
+
+    def test_historical_device_exception_rejects_other_frozen_metadata_drift(self):
+        plan, fresh, _, _, _ = fixture_plan(self.root)
+        root = Path(fresh["datasets"]["legacy"]["root"])
+        for field in ("inode", "bytes", "mtime_ns", "ctime_ns", "footer_sha256", "schema", "rows"):
+            historical = deepcopy(plan)
+            expected = historical[0]["legacy"]["expected"]
+            expected["stat"]["device"] += 1
+            if field in expected["stat"]:
+                expected["stat"][field] += 1
+            elif field == "footer_sha256":
+                expected[field] = "0" * 64
+            elif field == "schema":
+                expected[field] += "\nchanged"
+            else:
+                expected[field] += 1
+            with self.subTest(field=field), self.assertRaisesRegex(rebuild.RebuildBlocked, "metadata|identity"):
+                rebuild.dataset_snapshot(root, historical, "legacy")
+
+    def test_fresh_device_drift_rejects_review_content_and_publication(self):
+        plan, fresh, _, _, _ = fixture_plan(self.root)
+        changed = deepcopy(fresh)
+        changed["datasets"]["legacy"]["files"][0]["stat"]["device"] += 1
+        with self.assertRaisesRegex(rebuild.RebuildBlocked, "reviewed contract"):
+            rebuild.reviewed_contract(fresh, changed)
+        info = changed["datasets"]["legacy"]["files"][0]
+        with self.assertRaisesRegex(rebuild.RebuildBlocked, "input stat"):
+            rebuild.verify_content([info], {"read_bytes": 0, "charges": []}, "fixture")
+        with self.assertRaisesRegex(rebuild.RebuildBlocked, "before publication"):
+            rebuild.reopen_inputs(plan, changed, {"read_bytes": 0, "charges": []})
+
     def test_reviewed_contract_changes_block_before_output(self):
         plan, fresh, target, _, _ = fixture_plan(self.root)
         for field in ("source", "contract", "caps", "datasets", "historical_flags", "binding"):

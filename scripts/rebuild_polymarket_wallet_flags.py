@@ -215,8 +215,16 @@ def dataset_snapshot(root: Path, plan: list[dict], vintage: str) -> dict:
                 info["rows"] == expected["rows"] and info["schema"] == expected["schema"],
                 "CLEAN input differs from saved repair file metadata")
         if vintage == "legacy":
-            require(info["stat"] == expected["stat"] and info["footer_sha256"] == expected["footer_sha256"],
+            # A historical st_dev can change across a restart/remount of the same
+            # filesystem. The current full stat remains bound by every fresh gate.
+            require({key: value for key, value in info["stat"].items() if key != "device"} ==
+                    {key: value for key, value in expected["stat"].items() if key != "device"} and
+                    info["footer_sha256"] == expected["footer_sha256"],
                     "legacy CLEAN differs from original repair identity")
+            info["historical_device"] = {"recorded": expected["stat"]["device"], "current": info["stat"]["device"],
+                "differs": info["stat"]["device"] != expected["stat"]["device"],
+                "comparison_note": "Historical st_dev is not persistent across restart/remount; only this historical field is excluded. "
+                    "All other frozen stat fields and the footer remain exact; the current device remains strictly bound through preflight, body and publication."}
         for group in info["row_groups"]:
             stat = group["timestamp"]
             require(stat is not None and stat["null_count"] == 0 and type(stat["min"]) is int and
