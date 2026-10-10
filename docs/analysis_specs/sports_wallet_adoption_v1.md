@@ -1,7 +1,9 @@
 # Nine-sport wallet-filter adoption
 
-Status: implementation contract, 10 October 2026. User approved current
-nine-sport results first. Older calibration-heterogeneity studies, encoded bases,
+Status: completed current-nine-sport adoption, 10 October 2026; see the
+[run record](../runs/2026-10-10_sports_wallet_adoption_v1.md). The frozen scientific
+contract below is unchanged. User approved current nine-sport results first.
+Older calibration-heterogeneity studies, encoded bases,
 schemes and completed research artifacts remain unchanged and explicitly legacy.
 
 ## Question and preserved analysis

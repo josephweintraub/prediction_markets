@@ -62,8 +62,13 @@ are built and run without encoding an expected sign.
   neither alone establishes whole-history native completeness or correct wallet actions.
 - **Wallet-identity warning (2026-10-09):** legacy ROOT/CLEAN synthetic
   counterparty wallet identities are unsafe for wallet attribution. Stage 6 has
-  a writer safeguard; historical correction requires the separate immutable
-  repair to finish and its saved-evidence QA to pass. Do not silently mix
+  a writer safeguard; the separate immutable historical repair completed and
+  passed saved-evidence QA on 10 October 2026. The current nine-sport FLB run
+  adopts repaired-CLEAN flags in versioned sports artifacts and results;
+  native exact buyer IDs are unchanged. Older flags, wallet codes, encoded
+  bases and studies remain legacy; shared input paths are not redirected.
+  See the [nine-sport adoption run record](runs/2026-10-10_sports_wallet_adoption_v1.md).
+  Do not silently mix
   corrected inputs with existing wallet flags, wallet codes, or analysis bases.
   Correcting identity does not establish native economic actions, collection
   completeness, or ingestion replay status. See the

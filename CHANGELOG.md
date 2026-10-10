@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-10 - Complete current nine-sport wallet-filter adoption
+
+- Completed versioned paired wallet flags, coherent sports inputs and five
+  serial estimator cases with full archived-grid reproduction and independent QA.
+- Added the portable data-first LaTeX comparison and verified compiled preview;
+  recorded current-nine-sport adoption while leaving older studies and shared
+  legacy input paths unchanged.
+
 ## 2026-10-10 - Controlled nine-sport wallet-filter adoption workflow
 
 - Added paired original/corrected CLEAN wallet-flag recomputation with the

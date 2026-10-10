@@ -3,7 +3,9 @@
 **Status:** Stage6 writer safeguard committed and tested on EC2; approved archive
 verified and its exact local targets removed. The immutable historical repair
 completed successfully and passed saved-evidence QA on 10 October 2026.
-Downstream adoption is a separate, incomplete stage.
+Current nine-sport downstream adoption completed separately in the
+[10 October run](2026-10-10_sports_wallet_adoption_v1.md). Older studies remain
+unadopted; the historical repair receipts below are unchanged.
 **Authorization:** user requested the wallet-attribution fix on 9 October 2026,
 then requested investigation of disk cleanup instead of immediate expansion.
 The user subsequently approved archiving exactly the three named datasets to
@@ -17,8 +19,9 @@ The published non-maker representation should reverse the maker wallet pair.
 This identity correction does not establish the counterparty's own economic
 action, native collection completeness, genuine replay removal or holdings.
 
-Historical ROOT/CLEAN, all wallet flags, saved encoded bases/codes and scientific
-results remain unchanged. The repair publishes separately gated immutable copies;
+Historical ROOT/CLEAN, previously published wallet flags, saved encoded
+bases/codes and scientific results remain unchanged by this repair. The repair
+publishes separately gated immutable copies;
 publication does not adopt those copies in existing readers or analyses.
 Never run the old in-place cleaner or destructive Stage6 writer to perform this
 repair. The new writer safeguard prevents the diagnosed projection error but
@@ -78,8 +81,10 @@ input-layout-drift oracles. All 616 relation/leaf pairs are admitted by saved
 metadata; maximum paired payload is 13,050,658,294 bytes. COPY has a temporary
 enforced 2x-original-byte ceiling; each leaf is scalar-admitted before bounded
 DuckDB materialization, exact comparisons and table disposal. Disk spill is zero.
-Production preflight, body and saved-evidence QA passed. Coherent downstream adoption must
-bind corrected CLEAN, new wallet flags, code maps and analysis bases together.
+Production preflight, body and saved-evidence QA passed. Coherent downstream
+adoption must bind every consumed input to its documented generation. The
+current nine-sport run refreshes flags while preserving native exact buyer IDs;
+it does not adopt older wallet codes or encoded bases.
 Never point existing loaders at repaired data while silently retaining old flags.
 
 The saved-evidence checker is independently reviewed and released at
