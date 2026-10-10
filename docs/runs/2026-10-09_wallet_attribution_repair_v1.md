@@ -134,7 +134,7 @@ After confirming no active process held the approved targets, root ran the separ
 removal phase. It independently rechecked current remote content/controls and
 local source identities before removing only manifest-listed nodes. Removal exited
 0 with an empty error log. All three approved roots are absent; current ROOT/CLEAN
-remain present. Available space is now 172,949,794,816 bytes. The datasets remain
+remain present. Available space after cleanup was 172,949,794,816 bytes. The datasets remain
 recoverable in Dropbox; restore quote ticks before workflows that consume them.
 No volume expansion or other deletion occurred.
 

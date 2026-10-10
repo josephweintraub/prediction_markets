@@ -8,7 +8,8 @@
 - Published separately versioned corrected ROOT/CLEAN copies after exact
   wallet/non-wallet preservation gates and completed saved-evidence QA.
 - Recorded execution and recovery receipts, added a legacy-wallet warning to the
-  methods reference, and kept existing flags, bases and scientific results unadopted.
+  methods reference, kept existing flags, bases and scientific results unchanged,
+  and left corrected-input downstream adoption pending.
 
 ## 2026-10-09 - Saved historical-repair evidence QA
 
