@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import copy
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -225,6 +226,56 @@ class ReplicationInputTests(unittest.TestCase):
 
     def test_production_guards(self):
         check_guards_precede_any_contract_or_production_io()
+
+    def test_retry_resource_caps(self):
+        self.assertEqual(b.CAPS, {
+            "memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
+            "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 32_000_000_000,
+            "maximum_month_file_bytes": 4_000_000_000, "maximum_metadata_file_bytes": 1_000_000_000,
+            "maximum_read_bytes": 8_000_000_000_000, "maximum_manifest_bytes": 16_000_000,
+            "maximum_metadata_rows": 4_000_000})
+
+    def test_retry_preflight_capacity_boundaries(self):
+        con = duckdb.connect()
+        b.prepare_metadata(con, self.metadata[0])
+        path = annotate(con, self.tmp_path, [trade()])
+        con.close()
+        info = b.footer(path, "trades")
+        contract = {"metadata": {name: {"path": value, "sha256": b.sha256(value)}
+                                  for name, value in self.metadata[0].items()}}
+        files = [{"path": path, "rows": 1, "bytes": info["stat"]["bytes"],
+                  "month": "2026-03", "sha256": b.sha256(path)}]
+        binding = {"repair_manifest": {"path": str(self.tmp_path / "fixture-manifest.json")}}
+        required_disk = 68_000_000_000  # Output 32GB + spill 16GB + free floor 20GB.
+        with patch.object(b, "load_contract", return_value=(contract, files, binding)), \
+             patch.object(b, "source_snapshot", return_value={"head": "a"*40}), \
+             patch.object(b, "validate_destination"), patch.object(b.os, "cpu_count", return_value=4), \
+             patch.object(b.shutil, "disk_usage", return_value=SimpleNamespace(free=required_disk)) as disk, \
+             patch.object(Path, "read_text", return_value="MemAvailable: 68359375 kB\n") as memory:
+            result = b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
+            self.assertEqual(result["required_free_bytes"], required_disk)
+            self.assertEqual(result["observed_free_bytes"], required_disk)
+            disk.return_value = SimpleNamespace(free=required_disk-1)
+            with self.assertRaisesRegex(b.InputBlocked, "output/spill/free-floor"):
+                b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
+            disk.return_value = SimpleNamespace(free=required_disk)
+            memory.return_value = "MemAvailable: 68359374 kB\n"
+            with self.assertRaisesRegex(b.InputBlocked, "64GB DuckDB"):
+                b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
+
+    def test_retry_copy_output_and_disk_reserves(self):
+        ceiling = 4_000_000_000
+        # An exact 32GB stage allowance and 40GB free bytes both pass.
+        with patch.object(b, "_directory_bytes", return_value=28_000_000_000) as used, \
+             patch.object(b.shutil, "disk_usage", return_value=SimpleNamespace(free=40_000_000_000)) as disk:
+            b._reserve_output(self.tmp_path, ceiling)
+            used.return_value = 28_000_000_001
+            with self.assertRaisesRegex(b.InputBlocked, "total output budget"):
+                b._reserve_output(self.tmp_path, ceiling)
+            used.return_value = 28_000_000_000
+            disk.return_value = SimpleNamespace(free=39_999_999_999)
+            with self.assertRaisesRegex(b.InputBlocked, "disk floor/spill"):
+                b._reserve_output(self.tmp_path, ceiling)
 
     def test_arbitrary_native_winner_labels(self):
         paths, rows = self.metadata

@@ -46,8 +46,8 @@ REQUIRED_FIELDS = {
     "native": {"condition_id", "n_outcomes", "created_at", "end_date", "event_slug"},
     "categories": {"mkt", "prim"},
 }
-CAPS = {"memory_limit": "32GB", "threads": 4, "spill_bytes": 4_000_000_000,
-        "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 60_000_000_000,
+CAPS = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
+        "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 32_000_000_000,
         "maximum_month_file_bytes": 4_000_000_000, "maximum_metadata_file_bytes": 1_000_000_000,
         "maximum_read_bytes": 8_000_000_000_000, "maximum_manifest_bytes": 16_000_000,
         "maximum_metadata_rows": 4_000_000}
@@ -230,7 +230,7 @@ def preflight(contract_path, target, expected_head):
     require(free >= required_free, "capacity below output/spill/free-floor reservation")
     require((os.cpu_count() or 0) >= CAPS["threads"], "available CPU count below contract")
     available = re.search(r"^MemAvailable:\s+(\d+) kB$", Path("/proc/meminfo").read_text(), re.MULTILINE)
-    require(available and int(available.group(1)) * 1024 >= 36_000_000_000, "insufficient available memory for 32GB DuckDB limit")
+    require(available and int(available.group(1)) * 1024 >= 70_000_000_000, "insufficient available memory for 64GB DuckDB limit")
     return {"schema_version": "kaushik_replication_input_preflight_v1", "status": "preflight_complete",
             "target": str(Path(target).resolve()), "source": source, "binding": binding, "contract": contract,
             "caps": CAPS, "metadata": metadata, "trades": trades, "planned_read_bytes": planned,

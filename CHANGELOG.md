@@ -9,6 +9,9 @@
   documented source-clock, provider-cohort and uncertainty reconstructions.
 - Began fresh, guarded, immutable input and estimation tooling without replacing
   repaired trade tables, current sports results or legacy shared paths.
+- Preserved a final-support spill-cap failure and admitted a fresh input retry
+  with 64 GB DuckDB memory, 16 GB spill and a 32 GB output ceiling after checking
+  actual output size and free capacity; kept all sample definitions unchanged.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 
