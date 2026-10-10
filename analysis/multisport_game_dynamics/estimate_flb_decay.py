@@ -18,6 +18,8 @@ from typing import Any, Iterable, Sequence
 import duckdb
 import numpy as np
 
+from production_guard import require_production_host
+
 from analysis.sports_game_dynamics.artifacts import (
     artifact_fingerprint,
     fingerprint,
@@ -1148,8 +1150,26 @@ def estimate_flb_decay(
     model_rows: list[tuple[Any, ...]] = []
     estimand_rows: list[tuple[Any, ...]] = []
     with fresh_run(target, paths) as staging:
-        con = duckdb.connect()
+        execution_resources = {
+            "memory_limit": "96GB",
+            "threads": 8,
+            "temp_directory": str(staging / "duckdb_tmp"),
+            "max_temp_directory_size": "4000000000B",
+        }
+        con = duckdb.connect(config=execution_resources)
         try:
+            con.execute("SET TimeZone='UTC'")
+            disabled = con.execute("SELECT current_setting('disabled_optimizers')").fetchone()[0]
+            disabled_names = [name.strip() for name in disabled.split(",") if name.strip()]
+            if con.execute("SELECT 1 FROM duckdb_optimizers() WHERE name='common_subplan'").fetchone():
+                if "common_subplan" not in disabled_names:
+                    disabled_names.append("common_subplan")
+                    con.execute("SET disabled_optimizers = ?", [",".join(disabled_names)])
+            execution_resources = {
+                **execution_resources,
+                "timezone": "UTC",
+                "disabled_optimizers": disabled_names,
+            }
             _create_exact_observations(
                 con,
                 exact_paths[0],
@@ -1423,6 +1443,7 @@ def estimate_flb_decay(
                 "intervals": "pointwise 95 percent three-way clustered",
             },
             "support_floor": MIN_N,
+            "execution_resources": execution_resources,
             "uncertainty": "Cameron-Gelbach-Miller three-way clustered by UTC trade day, buyer wallet, and event",
             "observation_counts": observation_counts,
             "inputs": {f"input_{index:02d}": fingerprint(path) for index, path in enumerate(paths, 1)},
@@ -1452,7 +1473,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> None:
-    print(json.dumps(estimate_flb_decay(**vars(parse_args(argv))), sort_keys=True))
+    args = parse_args(argv)
+    require_production_host()
+    print(json.dumps(estimate_flb_decay(**vars(args)), sort_keys=True))
 
 
 if __name__ == "__main__":

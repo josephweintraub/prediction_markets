@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-10 - Controlled nine-sport wallet-filter adoption workflow
+
+- Added paired original/corrected CLEAN wallet-flag recomputation with the
+  unchanged classifier, exact wallet membership/count checks and bounded,
+  separately reviewed immutable publication.
+- Added coherent embedded-flag refresh and nine-sport sample reconciliation,
+  separating restored MLB coverage, historical flag provenance and wallet
+  identity correction while preserving native exact inputs and older studies.
+- Added serial rerun, saved-estimate QA and concise LaTeX comparison tooling;
+  retained the existing models, time definitions, weighting and uncertainty.
+
 ## 2026-10-10 - Historical wallet repair publication and approved storage cleanup
 
 - Archived and content-verified the three approved historical/quote datasets in
