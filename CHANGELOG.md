@@ -12,6 +12,9 @@
 - Preserved a final-support spill-cap failure and admitted a fresh input retry
   with 64 GB DuckDB memory, 16 GB spill and a 32 GB output ceiling after checking
   actual output size and free capacity; kept all sample definitions unchanged.
+- Added lossless centered-moment regression caches, event-clustered inference,
+  separate provider-metadata admission and saved-artifact-only LaTeX rendering;
+  checked dense numerical oracles and synthetic report layout before production.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 
