@@ -9,6 +9,9 @@
   recording historical device-number changes while binding the current device.
 - Increased the bounded classifier spill allowance after a recorded cap failure,
   retaining the same classifier and separately reviewing the free-space reserve.
+- Bounded exact classification through two serial whole-wallet batches after
+  recording the second spill-cap failure; retained complete wallet histories,
+  unchanged classification and exact batch-to-global reconciliation.
 - Added coherent embedded-flag refresh and nine-sport sample reconciliation,
   separating restored MLB coverage, historical flag provenance and wallet
   identity correction while preserving native exact inputs and older studies.

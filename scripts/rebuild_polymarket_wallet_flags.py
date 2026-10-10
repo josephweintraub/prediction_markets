@@ -295,10 +295,10 @@ def preflight(plan: list[dict], legacy_root: Path, corrected_root: Path, histori
     historical_bytes = sum(info["stat"]["bytes"] for info in flags.values())
     # Each CLEAN: two content hashes, one integrity/count scan, one independent
     # source wallet-count scan, and the unchanged classifier's four corpus scans
-    # (base, candidate ITI, hour HHI, size CV).
+    # (base, candidate ITI, hour HHI, size CV) for each of two complete-wallet batches.
     # Wallet-level Parquet reads and output reopens/hashes share a conservative
     # 16x-total-output reserve. This is charged scan accounting, not measured I/O.
-    planned = 8 * trade_bytes + 3 * historical_bytes + 16 * CAPS["maximum_output_bytes"]
+    planned = 12 * trade_bytes + 3 * historical_bytes + 16 * CAPS["maximum_output_bytes"]
     require(planned <= CAPS["maximum_read_bytes"], "planned charged reads exceed 1TiB cap")
     required_free = CAPS["spill_bytes"] + CAPS["maximum_output_bytes"] + CAPS["minimum_free_bytes"]
     free = shutil.disk_usage(existing_parent(target.parent)).free
@@ -306,10 +306,12 @@ def preflight(plan: list[dict], legacy_root: Path, corrected_root: Path, histori
     result = {"schema_version": "polymarket_wallet_flags_rebuild_v1", "status": "preflight_complete",
               "data_certified": False, "downstream_adoption": "pending", "target": str(target),
               "binding": binding, "source": source, "caps": dict(CAPS), "contract": dict(CONTRACT),
+              "batching": {"batch_count": 2, "assignment": "DuckDB hash(raw proxyWallet) % 2",
+                           "serial": True, "wallet_complete": True, "classifier_scans_per_batch": 4},
               "datasets": datasets, "historical_flags": flags, "trade_input_bytes": trade_bytes,
               "planned_read_bytes": planned, "required_free_bytes": required_free, "observed_free_bytes": free,
-              "read_contract": "8 full-file charges per CLEAN plus historical/output reserves; each scan is charged before execution; 1TiB maximum.",
-              "resource_contract": f"Serial classifier connections; 160GB DuckDB managed memory, 8 threads, {CAPS['spill_bytes'] // 1024**3}GiB spill per connection; no full-corpus pandas. RSS can exceed managed memory.",
+              "read_contract": "12 full-file charges per CLEAN: two content hashes, integrity, source wallet counts, and four classifier scans for each of two batches; plus historical/output reserves; each scan is charged before execution; 1TiB maximum.",
+              "resource_contract": f"Serial classifier connections with two fixed complete-wallet batches per CLEAN; 160GB DuckDB managed memory, 8 threads, {CAPS['spill_bytes'] // 1024**3}GiB spill per connection; no full-corpus pandas. RSS can exceed managed memory.",
               "output_contract": "At most 2GiB total persistent outputs, enforced COPY file ceilings and final size gate; immutable no-replace publication, inputs reopened before publication."}
     require(len(encoded(result)) <= CAPS["maximum_metadata_bytes"], "complete preflight metadata exceeds bound")
     return result
@@ -445,13 +447,37 @@ def rebuild_one(snapshot: dict, vintage: str, staging: Path, budget: dict) -> tu
         charge(budget, sum(info["stat"]["bytes"] for info in files), "source_wallet_counts:" + vintage)
         con.execute("CREATE TEMP TABLE source_wallet_counts AS SELECT proxyWallet,count(*)::BIGINT n_trades "
                     "FROM trades GROUP BY proxyWallet")
-        charge(budget, 4 * sum(info["stat"]["bytes"] for info in files), "classifier_four_corpus_scans:" + vintage)
-        stats = build_wallet_flags(con, verbose=False)
+        batches = []
+        for batch in (0, 1):
+            con.execute(f"CREATE OR REPLACE TEMP VIEW trades AS SELECT * FROM trades_raw "
+                        f"WHERE timestamp>={START_TIMESTAMP} AND hash(proxyWallet)%2={batch}")
+            con.execute(f"CREATE OR REPLACE TEMP VIEW batch_source_wallet_counts AS SELECT * "
+                        f"FROM source_wallet_counts WHERE hash(proxyWallet)%2={batch}")
+            batch_counts = scalar(con, "SELECT count(*)::BIGINT wallets,coalesce(sum(n_trades),0)::BIGINT trades "
+                                  "FROM batch_source_wallet_counts")
+            charge(budget, 4 * sum(info["stat"]["bytes"] for info in files),
+                   "classifier_four_corpus_scans:" + vintage + ":batch" + str(batch))
+            stats = build_wallet_flags(con, verbose=False)
+            batch_flags = validate_flags(con, "wallet_flags", expected_trades=batch_counts["trades"],
+                                         expected_wallet_counts="batch_source_wallet_counts")
+            require(stats["total_wallets"] == batch_flags["wallets"] and
+                    (stats["total_trades"] or 0) == batch_flags["trades"] and
+                    (stats["nonhuman_wallets"] or 0) == batch_flags["nonhuman_wallets"] and
+                    (stats["nonhuman_trades"] or 0) == batch_flags["nonhuman_trades"],
+                    "classifier summary differs from reopened count checks")
+            if batch == 0:
+                con.execute("CREATE TEMP TABLE wallet_flags_all AS SELECT * FROM wallet_flags")
+            else:
+                con.execute("INSERT INTO wallet_flags_all SELECT * FROM wallet_flags")
+            batches.append({"batch": batch, "source_wallets": batch_counts["wallets"],
+                            "source_trades": batch_counts["trades"], "flags": batch_flags})
+        con.execute("DROP TABLE wallet_flags")
+        con.execute("ALTER TABLE wallet_flags_all RENAME TO wallet_flags")
         validated = validate_flags(con, "wallet_flags", expected_trades=counts["admitted_rows"],
                                    expected_wallet_counts="source_wallet_counts")
-        require(stats["total_wallets"] == validated["wallets"] and (stats["total_trades"] or 0) == validated["trades"] and
-                (stats["nonhuman_wallets"] or 0) == validated["nonhuman_wallets"] and
-                (stats["nonhuman_trades"] or 0) == validated["nonhuman_trades"], "classifier summary differs from reopened count checks")
+        require(all(sum(item["flags"][key] for item in batches) == validated[key]
+                    for key in ("wallets", "trades", "nonhuman_wallets", "nonhuman_trades")),
+                "complete-wallet batch summaries do not conserve global flags")
         name = "legacy_recomputed_flags.parquet" if vintage == "legacy" else "wallet_flags.parquet"
         output = copy_output(con, "SELECT * FROM wallet_flags ORDER BY proxyWallet", name, staging, budget)
         charge(budget, 3 * output["bytes"], "output_flag_validation_and_source_counts:" + vintage)
@@ -468,7 +494,7 @@ def rebuild_one(snapshot: dict, vintage: str, staging: Path, budget: dict) -> tu
             "SELECT count(*) FROM duckdb_optimizers() WHERE name='common_subplan'").fetchone()[0])
         require(settings["timezone"] == "UTC" and (not settings["common_subplan_available"] or
                 "common_subplan" in settings["disabled_optimizers"].split(",")), "actual optimizer/timezone settings drifted")
-        return output, {"rows": counts, "flags": validated, "execution_settings": settings}
+        return output, {"rows": counts, "flags": validated, "batches": batches, "execution_settings": settings}
     finally:
         con.close()
 
@@ -611,6 +637,7 @@ def build_run(plan: list[dict], target: Path, reviewed: dict, fresh: dict, *, co
         summary = {"schema_version": fresh["schema_version"], "status": "wallet_flags_rebuild_complete",
                    "data_certified": False, "downstream_adoption": "pending", "binding": fresh["binding"],
                    "reviewed_preflight": reviewed_identity, "source": fresh["source"], "caps": fresh["caps"],
+                   "batching": fresh["batching"],
                    "contract": fresh["contract"], "command": command or [], "inputs": {"datasets": fresh["datasets"],
                        "historical_flags": fresh["historical_flags"]}, "outputs": outputs, "builds": builds,
                    "comparisons": comparisons, "reconciliation": {"admitted_trade_counts_conserved": True,

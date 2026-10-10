@@ -249,7 +249,124 @@ class RebuildTests(unittest.TestCase):
         counts_charges = [item for item in summary["resource_profile"]["charges"]
                           if item["stage"].startswith("source_wallet_counts:")]
         self.assertEqual(len(counts_charges), 2)
+        trade_bytes = sum(info["stat"]["bytes"] for snapshot in summary["inputs"]["datasets"].values()
+                          for info in snapshot["files"])
+        clean_charges = [item for item in summary["resource_profile"]["charges"]
+                         if item["stage"].startswith(("trade_integrity:", "source_wallet_counts:",
+                                                      "classifier_four_corpus_scans:")) or
+                         item["stage"] in ("initial_input_content_hash:data.parquet", "final_input_content_hash:data.parquet")]
+        self.assertEqual(sum(item["bytes"] for item in clean_charges), 12 * trade_bytes)
+        self.assertEqual(summary["batching"]["batch_count"], 2)
         self.assertLess(summary["resource_profile"]["charged_read_bytes"], rebuild.CAPS["maximum_read_bytes"])
+
+    def test_two_complete_wallet_batches_exactly_match_full_classifier(self):
+        rows = [trade("single"), trade("multi_day"),
+                trade("multi_day", timestamp=rebuild.START_TIMESTAMP + 86400)]
+        for spacing in (0, 1, 9, 10, 119, 120, 121):
+            rows.extend((trade("iti_" + str(spacing)),
+                         trade("iti_" + str(spacing), timestamp=rebuild.START_TIMESTAMP + spacing)))
+        for n in (50, 51, 200, 201, 500, 501):
+            rows.extend(trade("n_" + str(n), timestamp=rebuild.START_TIMESTAMP + i * 10) for i in range(n))
+        for name, difference in (("cv_below", 0.049), ("cv_boundary", 0.05), ("cv_above", 0.051)):
+            rows.extend(trade(name, timestamp=rebuild.START_TIMESTAMP + i,
+                              cash=1 + (-1 if i % 2 else 1) * difference) for i in range(100))
+        for name, counts in (("hhi_boundary", [100, 100] + [50] * 16),
+                             ("hhi_below", [50] * 20), ("hhi_above", [64] * 16)):
+            rows.extend(trade(name, timestamp=rebuild.START_TIMESTAMP + hour * 3600)
+                        for hour, count in enumerate(counts) for _ in range(count))
+        rows.extend(trade("hour_500", timestamp=rebuild.START_TIMESTAMP + (i % 24) * 3600) for i in range(500))
+        rows.extend(trade("hour_501", timestamp=rebuild.START_TIMESTAMP + (i % 24) * 3600) for i in range(501))
+        rows.extend(trade("zero_size", cash=0.0) for _ in range(52))
+        duplicates, _ = expanded(duplicates=True, self_wallet=True)
+        rows.extend(duplicates)
+        rows.append(trade("MixedCaseWallet"))
+        for index, row in enumerate(rows):
+            row["side"] = "BUY" if index % 2 else "SELL"
+            row["price"] = 0.0 if index % 2 else 1.0
+            row["is_maker"] = bool(index % 3)
+        _, fresh, _, _, _ = fixture_plan(self.root, rows=(rows, deepcopy(rows)))
+        snapshot = fresh["datasets"]["legacy"]
+        reference = rebuild.connection(self.root, "full_reference")
+        observed = []
+        original = rebuild.build_wallet_flags
+        try:
+            reference.execute("CREATE TEMP VIEW trades AS SELECT * FROM read_parquet(" +
+                              rebuild.paths_sql(snapshot["files"]) +
+                              f",union_by_name=true,hive_partitioning=false) WHERE timestamp>={rebuild.START_TIMESTAMP}")
+            build_wallet_flags(reference, verbose=False)
+            expected = reference.execute("SELECT * FROM wallet_flags ORDER BY proxyWallet").fetchall()
+            full_counts = dict(reference.execute("SELECT proxyWallet,count(*) FROM trades GROUP BY proxyWallet").fetchall())
+
+            def record_batch(con, verbose=False):
+                observed.append(dict(con.execute("SELECT proxyWallet,count(*) FROM trades GROUP BY proxyWallet").fetchall()))
+                return original(con, verbose=verbose)
+
+            staging = self.root / "batched"
+            staging.mkdir()
+            budget = {"read_bytes": 0, "charges": []}
+            with patch.object(rebuild, "build_wallet_flags", side_effect=record_batch):
+                output, stats = rebuild.rebuild_one(snapshot, "legacy", staging, budget)
+            actual = reference.execute("SELECT * FROM read_parquet(?) ORDER BY proxyWallet",
+                                       [str(staging / output["path"])]).fetchall()
+            self.assertEqual(actual, expected)
+            self.assertEqual(len(actual[0]), 12)
+            self.assertEqual(len(observed), 2)
+            self.assertFalse(set(observed[0]) & set(observed[1]))
+            self.assertEqual({**observed[0], **observed[1]}, full_counts)
+            for batch in (0, 1):
+                expected_batch = dict(reference.execute("SELECT proxyWallet,count(*) FROM trades "
+                    f"WHERE hash(proxyWallet)%2={batch} GROUP BY proxyWallet").fetchall())
+                self.assertEqual(observed[batch], expected_batch)
+                self.assertEqual(stats["batches"][batch]["source_wallets"], len(expected_batch))
+                self.assertEqual(stats["batches"][batch]["source_trades"], sum(expected_batch.values()))
+            self.assertEqual(stats["flags"]["wallets"], len(full_counts))
+            self.assertEqual(stats["flags"]["trades"], sum(full_counts.values()))
+            for flag in rebuild.FLAGS:
+                index = list(rebuild.FLAG_TYPES).index(flag)
+                self.assertTrue(any(row[index] is True for row in actual), flag)
+                self.assertTrue(any(row[index] is False for row in actual), flag)
+            medians = {row[0]: row[4] for row in actual}
+            self.assertEqual(medians["iti_0"], 0.0)
+            self.assertEqual(medians["iti_119"], 119.0)
+            self.assertIsNone(medians["iti_120"])
+            self.assertIsNone(medians["iti_121"])
+            self.assertIsNone(medians["single"])
+            classifier_charges = [item for item in budget["charges"]
+                                  if item["stage"].startswith("classifier_four_corpus_scans:")]
+            self.assertEqual(len(classifier_charges), 2)
+            self.assertEqual(sum(item["bytes"] for item in classifier_charges),
+                             8 * sum(info["stat"]["bytes"] for info in snapshot["files"]))
+        finally:
+            reference.close()
+
+    def test_either_complete_wallet_batch_can_be_empty(self):
+        reference = duckdb.connect(":memory:")
+        try:
+            for batch in (0, 1):
+                wallet = reference.execute("SELECT 'solo_'||i FROM range(100) t(i) "
+                                           f"WHERE hash('solo_'||i)%2={batch} LIMIT 1").fetchone()[0]
+                rows = [trade(wallet), trade(wallet, timestamp=rebuild.START_TIMESTAMP + 10)]
+                root = self.root / ("empty_batch_" + str(batch))
+                _, fresh, _, _, _ = fixture_plan(root, rows=(rows, deepcopy(rows)))
+                staging = root / "batched"
+                staging.mkdir()
+                output, stats = rebuild.rebuild_one(fresh["datasets"]["legacy"], "legacy", staging,
+                                                   {"read_bytes": 0, "charges": []})
+                full = flag_connection(rows)
+                try:
+                    self.assertEqual(full.execute("SELECT * FROM wallet_flags").fetchall(),
+                        reference.execute("SELECT * FROM read_parquet(?)", [str(staging / output["path"])]).fetchall())
+                finally:
+                    full.close()
+                self.assertEqual(stats["batches"][batch]["source_wallets"], 1)
+                self.assertEqual(stats["batches"][batch]["source_trades"], 2)
+                self.assertEqual(stats["batches"][1 - batch]["source_wallets"], 0)
+                self.assertEqual(stats["batches"][1 - batch]["source_trades"], 0)
+                self.assertEqual(stats["batches"][1 - batch]["flags"]["wallets"], 0)
+                self.assertEqual(stats["flags"]["wallets"], 1)
+                self.assertEqual(stats["flags"]["trades"], 2)
+        finally:
+            reference.close()
 
     def test_historical_nulls_stay_unknown_and_selection_coalesces_false(self):
         summary, _ = self.run_fixture(unknown=True)
@@ -268,6 +385,9 @@ class RebuildTests(unittest.TestCase):
         summary, target = self.run_fixture(rows=rows)
         self.assertEqual(summary["builds"]["legacy"]["rows"]["admitted_rows"], 0)
         self.assertEqual(summary["builds"]["corrected"]["flags"]["wallets"], 0)
+        for vintage in ("legacy", "corrected"):
+            self.assertEqual([batch["source_wallets"] for batch in summary["builds"][vintage]["batches"]], [0, 0])
+            self.assertEqual([batch["source_trades"] for batch in summary["builds"][vintage]["batches"]], [0, 0])
         self.assertEqual(pq.ParquetFile(target / "wallet_flags.parquet").metadata.num_rows, 0)
 
     def test_null_blank_and_case_colliding_wallets_fail(self):
@@ -338,7 +458,7 @@ class RebuildTests(unittest.TestCase):
                 {name: (Path(info["path"]), info["expected_content_sha256"]) for name, info in fresh["historical_flags"].items()},
                 target, fresh["binding"], fresh["source"])
         self.assertEqual(newer["datasets"], fresh["datasets"])
-        self.assertEqual(newer["planned_read_bytes"], 8 * newer["trade_input_bytes"] +
+        self.assertEqual(newer["planned_read_bytes"], 12 * newer["trade_input_bytes"] +
                          3 * sum(info["stat"]["bytes"] for info in newer["historical_flags"].values()) +
                          16 * rebuild.CAPS["maximum_output_bytes"])
 
@@ -433,7 +553,7 @@ class RebuildTests(unittest.TestCase):
 
     def test_reviewed_contract_changes_block_before_output(self):
         plan, fresh, target, _, _ = fixture_plan(self.root)
-        for field in ("source", "contract", "caps", "datasets", "historical_flags", "binding"):
+        for field in ("source", "contract", "caps", "batching", "datasets", "historical_flags", "binding"):
             altered = deepcopy(fresh)
             altered[field] = {}
             with self.subTest(field=field), self.assertRaisesRegex(rebuild.RebuildBlocked, "reviewed contract"):
