@@ -142,6 +142,51 @@ class EndToEndFixtureTests(unittest.TestCase):
 
 
 class AdmissionFixtureTests(unittest.TestCase):
+    def test_memory_budget_arithmetic_configuration_and_admission_boundary(self):
+        self.assertEqual(driver.CAPS["memory_limit"], "192GB")
+        self.assertEqual(driver.CAPS["total_memory_bytes"], 192_000_000_000 + driver.CAPS["numpy_memory_bytes"])
+        self.assertEqual(driver.CAPS["minimum_available_ram_bytes"] - driver.CAPS["total_memory_bytes"], 16_000_000_000)
+        unchanged = {"numpy_memory_bytes":32_000_000_000, "threads":4, "spill_bytes":16_000_000_000,
+                     "maximum_transient_file_bytes":16_000_000_000, "maximum_cache_bytes":3_000_000_000,
+                     "maximum_output_bytes":8_000_000_000, "maximum_read_bytes":8_000_000_000_000,
+                     "minimum_free_bytes":20_000_000_000}
+        for key, value in unchanged.items():
+            self.assertEqual(driver.CAPS[key], value)
+        class RecordedConfiguration:
+            def __init__(self):
+                self.commands = []
+            def execute(self, command):
+                self.commands.append(command)
+        con = RecordedConfiguration()
+        driver.configure(con, "/tmp/synthetic-estimator-spill")
+        self.assertIn("SET memory_limit='192GB'", con.commands)
+        self.assertIn("SET max_temp_directory_size='16000000000B'", con.commands)
+        roles = ("six_candidates", "six_timing", "six_proof", "six_tokens", "nfl_moneylines", "nba_moneylines", "mlb_phase")
+        inventory = [{"role":role, "path":"/tmp/synthetic-" + role, "stat":{"bytes":0}} for role in roles]
+        with patch("production_guard.require_production_host"), \
+                patch.object(driver.sys, "executable", "/home/ubuntu/venv/bin/python"), \
+                patch.object(driver, "source_snapshot", return_value={}), \
+                patch.object(driver, "load_base", return_value=({}, {}, [], [])), \
+                patch.object(driver.inputs, "read_json", return_value=({}, {})), \
+                patch.object(driver, "sports_input_inventory", return_value=inventory), \
+                patch.object(driver.inputs, "validate_destination"), \
+                patch.object(driver.shutil, "disk_usage", return_value=type("Capacity", (), {"free":60_000_000_000})()), \
+                patch.object(driver.resource, "getrlimit", return_value=(driver.resource.RLIM_INFINITY, driver.resource.RLIM_INFINITY)), \
+                patch.object(driver.os, "cpu_count", return_value=4), \
+                patch.object(Path, "read_text") as meminfo:
+            meminfo.return_value = "MemAvailable: 234375000 kB\n"  # Exactly 240 decimal GB.
+            admitted = driver.preflight("/tmp/synthetic-base", "", "", "/tmp/synthetic-binding", "", "/tmp/synthetic-run", "", sports_metadata_only=True)
+            self.assertEqual(admitted["required_free_bytes"], 60_000_000_000)
+            self.assertEqual(admitted["caps"]["minimum_available_ram_bytes"], 240_000_000_000)
+            self.assertEqual(admitted["observed_available_ram_bytes"], 240_000_000_000)
+            self.assertEqual(admitted["memory_budget_policy"], {
+                "duckdb_memory_limit":"192GB", "duckdb_memory_bytes":192_000_000_000,
+                "numpy_memory_bytes":32_000_000_000, "combined_memory_bytes":224_000_000_000,
+                "minimum_available_ram_bytes":240_000_000_000, "minimum_headroom_bytes":16_000_000_000})
+            meminfo.return_value = "MemAvailable: 234374999 kB\n"
+            with self.assertRaisesRegex(ValueError, "available RAM insufficient"):
+                driver.preflight("/tmp/synthetic-base", "", "", "/tmp/synthetic-binding", "", "/tmp/synthetic-run", "", sports_metadata_only=True)
+
     def test_process_write_limit_allows_bounded_spill_not_accepted_cache_overshoot(self):
         # The actual RLIMIT is process-wide: a synthetic COPY's spill write
         # reproduces the production failure independently of Parquet size.
@@ -308,7 +353,7 @@ class AdmissionFixtureTests(unittest.TestCase):
                 "base_binding":{"manifest":json_ids["manifest"],"acceptance":json_ids["acceptance"]},
                 "base_manifest":{},"base_files":[claims],"monthly_paths":[],"sports_binding":binding,
                 "sports_binding_identity":json_ids["sports"],"sports_files":driver.sports_input_inventory(binding),"caps":driver.CAPS,
-                "required_free_bytes":0,"write_limit_policy":{},"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2}
+                "required_free_bytes":0,"write_limit_policy":{},"memory_budget_policy":{},"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2}
             reviewed = {**fresh,"observed_free_bytes":1}
             driver.inputs.write_json(folder / "reviewed_preflight.json",reviewed)
             reviewed_id = driver.inputs.read_json(folder / "reviewed_preflight.json")[1]

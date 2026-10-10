@@ -34,9 +34,9 @@ from . import estimators as engine
 REPO = Path(__file__).resolve().parents[2]
 SPORTS = ("mlb", "nfl", "nba", "nhl", "cbb", "atp", "epl", "cfb", "wnba")
 TARGETS = ("payoff_cents", "roi_percent")
-CAPS = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
-        "numpy_memory_bytes": 32_000_000_000, "total_memory_bytes": 96_000_000_000,
-        "minimum_available_ram_bytes": 110_000_000_000,
+CAPS = {"memory_limit": "192GB", "threads": 4, "spill_bytes": 16_000_000_000,
+        "numpy_memory_bytes": 32_000_000_000, "total_memory_bytes": 224_000_000_000,
+        "minimum_available_ram_bytes": 240_000_000_000,
         "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 8_000_000_000,
         "maximum_cache_bytes": 3_000_000_000, "maximum_read_bytes": 8_000_000_000_000,
         "maximum_transient_file_bytes": 16_000_000_000,
@@ -236,7 +236,8 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
     require(all(value == resource.RLIM_INFINITY or value >= CAPS["maximum_transient_file_bytes"]
                 for value in resource.getrlimit(resource.RLIMIT_FSIZE)), "inherited process file limit below admitted transient bound")
     available = re.search(r"^MemAvailable:\s+(\d+) kB$", Path("/proc/meminfo").read_text(), re.MULTILINE)
-    require(available and int(available.group(1)) * 1024 >= CAPS["minimum_available_ram_bytes"],
+    available_bytes = int(available.group(1)) * 1024 if available else None
+    require(available_bytes is not None and available_bytes >= CAPS["minimum_available_ram_bytes"],
             "available RAM insufficient for separated DuckDB/array budgets plus headroom")
     require((os.cpu_count() or 0) >= CAPS["threads"], "four estimator threads unavailable")
     body_bytes = sum(item["stat"]["bytes"] for item in base_files)
@@ -254,6 +255,12 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
                 "accepted_cache_bytes": CAPS["maximum_cache_bytes"], "accepted_total_bytes": CAPS["maximum_output_bytes"],
                 "enforcement": "RLIMIT_FSIZE bounds transient COPY/score writes including spill; actual artifact size and total accepted size checked immediately afterward before reuse/publication",
                 "disk_reservation": "accepted8GB + transient16GB + spill16GB + free_floor20GB =60GB; existing occupied bytes deducted at each write"},
+            "memory_budget_policy": {"duckdb_memory_limit": CAPS["memory_limit"],
+                "duckdb_memory_bytes": CAPS["total_memory_bytes"] - CAPS["numpy_memory_bytes"],
+                "numpy_memory_bytes": CAPS["numpy_memory_bytes"], "combined_memory_bytes": CAPS["total_memory_bytes"],
+                "minimum_available_ram_bytes": CAPS["minimum_available_ram_bytes"],
+                "minimum_headroom_bytes": CAPS["minimum_available_ram_bytes"] - CAPS["total_memory_bytes"]},
+            "observed_available_ram_bytes": available_bytes,
             "observed_free_bytes": free, "planned_maximum_read_bytes": planned,
             "maximum_full_effect_passes_per_model": 6 * CAPS["maximum_projection_iterations"] + 12,
             "maximum_single_effect_iterations": 2,
@@ -950,7 +957,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed preflight content/stat drift")
     for field in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
-                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "mode", "sports_metadata_review"):
+                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[field] == fresh[field], "reviewed estimator preflight drift: " + field)
     require(fresh["mode"] == "estimates" and fresh["sports_metadata_review"] is not None, "estimate stage lacks independently reviewed sports metadata")
     target = Path(fresh["target"])
@@ -1043,7 +1050,7 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed sports metadata preflight content/stat drift")
     for name in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
-                 "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "mode", "sports_metadata_review"):
+                 "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[name] == fresh[name], "reviewed sports metadata preflight drift: " + name)
     require(fresh["mode"] == "sports_metadata_only" and fresh["sports_metadata_review"] is None and
             not fresh["sports_binding"].get("reviewed_metadata_stage"), "sports metadata-only mode must build original provider proofs")

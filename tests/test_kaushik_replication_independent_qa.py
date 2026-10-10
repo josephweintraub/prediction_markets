@@ -953,6 +953,27 @@ class IndependentDriverQA(unittest.TestCase):
 
 
 class IndependentResourceQA(unittest.TestCase):
+    def test_duckdb_memory_limit_uses_decimal_bytes_without_changing_other_settings(self):
+        self.assertEqual(driver.CAPS["total_memory_bytes"], 192_000_000_000 + 32_000_000_000)
+        self.assertEqual(driver.CAPS["minimum_available_ram_bytes"], 240_000_000_000)
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                driver.configure(con, Path(temporary) / "spill")
+                memory, spill, threads, timezone, preserve = con.execute("""SELECT
+                    current_setting('memory_limit'), current_setting('max_temp_directory_size'),
+                    current_setting('threads'), current_setting('TimeZone'),
+                    current_setting('preserve_insertion_order')""").fetchone()
+                con.execute("SET memory_limit='192000000000B'")
+                self.assertEqual(memory, con.execute("SELECT current_setting('memory_limit')").fetchone()[0])
+                con.execute("SET max_temp_directory_size='16000000000B'")
+                self.assertEqual(spill, con.execute("SELECT current_setting('max_temp_directory_size')").fetchone()[0])
+                self.assertEqual(threads, 4)
+                self.assertEqual(timezone, "UTC")
+                self.assertTrue(preserve)
+            finally:
+                con.close()
+
     def test_sparse_spill_reserves_unallocated_bytes_and_full_free_floor(self):
         with tempfile.TemporaryDirectory() as temporary:
             stage = Path(temporary)

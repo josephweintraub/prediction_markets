@@ -20,6 +20,9 @@
 - Preserved a COPY/spill file-limit conflict and separated the 16 GB transient
   process write bound from unchanged accepted artifact and 8 GB publication caps;
   independently checked disk-floor, sparse-spill and post-write rejection gates.
+- Preserved a subsequent total-spill-cap failure and admitted a memory-only
+  retry on the existing instance, keeping disk, read, output and scientific
+  limits unchanged and saving actual RAM admission evidence.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 

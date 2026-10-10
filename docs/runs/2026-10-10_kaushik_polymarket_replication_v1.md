@@ -91,3 +91,23 @@ The failed first input run remains preserved.
 
 Fresh metadata admission, accepted estimates, report QA, source publication and
 verified shutdown remain pending.
+
+## Preserved second estimation failure and memory-only retry
+
+- Sports metadata v2 and estimation preflight v2 were independently admitted
+  under source `0be85ec728f8c733a27d6699c671cdff281d51e2`. Both sports metadata
+  output fingerprints and their coverage/exclusion census exactly match v1.
+- Estimation v2 reached the declared 16 GB total DuckDB spill cap in the sports
+  cache COPY. The process-file guard conflict was resolved; the new failure is
+  separately recorded and no numerical estimates were published.
+- Preserved stage:
+  `/mnt/data/runs/.2026-10-10_kaushik_polymarket_estimates_v2.staging-rt4oaij_`.
+  Local failure evidence is in `failed_estimate_v2/`.
+- Execution exited 1 after 2:42.44; peak RSS 63,447,124 KiB; no swaps. Free disk
+  after failure was 75,779,145,728 bytes. Observed available RAM after failure
+  was 264,425,848,832 bytes, with 267,392,999,424 bytes total and no swap.
+- A bounded memory-only retry is being reviewed: 192 GB DuckDB plus 32 GB
+  NumPy, 224 GB total budget, with at least 240 GB available RAM required.
+  The 16 GB spill/transient bounds, 3 GB accepted cache, 8 GB total publication,
+  60 GB disk reservation and 8 TB read ceiling remain unchanged. No sample,
+  estimator, weighting or uncertainty definition changes.
