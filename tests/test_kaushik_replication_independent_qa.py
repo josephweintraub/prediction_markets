@@ -8,10 +8,12 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import io
 import os
+import shutil
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+import weakref
 from unittest.mock import patch
 
 import duckdb
@@ -22,6 +24,7 @@ import pyarrow.parquet as pq
 from analysis.kaushik_polymarket_replication import build_inputs
 from analysis.kaushik_polymarket_replication import run_estimates as driver
 from analysis.kaushik_polymarket_replication import render_report as report
+from scripts import audit_kaushik_replication_saved_scores as saved_score_audit
 
 from analysis.kaushik_polymarket_replication.estimators import (
     ClusterScoreMoments, RegressionMoments, a1_claim_design,
@@ -585,6 +588,256 @@ class IndependentDriverQA(unittest.TestCase):
         self.assertEqual(sample_counts, [len(events)] * 5)
         self.assertEqual(len(artifacts), 5)
 
+    def test_lean_replay_same_query_batch_order_fields_and_absorption_diagnostics(self):
+        rng = np.random.default_rng(942151)
+        size = 47
+        counts = 2 + np.arange(size) % 5
+        mean = rng.normal(size=(size, 4))
+        tail = np.arange(size) % 2
+        raw = {"event_cluster": [f"event:{index}" for index in range(size)],
+            "tail": tail, "cat_code": np.arange(size) % 4,
+            "month_code": rng.integers(0, 5, size), "n_rows": counts}
+        raw.update({f"a{i}": counts * mean[:, i] for i in range(4)})
+        raw.update({f"c{i}_{j}": np.full(size, 1. if i == j else .1)
+                    for i in range(4) for j in range(i, 4)})
+        self.con.register("lean_replay_fixture", pa.table(raw))
+        spec = {"clocks": ["xL", "xR"], "effects": ["cat_code", "month_code"]}
+        query, levels = driver.remap_effect_codes(self.con, "lean_replay_fixture", spec["effects"], "lean_replay_qa")
+        batch_reader = driver.array_batches
+        calls = []
+        def observed_reader(con, executed_query, columns=None):
+            calls.append((executed_query, columns))
+            yield from batch_reader(con, executed_query, columns=columns)
+        with patch.dict(driver.CAPS, {"batch_rows": 5}), patch.object(driver, "array_batches", observed_reader):
+            full = list(driver.regression_batches(self.con, query, spec, 4))
+            # A lean projection cannot invoke the full replay's covariance transforms.
+            with patch.object(driver.np, "einsum", side_effect=AssertionError("covariance reconstruction in lean replay")):
+                lean = list(driver.regression_batches(self.con, query, spec, 4, projection_only=True))
+            self.assertEqual(calls[0], (query, None))
+            self.assertEqual(calls[1][0], query)
+            self.assertEqual(set(calls[1][1]), {"n_rows", "a0", "a1", "a2", "a3", "tail", "cat_code_active", "month_code_active"})
+            self.assertEqual(len(full), len(lean))
+            for complete, projected in zip(full, lean):
+                self.assertEqual(set(projected), {"x", "y", "weights", "observation_counts", "codes"})
+                self.assertTrue({"clusters", "tail", "within_xx", "within_xy", "within_yy"} <= set(complete))
+                for name in ("x", "y", "weights", "observation_counts"):
+                    np.testing.assert_array_equal(projected[name], complete[name])
+                self.assertEqual(set(projected["codes"]), set(complete["codes"]))
+                for effect in spec["effects"]:
+                    np.testing.assert_array_equal(projected["codes"][effect], complete["codes"][effect])
+                ordinal = np.array([int(value.split(":")[1]) for value in complete["clusters"]])
+                np.testing.assert_array_equal(projected["observation_counts"], counts[ordinal])
+                expected_y = np.column_stack([raw[f"a{i}"][ordinal] / counts[ordinal] for i in (2, 3)])
+                np.testing.assert_array_equal(projected["y"], expected_y)
+            self.assertEqual(sum(batch["observation_counts"].sum() for batch in lean), counts.sum())
+            self.assertGreater(sum(batch["within_xx"].sum() for batch in full), 0)
+            self.assertGreater(sum(batch["within_xy"].sum() for batch in full), 0)
+            self.assertGreater(sum(batch["within_yy"].sum() for batch in full), 0)
+            names = ("D1:xL", "D1:xR", "D10:xL", "D10:xR")
+            captured, _ = driver.capture_projection_batches(lambda: driver.regression_batches(
+                self.con, query, spec, 4, projection_only=True), expected_groups=size,
+                expected_observations=int(counts.sum()), column_count=4, target_count=2,
+                code_names=spec["effects"], persistent_bytes=0, batch_workspace_bytes=0)
+            for iterations, expected_convergence in ((1, False), (100, True)):
+                absorbers, progress = [], []
+                for mode in ("full", "lean", "cached"):
+                    updates = []
+                    factory = (lambda: iter(captured)) if mode == "cached" else (
+                        lambda mode=mode: driver.regression_batches(self.con, query, spec, 4,
+                                                                   projection_only=mode == "lean"))
+                    absorbers.append(absorb_categorical_effects(factory, term_names=names,
+                        target_names=driver.TARGETS, level_counts=levels, max_iterations=iterations,
+                        tolerance=1e-10, progress=updates.append))
+                    progress.append(updates)
+                self.assertTrue(all(updates == progress[0] for updates in progress))
+                self.assertTrue(all(a.diagnostics() == absorbers[0].diagnostics() for a in absorbers))
+                self.assertEqual(absorbers[0].converged, expected_convergence)
+                for name in ("n", "weight_sum"):
+                    self.assertTrue(all(getattr(a, name) == getattr(absorbers[0], name) for a in absorbers))
+                for name in ("original_y_sum", "original_yty", "original_x_squared_norms"):
+                    for a in absorbers[1:]:
+                        np.testing.assert_array_equal(getattr(absorbers[0], name), getattr(a, name))
+                for a in absorbers[1:]:
+                    for left, right in zip(absorbers[0].effects, a.effects):
+                        np.testing.assert_array_equal(left, right)
+                fitted = []
+                for absorber in absorbers:
+                    moments = RegressionMoments(names, driver.TARGETS)
+                    for batch in full:
+                        x, y, weight = absorber.transform(batch)
+                        moments.add(x, y, weight, batch["observation_counts"])
+                        moments.xtx += batch["within_xx"].sum(axis=0)
+                        moments.xty += batch["within_xy"].sum(axis=0)
+                        moments.yty += batch["within_yy"].sum(axis=0)
+                        absorber.original_yty += batch["within_yy"].sum(axis=0)
+                        absorber.original_x_squared_norms += np.diagonal(
+                            batch["within_xx"], axis1=1, axis2=2).sum(axis=0)
+                    fit = fit_ols_moments(moments, absorption=absorber)
+                    fitted.append(fit)
+                    if not expected_convergence:
+                        self.assertIn("categorical_projection_not_converged", fit.suppressed_reasons)
+                        withheld = finalize_clustered_regression(fit, ClusterScoreMoments(8)).to_dict()
+                        self.assertTrue(all(r["suppressed"] and r["CR0"] is None for r in withheld["estimates"]))
+                for fit in fitted[1:]:
+                    self.assertEqual(fitted[0].suppressed_reasons, fit.suppressed_reasons)
+                    if expected_convergence:
+                        np.testing.assert_array_equal(fitted[0].beta, fit.beta)
+                        np.testing.assert_array_equal(fitted[0].r_squared, fit.r_squared)
+            captured.clear()
+
+    def test_lean_full_five_models_a1_scores_r_squared_and_rank_match_dense_oracles(self):
+        # Run the established dense-row oracles with the new lean absorber and
+        # with projection forcibly replaying the full pre-optimization fields.
+        replay_batches, save_joint = driver.regression_batches, driver.compact_joint
+        capture_batches = driver.capture_projection_batches
+        lean_fields = {"x", "y", "weights", "observation_counts", "codes"}
+        for method in ("test_varying_within_cells_restore_all_five_models_and_joint_scores",
+                       "test_grouped_a1_with_varying_tails_within_claim_matches_full_dummy_fit",
+                       "test_grouped_constant_within_fe_clock_is_not_identified_by_cancellation_dust"):
+            outputs = []
+            for mode in ("uncached_full", "uncached_lean", "cached_lean"):
+                oracle = IndependentDriverQA(methodName=method)
+                oracle.setUp()
+                observed = []
+                frozen_batches, frozen_references = [], []
+                def selected_replay(*args, **kwargs):
+                    projection_request = kwargs.get("projection_only", False)
+                    if projection_request and mode == "uncached_full":
+                        kwargs["projection_only"] = False
+                    if not projection_request and frozen_batches:
+                        self.assertEqual(len(frozen_batches[0]), 0)
+                        self.assertTrue(all(reference() is None for reference in frozen_references))
+                    for batch in replay_batches(*args, **kwargs):
+                        # Reconstruct the old full projection input, then discard
+                        # its ignored extras to satisfy the strict cache API.
+                        yield ({name: batch[name] for name in lean_fields}
+                               if projection_request and mode == "uncached_full" else batch)
+                def selected_capture(factory, **kwargs):
+                    captured, stats = capture_batches(factory, **kwargs)
+                    if mode == "cached_lean":
+                        frozen_batches[:] = [captured]
+                        frozen_references[:] = [weakref.ref(value) for batch in captured
+                            for value in [*(batch[name] for name in lean_fields - {"codes"}), *batch["codes"].values()]]
+                        return captured, stats
+                    captured.clear()
+                    class ReplayUncached:
+                        def __iter__(self):
+                            return iter(factory())
+                        def clear(self):
+                            pass
+                    return ReplayUncached(), stats
+                def observed_joint(result, *args, **kwargs):
+                    before = (result.values.copy(), result.coefficient_cluster_influence.copy(),
+                              deepcopy(result.to_dict()))
+                    observed.append(before)
+                    return save_joint(result, *args, **kwargs)
+                try:
+                    with patch.object(driver, "regression_batches", selected_replay), \
+                            patch.object(driver, "capture_projection_batches", selected_capture), \
+                            patch.object(driver, "compact_joint", observed_joint), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        getattr(oracle, method)()
+                    outputs.append(observed)
+                finally:
+                    oracle.doCleanups()
+            self.assertEqual({len(output) for output in outputs}, {len(outputs[0])})
+            for full, lean, cached in zip(*outputs):
+                for replayed in (lean, cached):
+                    np.testing.assert_array_equal(full[0], replayed[0])
+                    np.testing.assert_array_equal(full[1], replayed[1])
+                    self.assertEqual(full[2], replayed[2])
+
+    def test_frozen_projection_owned_readonly_order_and_exact_admission(self):
+        source = np.arange(30., dtype=float).reshape(5, 6)
+        counts = np.array([2, 3, 4, 5, 6], dtype=np.int64)
+        code = np.array([1, 0, 1, 0, 1], dtype=np.int64)
+        batch = {"x": source[:, ::3], "y": source[:, 1:2], "weights": counts.astype(float),
+                 "observation_counts": counts, "codes": {"category": code}}
+        def factory():
+            for selected in (slice(0, 2), slice(2, 5)):
+                yield {name: ({"category": code[selected]} if name == "codes" else value[selected])
+                       for name, value in batch.items()}
+        args = {"expected_groups":5, "expected_observations":20, "column_count":2,
+                "target_count":1, "code_names":["category"], "persistent_bytes":128,
+                "batch_workspace_bytes":64}
+        retained = 8*(2+1+2+1)
+        admitted = 5*retained + 2*65_536 + 128 + 64 + 2*3*retained
+        with patch.dict(driver.CAPS, {"batch_rows":3, "numpy_memory_bytes":admitted}):
+            captured, stats = driver.capture_projection_batches(factory, **args)
+        self.assertEqual(stats["admitted_total_bytes"], admitted)
+        self.assertEqual(stats["unique_owned_buffer_bytes"], 5*retained)
+        self.assertEqual((stats["groups"], stats["observations"], stats["batches"]), (5, 20, 2))
+        self.assertNotIn("released_before_full_moment_replay", stats)
+        expected = source[:, ::3].copy()
+        np.testing.assert_array_equal(np.concatenate([b["x"] for b in captured]), expected)
+        np.testing.assert_array_equal(np.concatenate([b["codes"]["category"] for b in captured]), code)
+        source[:] = -1000
+        code[:] = 99
+        np.testing.assert_array_equal(np.concatenate([b["x"] for b in captured]), expected)
+        for frozen in captured:
+            self.assertEqual(set(frozen), {"x", "y", "weights", "observation_counts", "codes"})
+            for array in [*(frozen[name] for name in frozen if name != "codes"), *frozen["codes"].values()]:
+                self.assertIsNone(array.base)
+                self.assertTrue(array.flags.owndata and array.flags.c_contiguous)
+                self.assertFalse(array.flags.writeable)
+                with self.assertRaises(ValueError):
+                    array.flat[0] = 0
+            with self.assertRaises(TypeError):
+                frozen["x"] = np.zeros((1, 2))
+            with self.assertRaises(TypeError):
+                frozen["codes"]["category"] = np.zeros(1, dtype=np.int64)
+        calls = []
+        with patch.dict(driver.CAPS, {"batch_rows":3, "numpy_memory_bytes":admitted-1}):
+            with self.assertRaisesRegex(ValueError, "before capture"):
+                driver.capture_projection_batches(lambda: calls.append(True) or factory(), **args)
+        self.assertEqual(calls, [])
+
+    def test_frozen_projection_source_fields_counts_and_dynamic_overshoot_fail_closed(self):
+        good = {"x":np.ones((5, 2)), "y":np.ones((5, 1)), "weights":np.full(5, 2.),
+                "observation_counts":np.full(5, 2, dtype=np.int64),
+                "codes":{"category":np.zeros(5, dtype=np.int64)}}
+        args = {"expected_groups":5, "expected_observations":10, "column_count":2,
+                "target_count":1, "code_names":["category"], "persistent_bytes":0,
+                "batch_workspace_bytes":0}
+        damages = ("extra_fields", "nonfinite", "float_counts", "negative_codes", "float_codes",
+                   "wrong_weights", "missing_group", "extra_group", "overflow_counts", "oversize_batch")
+        for damage in damages:
+            with self.subTest(damage=damage):
+                batch, settings = deepcopy(good), dict(args)
+                if damage == "extra_fields":
+                    batch["within_xx"] = np.zeros((5, 2, 2))
+                elif damage == "nonfinite":
+                    batch["y"][0, 0] = np.inf
+                elif damage == "float_counts":
+                    batch["observation_counts"] = batch["observation_counts"].astype(float)
+                elif damage == "negative_codes":
+                    batch["codes"]["category"][0] = -1
+                elif damage == "float_codes":
+                    batch["codes"]["category"] = batch["codes"]["category"].astype(float)
+                elif damage == "wrong_weights":
+                    batch["weights"][0] = 3
+                elif damage == "missing_group":
+                    settings["expected_groups"] = 6
+                elif damage == "extra_group":
+                    settings["expected_groups"] = 4
+                elif damage == "overflow_counts":
+                    batch["observation_counts"] = np.array([2**62]*4+[6], dtype=np.int64)
+                    batch["weights"] = batch["observation_counts"].astype(float)
+                    settings["expected_observations"] = 6
+                with patch.dict(driver.CAPS, {"batch_rows":4 if damage == "oversize_batch" else 6}):
+                    with self.assertRaises(ValueError):
+                        driver.capture_projection_batches(lambda: iter([batch]), **settings)
+        # Re-check the actual owned-byte gate after a admitted forecast; no
+        # oversize batch may be appended even if the available cap changes.
+        retained = 8*(2+1+2+1)
+        budget = 5*retained + 65_536 + 2*6*retained
+        def cap_changes():
+            driver.CAPS["numpy_memory_bytes"] = budget-1
+            yield good
+        with patch.dict(driver.CAPS, {"batch_rows":6, "numpy_memory_bytes":budget}):
+            with self.assertRaisesRegex(ValueError, "actual owned buffers"):
+                driver.capture_projection_batches(cap_changes, **args)
+
     def test_grouped_a1_with_varying_tails_within_claim_matches_full_dummy_fit(self):
         rng = np.random.default_rng(811582)
         claim = np.repeat(np.arange(42), 14)
@@ -1062,6 +1315,220 @@ class IndependentResourceQA(unittest.TestCase):
                 reopen.assert_not_called()
             self.assertEqual(artifacts, {})
             self.assertFalse((stage / "acceptance.json").exists())
+
+
+class IndependentSavedScoreAuditQA(unittest.TestCase):
+    """Audit real saved-score format, using only a complete tiny producer fixture."""
+
+    @classmethod
+    def setUpClass(cls):
+        from tests.test_kaushik_replication_driver import fixture
+        cls.temporary = tempfile.TemporaryDirectory()
+        con = duckdb.connect()
+        try:
+            records, base, binding = fixture(con, cls.temporary.name)
+            # Match the production identifier contract, including fallback prefix.
+            for row in records:
+                if row["cluster_source"] == "market_fallback":
+                    row["event_cluster"] = "market:" + row["market_id"]
+            con.execute("UPDATE analysis_base SET event_cluster='market:'||market_id WHERE cluster_source='market_fallback'")
+            base["support"] = []
+            for maker in (False, True):
+                for side in ("BUY", "SELL"):
+                    for category in report.CATEGORIES:
+                        for bin_ in range(1, 11):
+                            selected = [r for r in records if r["is_maker"] is maker and
+                                r["side"] == side and r["category"] == category and r["bin"] == bin_]
+                            base["support"].append({"is_maker": maker, "side": side,
+                                "category": category, "bin": bin_, "rows": len(selected),
+                                "duration_tail_rows": sum(r["duration_eligible"] and r["bin"] in (1, 10) for r in selected)})
+            base["exclusions"] = {"2025-02": [{"reason": "eligible", "is_maker": maker,
+                "side": side, "rows": n, "precut_rows": n}
+                for (maker, side), n in Counter((r["is_maker"], r["side"]) for r in records).items()]}
+            cls.stage = Path(cls.temporary.name) / "accepted"
+            with patch.object(driver, "reserve_output"), contextlib.redirect_stdout(io.StringIO()):
+                data = driver.estimate_all(con, cls.stage, base, binding)
+            build_inputs.write_json(cls.stage / "estimates.json", data)
+            manifest = {"schema_version": "kaushik_replication_estimate_stage_v1",
+                "status": "estimates_complete", "source": {"head": "0" * 40},
+                "preflight": {"base_manifest": base},
+                "outputs": {a["path"]: build_inputs._output_info(cls.stage / a["path"])
+                            for a in data["score_artifacts"].values()},
+                "estimates_json": {"bytes": (cls.stage / "estimates.json").stat().st_size,
+                    "sha256": build_inputs.sha256(cls.stage / "estimates.json")},
+                "reconciliation": {key: True for key in ("all_inputs_reopened", "all_outputs_reopened",
+                    "common_duration_population", "buy_role_partition", "expected_grids_serialized")}}
+            build_inputs.write_json(cls.stage / "manifest.json", manifest)
+            acceptance = {"schema_version": "kaushik_replication_estimate_acceptance_v1",
+                "status": "estimates_reopened_accepted", "source_head": "0" * 40,
+                "all_outputs_reopened": True, "manifest_sha256": build_inputs.sha256(cls.stage / "manifest.json"),
+                "estimates_sha256": manifest["estimates_json"]["sha256"]}
+            build_inputs.write_json(cls.stage / "acceptance.json", acceptance)
+        finally:
+            con.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary.cleanup()
+
+    def copy_fixture(self, temporary):
+        folder = Path(temporary) / "accepted"
+        shutil.copytree(self.stage, folder)
+        return folder
+
+    @staticmethod
+    def bind_fixture(folder, data=None, manifest=None):
+        if data is not None:
+            (folder / "estimates.json").write_text(json.dumps(data, allow_nan=False))
+        manifest = manifest or json.loads((folder / "manifest.json").read_text())
+        manifest["estimates_json"] = {"bytes": (folder / "estimates.json").stat().st_size,
+                                     "sha256": build_inputs.sha256(folder / "estimates.json")}
+        (folder / "manifest.json").write_text(json.dumps(manifest, allow_nan=False))
+        acceptance = json.loads((folder / "acceptance.json").read_text())
+        acceptance.update(manifest_sha256=build_inputs.sha256(folder / "manifest.json"),
+                          estimates_sha256=manifest["estimates_json"]["sha256"])
+        (folder / "acceptance.json").write_text(json.dumps(acceptance, allow_nan=False))
+        return acceptance["manifest_sha256"], build_inputs.sha256(folder / "acceptance.json")
+
+    @staticmethod
+    def run_audit(folder):
+        return saved_score_audit.audit_scores(folder, build_inputs.sha256(folder / "manifest.json"),
+                                             build_inputs.sha256(folder / "acceptance.json"))
+
+    def test_complete_producer_fixture_covariance_contrasts_and_bounded_batches(self):
+        with patch.object(saved_score_audit, "BATCH_ROWS", 3):
+            result = self.run_audit(self.stage)
+        self.assertEqual(result["status"], "saved_scores_reconciled")
+        self.assertEqual(len(result["score_artifacts"]), 47)
+        self.assertTrue(all(result["checks"].values()))
+        self.assertEqual(result["score_artifacts"][0]["union_clusters"], 27)
+        self.assertLess(result["bounds"]["read_bytes"], 10_000_000)
+        self.assertIn("no independent raw membership or coefficient estimation certified", result["limitations"])
+        self.assertGreater(sum(r["checked_estimates_and_contrasts"] for r in result["score_artifacts"]), 700)
+
+    def test_rebound_bad_covariance_and_se_are_independently_rejected(self):
+        for damage in ("covariance", "CR0", "cluster_count_adjusted"):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as temporary:
+                folder = self.copy_fixture(temporary)
+                data = json.loads((folder / "estimates.json").read_text())
+                if damage == "covariance":
+                    data["table1"]["joint"]["covariance_CR0"][0][0] += .01
+                else:
+                    data["table1"]["gap_rows"][0][damage]["standard_error"] *= 1.03
+                self.bind_fixture(folder, data)
+                with self.assertRaisesRegex(ValueError, "numeric mismatch"):
+                    self.run_audit(folder)
+
+    def test_rebound_score_order_and_support_must_match_joint(self):
+        for damage in ("order", "support", "sports_flag", "BUY", "grid", "floor"):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as temporary:
+                folder = self.copy_fixture(temporary)
+                data = json.loads((folder / "estimates.json").read_text())
+                if damage == "order":
+                    data["score_artifacts"]["table1"]["coefficient_order"].reverse()
+                    data["table1"]["joint"]["metadata"]["score_artifact"]["coefficient_order"].reverse()
+                elif damage == "support":
+                    data["table1"]["gap_rows"][0]["n_clusters"] += 1
+                elif damage == "sports_flag":
+                    data["sports"]["profile_rows"][0]["paper_support"] = True
+                elif damage == "BUY":
+                    next(r for r in data["appendix_a2"] if r["convention"] == "all_buy")["counts"]["rows"] += 1
+                elif damage == "grid":
+                    data["sports"]["window_rows"].pop()
+                else:
+                    data["table1"]["joint"]["metadata"]["minimum_observations"] = 0
+                self.bind_fixture(folder, data)
+                with self.assertRaises(ValueError):
+                    self.run_audit(folder)
+
+    def test_rebound_nonfinite_duplicate_and_wrong_width_score_files_fail_closed(self):
+        for damage in ("nonfinite", "duplicate", "width"):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as temporary:
+                folder = self.copy_fixture(temporary)
+                data = json.loads((folder / "estimates.json").read_text())
+                artifact = data["score_artifacts"]["table1"]
+                path = folder / artifact["path"]
+                table = pq.read_table(path)
+                keys = table["cluster_key"].to_pylist()
+                scores = np.array(table["projected_score"].to_pylist())
+                if damage == "nonfinite":
+                    scores[0, 0] = np.nan
+                elif damage == "duplicate":
+                    keys[1] = keys[0]
+                else:
+                    scores = scores[:, :-1]
+                pq.write_table(pa.table({"cluster_key": pa.array(keys, type=pa.string()),
+                    "projected_score": pa.FixedSizeListArray.from_arrays(
+                        pa.array(scores.ravel(), type=pa.float64()), scores.shape[1])}), path)
+                info = build_inputs._output_info(path)
+                artifact.update(info)
+                data["table1"]["joint"]["metadata"]["score_artifact"].update(info)
+                manifest = json.loads((folder / "manifest.json").read_text())
+                manifest["outputs"][path.name] = info
+                self.bind_fixture(folder, data, manifest)
+                with self.assertRaisesRegex(ValueError, "nonfinite projected scores|unique and ordered|score schema"):
+                    self.run_audit(folder)
+
+    def test_manifest_acceptance_hash_and_read_ceiling_before_score_pass(self):
+        with self.assertRaisesRegex(ValueError, "JSON hash binding"):
+            saved_score_audit.audit_scores(self.stage, "f" * 64, build_inputs.sha256(self.stage / "acceptance.json"))
+        with patch.object(saved_score_audit, "MAX_READ", 1), \
+                patch.object(saved_score_audit.pq, "ParquetFile") as opened:
+            with self.assertRaisesRegex(ValueError, "read ceiling before next pass"):
+                self.run_audit(self.stage)
+            opened.assert_not_called()
+        with patch.object(saved_score_audit, "MAX_SCORE", 1), \
+                patch.object(saved_score_audit.pq, "ParquetFile") as opened:
+            with self.assertRaisesRegex(ValueError, "declared score input ceiling"):
+                self.run_audit(self.stage)
+            opened.assert_not_called()
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "overflow.json"
+            path.write_bytes(b'{"value":1e999}')
+            with self.assertRaisesRegex(ValueError, "nonfinite JSON number"):
+                saved_score_audit.Reads().json(path, build_inputs.sha256(path))
+
+    def test_real_cli_production_guard_precedes_artifact_and_source_reads(self):
+        with patch("production_guard.require_production_host", side_effect=RuntimeError("local blocked")), \
+                patch.object(saved_score_audit, "source_snapshot") as source, \
+                patch.object(saved_score_audit, "audit_scores") as audit:
+            with self.assertRaisesRegex(RuntimeError, "local blocked"):
+                saved_score_audit.main(["--estimate-dir", "/not/read", "--manifest-sha256", "0" * 64,
+                    "--acceptance-sha256", "0" * 64, "--expected-head", "0" * 40, "--run-dir", "/not/write"])
+            source.assert_not_called()
+            audit.assert_not_called()
+
+    def test_auditors_own_committed_head_and_clean_sources_are_mandatory(self):
+        self.assertIn("scripts/audit_kaushik_replication_saved_scores.py", saved_score_audit.SOURCE_FILES)
+        self.assertIn("tests/test_kaushik_replication_independent_qa.py", saved_score_audit.SOURCE_FILES)
+        with patch.object(saved_score_audit.subprocess, "check_output", return_value="a" * 40):
+            with self.assertRaisesRegex(ValueError, "audit committed HEAD differs"):
+                saved_score_audit.source_snapshot("b" * 40)
+        with patch.object(saved_score_audit.subprocess, "check_output", side_effect=[
+                "a" * 40, "\n".join(saved_score_audit.SOURCE_FILES), " M " + saved_score_audit.SOURCE_FILES[0]]):
+            with self.assertRaisesRegex(ValueError, "uncommitted changes"):
+                saved_score_audit.source_snapshot("a" * 40)
+
+    def test_tiny_cli_publishes_new_json_and_rejects_existing_target_before_audit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "new_audit"
+            argv = ["--estimate-dir", str(self.stage), "--manifest-sha256", build_inputs.sha256(self.stage / "manifest.json"),
+                "--acceptance-sha256", build_inputs.sha256(self.stage / "acceptance.json"),
+                "--expected-head", "a" * 40, "--run-dir", str(target)]
+            # Tiny data only: isolate CLI admission/publication from real-host policy.
+            with patch("production_guard.require_production_host"), \
+                    patch.object(saved_score_audit.sys, "executable", "/home/ubuntu/venv/bin/python"), \
+                    patch.object(saved_score_audit, "source_snapshot", return_value={"head": "a" * 40, "files": {}}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(saved_score_audit.main(argv), 0)
+                raw = (target / "audit.json").read_bytes()
+                self.assertLess(len(raw), saved_score_audit.MAX_OUTPUT)
+                self.assertEqual(json.loads(raw)["audit_source"]["head"], "a" * 40)
+                with patch.object(saved_score_audit, "audit_scores") as audit:
+                    with self.assertRaisesRegex(ValueError, "new independent output directory"):
+                        saved_score_audit.main(argv)
+                    audit.assert_not_called()
+                self.assertEqual((target / "audit.json").read_bytes(), raw)
 
 
 class IndependentReportQA(unittest.TestCase):
