@@ -1,6 +1,6 @@
 # September 28 FLB writeup: Polymarket-only replication
 
-Status: in progress; no accepted estimates or final findings yet.
+Status: inputs accepted; sports metadata and estimation pending.
 
 ## Contract and authority
 
@@ -44,6 +44,25 @@ not publish an accepted input directory. No sample definition changed.
 - Small execution evidence is retained in the local report run's
   `failed_input_v1/` directory. The failed output is not an accepted sample.
 
-A fresh versioned retry will preserve the failed evidence and bind separately
-reviewed source, inputs and resource caps. Acceptance, estimation, report QA,
+## Accepted fresh input retry
+
+- Input run: `/mnt/data/runs/2026-10-10_kaushik_polymarket_inputs_v2`.
+- Committed source: `41f44b25dcf945d06c5ade3aaf5b766da6a8b41f`.
+- New preflight bound 64 GB DuckDB memory, 16 GB spill, 32 GB total output,
+  a 20 GB free floor and a 68 GB output/spill/free-space reservation. Source
+  definitions, per-file limits and row membership were unchanged.
+- Execution: 2026-10-10 21:03:33 to 21:22:34 UTC; exit 0. All saved outputs,
+  schemas, hashes, row counts and support reopened before acceptance.
+- Source rows: 2,036,128,538; at/after-cutoff exclusions: 986,448,998.
+- Pre-cutoff rows: 1,049,679,540; exclusions: 5,474,900 unadmitted-token-pair
+  records and two invalid-price records.
+- All-role eligible records: 1,044,204,638; primary taker records: 522,102,319.
+- Primary tails: 158,580,409; duration-eligible tails: 140,293,451.
+- Analytic and descriptive amount anomalies: zero. The 89 saved Parquet outputs
+  total 11,195,816,047 bytes.
+- Count/support arithmetic was independently checked from saved metadata.
+  That check does not independently establish native-action correctness,
+  whole-history collection completeness or exact trade/event timestamps.
+
+The failed first run remains preserved. Sports metadata, estimates, report QA,
 source publication and verified shutdown remain pending.

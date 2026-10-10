@@ -147,14 +147,19 @@ def _validate_estimate(row, *, sports=False):
 
 
 def _validate_model(model):
+    _integer(model.get("n_observations"), "model sample N")
+    _integer(model.get("n_clusters"), "model sample G")
     metadata = _metadata(model)
     if model.get("joint") is None:
         require(model.get("suppressed") is True and
-                "empty_estimation_sample" in model.get("suppression_reasons", []),
+                "empty_estimation_sample" in model.get("suppression_reasons", []) and
+                model["n_observations"] == model["n_clusters"] == 0,
                 "missing model support is not an explicit empty sample")
     else:
+        require(0 < model["n_clusters"] <= model["n_observations"], "invalid nonempty model sample support")
         _integer(metadata.get("n"), "model N")
         _integer(metadata.get("cluster_count"), "model G")
+        require(metadata["n"] == model["n_observations"], "model sample and moment N differ")
 
 
 def _exclusion_rows(sample):
@@ -379,8 +384,9 @@ def _metadata(model):
 
 
 def _model_count(model, key):
+    """Original estimation sample support, not the number of generated scores."""
     _validate_model(model)
-    return count(_metadata(model)[key]) if model.get("joint") is not None else "0"
+    return count(model[{"n": "n_observations", "cluster_count": "n_clusters"}[key]])
 
 
 def _model_table(data, target):
@@ -614,7 +620,7 @@ def render_source(data):
         selected = [a1_rows[(target, clock)] for clock in ("xL", "xR")]
         rows += [[label, *(cell(row) for row in selected)], ["", *(se(row) for row in selected)]]
     claims = a1["claim_support"]
-    rows += [["N / event clusters", count(claims["observations"]), _model_count(a1, "cluster_count")],
+    rows += [["N / event clusters", _model_count(a1, "n"), _model_count(a1, "cluster_count")],
              ["Claims / both-tail claims", count(claims["claims"]), count(claims["both_tail_claims"])],
              ["Records in both-tail claims", count(claims["both_tail_claim_observations"]), "--"]]
     parts.append(table("Appendix A1. Claim fixed effects: price-path diagnostic", ["Outcome / support", r"Original $\times$ D10", r"Remaining $\times$ D10"], rows,

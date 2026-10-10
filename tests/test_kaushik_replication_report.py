@@ -29,6 +29,7 @@ def model(column, clocks, effects, *, label="model"):
         "stacked_weighted_tss_r_squared_by_target": {target: .3456 for target in report.OUTCOMES}}
     return {"model_id": label+str(column), "spec": {"column": column, "label": label,
             "clocks": clocks, "report_clocks": clocks, "effects": effects}, "suppressed": False,
+            "n_observations": 18000, "n_clusters": 360,
             "suppression_reasons": [], "joint": {"metadata": {"n": 18000, "cluster_count": 360,
             "grouped_r_squared": grouped, "r_squared_including_fixed_effects_by_target": {
                 target: .3456 for target in report.OUTCOMES}}},
@@ -175,6 +176,61 @@ class ReportTests(unittest.TestCase):
         source = report.render_source(value)
         self.assertIn("SYNTHETIC FIXTURE --- NOT RESEARCH FINDINGS", source)
         self.assertNotIn("SYNTHETIC FIXTURE", report.render_source(synthetic_estimates()))
+
+    def test_rank_withheld_regression_retains_original_sample_support_without_scores(self):
+        import contextlib
+        import io
+        import duckdb
+        import pyarrow as pa
+        from analysis.kaushik_polymarket_replication import run_estimates as driver
+        records = []
+        for event in range(12):
+            for tail in (0, 1):
+                for category, clock in enumerate((.3, .7)):
+                    price = ((.025, .06) if not tail else (.91, .96))[category]
+                    for index in range(3):
+                        payout = (event+index) % 2
+                        records.append({"event_cluster": f"event:{event}", "tail": tail,
+                            "cat_code": category+2*tail, "price_code": category+2*tail,
+                            "month_code": tail, "xL": clock, "xR": .2+.1*index,
+                            "payoff": 100*(payout-price), "roi": 100*(payout/price-1)})
+        with tempfile.TemporaryDirectory() as directory:
+            con = duckdb.connect()
+            try:
+                folder = Path(directory)
+                con.register("absorbed_clock_fixture", pa.Table.from_pylist(records))
+                cache = driver.group_cache(con, "absorbed_clock_fixture", folder/"absorbed_groups.parquet",
+                    ("event_cluster", "tail", "cat_code", "price_code", "month_code"),
+                    ("xL", "xR", "payoff", "roi"))
+                spec = {**driver.model_specs()[1], "report_clocks": ["xL"]}
+                with contextlib.redirect_stdout(io.StringIO()):
+                    saved = driver.regression_model(con, cache, "absorbed_groups", spec,
+                        "report_absorbed_clock", folder, {}, driver.ReadLedger())
+                self.assertEqual((saved["n_observations"], saved["n_clusters"]), (144, 12))
+                self.assertEqual(saved["joint"]["metadata"]["cluster_count"], 0)
+                self.assertTrue(all(value is None for row in saved["joint"]["covariance_CR0"] for value in row))
+                self.assertTrue(all(row["suppressed"] and row["CR0"] is None for row in saved["slopes"]))
+                data = synthetic_estimates()
+                data["table2"][1] = saved
+                source = report.render_source(data)
+                self.assertIn("Records & 18,000 & 144 & 18,000", source)
+                self.assertIn("Event/market clusters & 360 & 12 & 360", source)
+                self.assertIn("Original duration & +1.25 & withheld", source)
+                self.assertIn("rank deficient residualized design", source)
+                self.assertEqual(report._model_count(saved, "cluster_count"), "12")
+                self.assertEqual(saved["joint"]["metadata"]["cluster_count"], 0)
+            finally:
+                con.close()
+
+    def test_model_support_is_required_and_only_explicit_empty_sample_displays_zero(self):
+        saved = model(1, ["xL"], [])
+        saved["n_observations"] = saved["n_clusters"] = 0
+        saved.update(joint=None, suppressed=True, suppression_reasons=["empty_estimation_sample"])
+        self.assertEqual(report._model_count(saved, "n"), "0")
+        self.assertEqual(report._model_count(saved, "cluster_count"), "0")
+        del saved["n_clusters"]
+        with self.assertRaisesRegex(report.ReportBlocked, "model sample G"):
+            report._model_count(saved, "cluster_count")
 
     def test_observed_games_do_not_use_provider_population(self):
         value = synthetic_estimates()

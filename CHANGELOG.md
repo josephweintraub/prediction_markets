@@ -15,6 +15,8 @@
 - Added lossless centered-moment regression caches, event-clustered inference,
   separate provider-metadata admission and saved-artifact-only LaTeX rendering;
   checked dense numerical oracles and synthetic report layout before production.
+- Completed reopened input acceptance and kept original sample N/G visible in
+  regression tables even when numerical withholding prevents score generation.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 
