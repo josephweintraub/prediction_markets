@@ -10,6 +10,7 @@ import io
 import os
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -949,6 +950,97 @@ class IndependentDriverQA(unittest.TestCase):
             self.assertEqual(contradictory.execute("SELECT market_id FROM sports_market_map").fetchall(), [("draw",)])
             self.assertEqual(contradictory.execute("SELECT reason FROM sports_metadata_exclusions WHERE market_id='home'").fetchone()[0],
                              "provider_native_resolution_disagreement")
+
+
+class IndependentResourceQA(unittest.TestCase):
+    def test_sparse_spill_reserves_unallocated_bytes_and_full_free_floor(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)
+            (stage / "spill").mkdir()
+            sparse = stage / "spill" / "sparse.fixture"
+            with sparse.open("xb") as stream:
+                stream.write(b"x")
+            # Some fixture filesystems allocate seek-created holes eagerly.
+            # Explicit sparse stat metadata makes the guard oracle portable.
+            original_stat = Path.stat
+            def sparse_stat(path, *args, **kwargs):
+                stat = original_stat(path, *args, **kwargs)
+                if path == sparse:
+                    return SimpleNamespace(st_size=8_000_000, st_blocks=8, st_mode=stat.st_mode)
+                return stat
+            allocated = 4096
+            caps = {"maximum_output_bytes": 8_000,
+                    "maximum_transient_file_bytes": 16_000,
+                    "spill_bytes": 16_000_000, "minimum_free_bytes": 20_000}
+            required = 8_000 + 16_000 + 16_000_000 - allocated + 20_000
+            capacity = SimpleNamespace(free=required)
+            with patch.dict(driver.CAPS, caps), \
+                    patch.object(Path, "stat", sparse_stat), \
+                    patch.object(driver.shutil, "disk_usage", return_value=capacity):
+                driver.reserve_output(stage, 3_000)
+                capacity.free -= 1
+                with self.assertRaisesRegex(ValueError, "free-space"):
+                    driver.reserve_output(stage, 3_000)
+                # Logical sparse length cannot be credited as occupied spill.
+                capacity.free = 8_000 + 16_000 + 16_000_000 - 8_000_000 + 20_000
+                with self.assertRaisesRegex(ValueError, "free-space"):
+                    driver.reserve_output(stage, 3_000)
+
+    def test_cumulative_post_copy_overshoot_blocks_hash_and_downstream_use(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)
+            output = stage / "cache.parquet"
+            con = duckdb.connect()
+            class SyntheticCopy:
+                def execute(self, query):
+                    con.execute(query)
+                    (stage / "other-accepted.fixture").write_bytes(b"x" * 4096)
+                    return self
+                def fetchone(self):
+                    return (1,)
+            try:
+                caps = {"maximum_output_bytes": 4096,
+                        "maximum_transient_file_bytes": 16384,
+                        "spill_bytes": 16384, "minimum_free_bytes": 0}
+                with patch.dict(driver.CAPS, caps), \
+                        patch.object(driver, "artifact_info") as inspect:
+                    with self.assertRaisesRegex(ValueError, "output capacity"):
+                        driver.copy_parquet(SyntheticCopy(), "SELECT 1 fixture", output, ceiling=3000)
+                    inspect.assert_not_called()
+                self.assertLessEqual(output.stat().st_size, 3000)
+                self.assertGreater(sum(p.stat().st_size for p in stage.iterdir()), 4096)
+                self.assertFalse((stage / "acceptance.json").exists())
+            finally:
+                con.close()
+
+    def test_score_actual_size_is_checked_before_hash_or_reopen(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)
+            output = stage / "qa_scores.parquet"
+            result = SimpleNamespace(metadata={"cluster_levels": ["g0", "g1"]},
+                names=("payoff_cents|intercept",),
+                coefficient_cluster_influence=np.array([[1.0], [-1.0]]))
+            original_stat = Path.stat
+            def oversize_stat(path, *args, **kwargs):
+                stat = original_stat(path, *args, **kwargs)
+                if path == output:
+                    return SimpleNamespace(st_size=1_000_000_001, st_blocks=stat.st_blocks)
+                return stat
+            def tiny_writer(table, path, **kwargs):
+                Path(path).write_bytes(b"x")
+            artifacts = {}
+            with patch.dict(driver.CAPS, {"maximum_transient_file_bytes": 16384,
+                    "spill_bytes": 16384, "minimum_free_bytes": 0}), \
+                    patch.object(driver.pq, "write_table", side_effect=tiny_writer), \
+                    patch.object(Path, "stat", oversize_stat), \
+                    patch.object(driver, "artifact_info") as inspect, \
+                    patch.object(driver.pq, "read_table") as reopen:
+                with self.assertRaisesRegex(ValueError, "score artifact exceeds accepted per-file ceiling"):
+                    driver.compact_joint(result, stage, "qa", artifacts, driver.ReadLedger())
+                inspect.assert_not_called()
+                reopen.assert_not_called()
+            self.assertEqual(artifacts, {})
+            self.assertFalse((stage / "acceptance.json").exists())
 
 
 class IndependentReportQA(unittest.TestCase):

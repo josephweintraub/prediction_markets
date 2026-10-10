@@ -17,6 +17,9 @@
   checked dense numerical oracles and synthetic report layout before production.
 - Completed reopened input acceptance and kept original sample N/G visible in
   regression tables even when numerical withholding prevents score generation.
+- Preserved a COPY/spill file-limit conflict and separated the 16 GB transient
+  process write bound from unchanged accepted artifact and 8 GB publication caps;
+  independently checked disk-floor, sparse-spill and post-write rejection gates.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 

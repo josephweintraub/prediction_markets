@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import shutil
 import subprocess
 import sys
@@ -38,6 +39,7 @@ CAPS = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
         "minimum_available_ram_bytes": 110_000_000_000,
         "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 8_000_000_000,
         "maximum_cache_bytes": 3_000_000_000, "maximum_read_bytes": 8_000_000_000_000,
+        "maximum_transient_file_bytes": 16_000_000_000,
         "maximum_json_bytes": 16_000_000, "batch_rows": 65_536,
         "maximum_projection_iterations": 100, "projection_tolerance": 1e-10}
 SOURCE_FILES = ("analysis/kaushik_polymarket_replication/run_estimates.py",
@@ -228,8 +230,11 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
         sports_files += reviewed_files
     inputs.validate_destination(target, [base_dir, sports_binding_path, *[item["path"] for item in sports_files]])
     free = shutil.disk_usage(Path(target).parent).free
-    reserve = CAPS["maximum_output_bytes"] + CAPS["spill_bytes"] + CAPS["minimum_free_bytes"]
+    reserve = (CAPS["maximum_output_bytes"] + CAPS["maximum_transient_file_bytes"]
+               + CAPS["spill_bytes"] + CAPS["minimum_free_bytes"])
     require(free >= reserve, "estimator output/spill/free-floor capacity insufficient after input build")
+    require(all(value == resource.RLIM_INFINITY or value >= CAPS["maximum_transient_file_bytes"]
+                for value in resource.getrlimit(resource.RLIMIT_FSIZE)), "inherited process file limit below admitted transient bound")
     available = re.search(r"^MemAvailable:\s+(\d+) kB$", Path("/proc/meminfo").read_text(), re.MULTILINE)
     require(available and int(available.group(1)) * 1024 >= CAPS["minimum_available_ram_bytes"],
             "available RAM insufficient for separated DuckDB/array budgets plus headroom")
@@ -245,11 +250,15 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
             "monthly_paths": monthly, "sports_binding": sports, "sports_binding_identity": sports_id,
             "mode": "sports_metadata_only" if sports_metadata_only else "estimates", "sports_metadata_review": sports_review,
             "sports_files": sports_files, "caps": CAPS, "required_free_bytes": reserve,
+            "write_limit_policy": {"process_per_file_transient_bytes": CAPS["maximum_transient_file_bytes"],
+                "accepted_cache_bytes": CAPS["maximum_cache_bytes"], "accepted_total_bytes": CAPS["maximum_output_bytes"],
+                "enforcement": "RLIMIT_FSIZE bounds transient COPY/score writes including spill; actual artifact size and total accepted size checked immediately afterward before reuse/publication",
+                "disk_reservation": "accepted8GB + transient16GB + spill16GB + free_floor20GB =60GB; existing occupied bytes deducted at each write"},
             "observed_free_bytes": free, "planned_maximum_read_bytes": planned,
             "maximum_full_effect_passes_per_model": 6 * CAPS["maximum_projection_iterations"] + 12,
             "maximum_single_effect_iterations": 2,
             "numerical_allocation_preflight": "per-model code cardinality and event-score dimensions admitted before allocation",
-            "limits": "metadata/footer preflight only; no trade bodies read; caches and pass ledger are hard ceilings"}
+            "limits": "metadata/footer preflight only; no trade bodies read; accepted artifacts checked post-write; transient process file writes and read-pass ledger bounded separately"}
 
 
 def configure(con, spill):
@@ -263,10 +272,27 @@ def configure(con, spill):
 
 
 def reserve_output(stage, ceiling):
-    used = sum(path.stat().st_size for path in Path(stage).rglob("*") if path.is_file()
-               and path.relative_to(stage).parts[0] != "spill")
+    stage = Path(stage)
+    used, occupied_spill = 0, 0
+    for path in stage.rglob("*"):
+        if not path.is_file():
+            continue
+        stat = path.stat()
+        if path.relative_to(stage).parts[0] == "spill":
+            # Count only physically allocated bytes, conservatively capped by
+            # logical size: sparse/preallocated spill cannot reduce reservation.
+            occupied_spill += min(stat.st_size, stat.st_blocks * 512)
+        else:
+            used += stat.st_size
     require(used + ceiling <= CAPS["maximum_output_bytes"], "remaining estimator output capacity below hard ceiling")
-    require(shutil.disk_usage(stage).free >= ceiling + CAPS["spill_bytes"] + CAPS["minimum_free_bytes"],
+    # disk_usage.free already excludes existing files. Reserve only remaining
+    # accepted-output/spill capacities, plus a whole new transient file and the
+    # untouched free floor: (8GB-used) +16GB +(16GB-occupied_spill) +20GB.
+    # The extra transient file can exceed its accepted limit only in staging;
+    # post-write size checks reject it before any reuse/publication.
+    needed = (CAPS["maximum_output_bytes"] - used + CAPS["maximum_transient_file_bytes"]
+              + max(0, CAPS["spill_bytes"] - occupied_spill) + CAPS["minimum_free_bytes"])
+    require(shutil.disk_usage(stage).free >= needed,
             "estimator free-space floor fails before output")
 
 
@@ -280,8 +306,12 @@ def copy_parquet(con, query, path, ceiling=CAPS["maximum_cache_bytes"], *, ledge
     path = Path(path)
     require(not path.exists(), "immutable artifact already exists")
     reserve_output(path.parent, ceiling)
-    with inputs.copy_ceiling(ceiling):
+    # RLIMIT_FSIZE is process-wide, so an accepted cache limit would also cap
+    # DuckDB's spill files. Permit the separately admitted transient bound, then
+    # reject oversized accepted artifacts before hashing or downstream use.
+    with inputs.copy_ceiling(CAPS["maximum_transient_file_bytes"]):
         copied = con.execute(f"COPY ({query}) TO {inputs.literal(path)} (FORMAT PARQUET,COMPRESSION ZSTD,ROW_GROUP_SIZE 65536)").fetchone()[0]
+    require(path.stat().st_size <= ceiling, "written artifact exceeds accepted per-file ceiling: " + path.name)
     reserve_output(path.parent, 0)
     info = artifact_info(path, ledger)
     require(info["rows"] == copied, "COPY/reopened Parquet row count differs")
@@ -300,11 +330,14 @@ def compact_joint(result, stage, key, artifacts, ledger=None):
     scores = result.coefficient_cluster_influence
     require(scores.nbytes <= CAPS["numpy_memory_bytes"], "score array cap exceeded")
     path = Path(stage) / (key + "_scores.parquet")
+    require(not path.exists(), "immutable score artifact already exists")
     values = pa.FixedSizeListArray.from_arrays(pa.array(scores.reshape(-1)), dimension)
     table = pa.table({"cluster_key": pa.array([str(item) for item in ids], type=pa.string()), "projected_score": values})
-    reserve_output(stage, min(1_000_000_000, max(1_000_000, table.nbytes * 2)))
-    with inputs.copy_ceiling(1_000_000_000):
+    reserve_output(stage, 1_000_000_000)
+    with inputs.copy_ceiling(CAPS["maximum_transient_file_bytes"]):
         pq.write_table(table, path, compression="zstd")
+    require(path.stat().st_size <= 1_000_000_000, "written score artifact exceeds accepted per-file ceiling")
+    reserve_output(stage, 0)
     info = artifact_info(path, ledger)
     require(info["rows"] == len(ids), "saved score cluster count differs")
     if ledger:
@@ -917,7 +950,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed preflight content/stat drift")
     for field in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
-                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "mode", "sports_metadata_review"):
+                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "mode", "sports_metadata_review"):
         require(reviewed[field] == fresh[field], "reviewed estimator preflight drift: " + field)
     require(fresh["mode"] == "estimates" and fresh["sports_metadata_review"] is not None, "estimate stage lacks independently reviewed sports metadata")
     target = Path(fresh["target"])
@@ -948,7 +981,9 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
                 output["sports"]["observation_cache"]["source_locator_unique"] is True,
                 "production sports cache lacks unique archive record locators")
         require(len(json.dumps(output, sort_keys=True, allow_nan=False).encode()) <= CAPS["maximum_json_bytes"], "estimates JSON exceeds admitted cap")
+        reserve_output(stage, CAPS["maximum_json_bytes"])
         inputs.write_json(stage / "estimates.json", output)
+        reserve_output(stage, 0)
         outputs = {str(path.relative_to(stage)): artifact_info(path, ledger) for path in sorted(stage.glob("*.parquet"))}
         result, result_id = inputs.read_json(stage / "estimates.json")
         require(result == output, "serialized estimates failed reopen")
@@ -969,7 +1004,9 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
             "reconciliation": {"all_inputs_reopened": True, "all_outputs_reopened": True,
                 "common_duration_population": True, "buy_role_partition": True, "expected_grids_serialized": True},
             "environment": {"python": sys.version, "duckdb": duckdb.__version__, "numpy": np.__version__}}
+        reserve_output(stage, CAPS["maximum_json_bytes"])
         inputs.write_json(stage / "manifest.json", manifest)
+        reserve_output(stage, CAPS["maximum_json_bytes"])
         require(shutil.disk_usage(stage).free >= CAPS["minimum_free_bytes"], "final estimator disk floor failed")
         con.close()
         con = None
@@ -985,6 +1022,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
             "status": "estimates_reopened_accepted", "manifest_sha256": saved_identity["sha256"],
             "estimates_sha256": result_id["sha256"],
             "source_head": fresh["source"]["head"], "all_outputs_reopened": True})
+        reserve_output(target, 0)
         return manifest
     except BaseException as error:
         failure_root = target if published else stage
@@ -1005,7 +1043,7 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed sports metadata preflight content/stat drift")
     for name in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
-                 "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "mode", "sports_metadata_review"):
+                 "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "mode", "sports_metadata_review"):
         require(reviewed[name] == fresh[name], "reviewed sports metadata preflight drift: " + name)
     require(fresh["mode"] == "sports_metadata_only" and fresh["sports_metadata_review"] is None and
             not fresh["sports_binding"].get("reviewed_metadata_stage"), "sports metadata-only mode must build original provider proofs")
@@ -1047,7 +1085,9 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
             "metadata_exclusions": exclusions, "six_candidate_coverage": candidate_counts, "six_match_timing_audit": audit_counts,
             "outputs": outputs, "preflight": reviewed, "command": command, "read_ledger": ledger.to_dict(),
             "trade_bodies_read": False, "native_pair_and_provider_result_proof": True}
+        reserve_output(stage, CAPS["maximum_json_bytes"])
         inputs.write_json(stage / "manifest.json", manifest)
+        reserve_output(stage, CAPS["maximum_json_bytes"])
         con.close()
         con = None
         inputs.atomic_publish(stage, target)
@@ -1059,6 +1099,7 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
         inputs.write_json(target / "acceptance.json", {"schema_version": "kaushik_replication_sports_metadata_acceptance_v1",
             "status": "sports_metadata_reopened_accepted", "manifest_sha256": saved_id["sha256"],
             "source_head": fresh["source"]["head"], "all_outputs_reopened": True})
+        reserve_output(target, 0)
         return manifest
     except BaseException as error:
         failure_root = target if published else stage

@@ -1,6 +1,6 @@
 # September 28 FLB writeup: Polymarket-only replication
 
-Status: inputs accepted; sports metadata and estimation pending.
+Status: inputs and sports metadata accepted; estimation resource retry pending.
 
 ## Contract and authority
 
@@ -64,5 +64,30 @@ not publish an accepted input directory. No sample definition changed.
   That check does not independently establish native-action correctness,
   whole-history collection completeness or exact trade/event timestamps.
 
-The failed first run remains preserved. Sports metadata, estimates, report QA,
-source publication and verified shutdown remain pending.
+The failed first input run remains preserved.
+
+## Sports metadata and preserved first estimation failure
+
+- Sports metadata v1 reopened and accepted under source
+  `a39b22d17c59ec689b6f9b1606fe3660586e6c96` without reading monthly trade bodies.
+- The nine provider cohorts contain 13,909 games and 14,383 markets. These are
+  metadata coverage counts, not observed trade-sample support.
+- The first estimation stage stopped during the sports observation COPY before
+  numerical estimation. Its process-wide 3 GB COPY file limit also capped the
+  DuckDB spill file despite a separately declared 16 GB total spill allowance.
+- Preserved stage:
+  `/mnt/data/runs/.2026-10-10_kaushik_polymarket_estimates_v1.staging-i44p6ze1`.
+- Execution exited 1; no accepted estimates or research report was published.
+  Small failure evidence is saved locally in `failed_estimate_v1/`.
+- The resource-only retry retains all sample definitions and accepted output
+  limits. Independent review accepted the compatible transient write guard.
+  The full focused suite passed 89 tests locally; the independent resource and
+  numerical subset passed 66 tests. Production artifact size remains unverified.
+  The transient process per-file bound is 16 GB; the accepted cache/map/score
+  limits remain 3 GB/500 MB/1 GB. The final 8 GB output cap includes saved JSON
+  and receipts. Initial disk admission reserves 60 GB, including a 20 GB floor.
+  A new source commit requires fresh sports-metadata admission; existing source
+  bindings will not be weakened or overwritten.
+
+Fresh metadata admission, accepted estimates, report QA, source publication and
+verified shutdown remain pending.

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import errno
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
@@ -140,6 +142,93 @@ class EndToEndFixtureTests(unittest.TestCase):
 
 
 class AdmissionFixtureTests(unittest.TestCase):
+    def test_process_write_limit_allows_bounded_spill_not_accepted_cache_overshoot(self):
+        # The actual RLIMIT is process-wide: a synthetic COPY's spill write
+        # reproduces the production failure independently of Parquet size.
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary) / "stage"
+            (stage / "spill").mkdir(parents=True)
+            output = stage / "cache.parquet"
+            previous = driver.resource.getrlimit(driver.resource.RLIMIT_FSIZE)
+            def spill_write(path, count):
+                descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                try:
+                    written = 0
+                    while written < count:
+                        written += os.write(descriptor,b"x"*(count-written))
+                finally:
+                    os.close(descriptor)
+            with driver.inputs.copy_ceiling(4096):
+                with self.assertRaises(OSError) as failure:
+                    spill_write(Path(temporary) / "old-process-limit.tmp",8192)
+                self.assertEqual(failure.exception.errno,errno.EFBIG)
+            self.assertEqual(driver.resource.getrlimit(driver.resource.RLIMIT_FSIZE),previous)
+            class SyntheticCopy:
+                def execute(self, query):
+                    self.observed_limit = driver.resource.getrlimit(driver.resource.RLIMIT_FSIZE)[0]
+                    spill_write(stage / "spill" / "synthetic-duckdb.tmp",8192)
+                    pq.write_table(pa.table({"fixture":[1]}),output)
+                    return self
+                def fetchone(self):
+                    return (1,)
+            con = SyntheticCopy()
+            with patch.dict(driver.CAPS,{"maximum_transient_file_bytes":16384,"spill_bytes":16384,
+                                         "maximum_output_bytes":65536,"minimum_free_bytes":0}):
+                info = driver.copy_parquet(con,"synthetic",output,ceiling=4096)
+                self.assertEqual(con.observed_limit,16384)
+                self.assertLess(info["bytes"],4096)
+                self.assertEqual((stage / "spill" / "synthetic-duckdb.tmp").stat().st_size,8192)
+                with driver.inputs.copy_ceiling(driver.CAPS["maximum_transient_file_bytes"]):
+                    with self.assertRaises(OSError) as failure:
+                        spill_write(Path(temporary) / "hard-transient-limit.tmp",16385)
+                    self.assertEqual(failure.exception.errno,errno.EFBIG)
+            self.assertEqual(driver.resource.getrlimit(driver.resource.RLIMIT_FSIZE),previous)
+
+    def test_post_copy_accepted_cache_overshoot_blocks_hash_and_preserves_stage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary) / "stage"
+            stage.mkdir()
+            output = stage / "cache.parquet"
+            con = duckdb.connect()
+            try:
+                with patch.dict(driver.CAPS,{"maximum_transient_file_bytes":16384,"spill_bytes":16384,
+                                             "maximum_output_bytes":65536,"minimum_free_bytes":0}), \
+                        patch.object(driver,"artifact_info") as inspect:
+                    with self.assertRaisesRegex(ValueError,"accepted per-file ceiling"):
+                        driver.copy_parquet(con,"SELECT 1 fixture",output,ceiling=100)
+                    inspect.assert_not_called()
+                self.assertTrue(stage.is_dir())
+                self.assertTrue(output.is_file())
+                self.assertGreater(output.stat().st_size,100)
+                self.assertFalse((stage / "acceptance.json").exists())
+            finally:
+                con.close()
+
+    def test_transient_disk_reservation_accounts_existing_bytes_and_retains_floor(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)
+            caps = {"maximum_output_bytes":8_000,"maximum_transient_file_bytes":16_000,
+                    "spill_bytes":16_000,"minimum_free_bytes":20_000}
+            with patch.dict(driver.CAPS,caps), patch.object(driver.shutil,"disk_usage") as usage:
+                usage.return_value = type("Capacity",(),{"free":60_000})()
+                driver.reserve_output(stage,3_000)
+                usage.return_value.free = 59_999
+                with self.assertRaisesRegex(ValueError,"free-space"):
+                    driver.reserve_output(stage,3_000)
+                (stage / "accepted.fixture").write_bytes(b"x"*2000)
+                (stage / "spill").mkdir()
+                (stage / "spill" / "occupied.tmp").write_bytes(b"x"*8192)
+                item = (stage / "spill" / "occupied.tmp").stat()
+                occupied = min(item.st_size,item.st_blocks*512)
+                usage.return_value.free = 60_000 - 2000 - occupied
+                driver.reserve_output(stage,3_000)
+                usage.return_value.free -= 1
+                with self.assertRaisesRegex(ValueError,"free-space"):
+                    driver.reserve_output(stage,3_000)
+                usage.return_value.free = 100_000
+                with self.assertRaisesRegex(ValueError,"output capacity"):
+                    driver.reserve_output(stage,6_001)
+
     def test_accepted_input_support_mismatch_fails_before_models(self):
         with tempfile.TemporaryDirectory() as temporary:
             con = duckdb.connect()
@@ -219,7 +308,7 @@ class AdmissionFixtureTests(unittest.TestCase):
                 "base_binding":{"manifest":json_ids["manifest"],"acceptance":json_ids["acceptance"]},
                 "base_manifest":{},"base_files":[claims],"monthly_paths":[],"sports_binding":binding,
                 "sports_binding_identity":json_ids["sports"],"sports_files":driver.sports_input_inventory(binding),"caps":driver.CAPS,
-                "required_free_bytes":0,"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2}
+                "required_free_bytes":0,"write_limit_policy":{},"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2}
             reviewed = {**fresh,"observed_free_bytes":1}
             driver.inputs.write_json(folder / "reviewed_preflight.json",reviewed)
             reviewed_id = driver.inputs.read_json(folder / "reviewed_preflight.json")[1]
