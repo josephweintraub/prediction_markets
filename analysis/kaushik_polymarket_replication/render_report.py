@@ -35,6 +35,7 @@ WINDOWS = (
     ("final_hour", "final_15to5m", "15-5m"), ("final_hour", "final_5to0m", "5-0m"),
 )
 MAX_JSON_BYTES = 16_000_000
+SAMPLE_SCOPES = ("paper_cutoff", "all_available_dates")
 
 
 class ReportBlocked(ValueError):
@@ -44,6 +45,46 @@ class ReportBlocked(ValueError):
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise ReportBlocked(message)
+
+
+def _sample_scope(value):
+    scope = value.get("sample_scope", "paper_cutoff")
+    require(scope in SAMPLE_SCOPES, "sample scope differs from admitted policies")
+    return scope
+
+
+def _definition_scope(definitions):
+    scope = _sample_scope(definitions)
+    cutoff = "2026-03-25T00:00:00Z" if scope == "paper_cutoff" else None
+    require("cutoff_utc" in definitions and definitions["cutoff_utc"] == cutoff,
+            "cutoff definition differs from sample scope")
+    seconds = 1774396800 if scope == "paper_cutoff" else None
+    require((scope == "paper_cutoff" and "cutoff_seconds" not in definitions) or
+            ("cutoff_seconds" in definitions and definitions["cutoff_seconds"] == seconds),
+            "cutoff seconds differ from sample scope")
+    return scope
+
+
+def validate_sample_scope_binding(data, manifest, acceptance):
+    """Reconcile declared policy across accepted summaries and input provenance."""
+    scope = _definition_scope(data.get("definitions", {}))
+    require(all(_sample_scope(value) == scope for value in (data, manifest, acceptance)),
+            "estimate/manifest/acceptance sample scope differs")
+    base = manifest.get("preflight", {}).get("base_manifest")
+    if scope == "all_available_dates":
+        require(isinstance(base, dict), "full-date input manifest provenance required")
+    if base is not None:
+        require(_sample_scope(base) == scope, "accepted input manifest sample scope differs")
+        if "definitions" in base:
+            require(_definition_scope(base["definitions"]) == scope, "accepted input definitions sample scope differs")
+        else:
+            require(scope == "paper_cutoff", "full-date input definitions required")
+        contract = base.get("input_preflight", {}).get("contract")
+        if scope == "all_available_dates":
+            require(isinstance(contract, dict), "full-date input contract provenance required")
+        if contract is not None:
+            require(_sample_scope(contract) == scope, "accepted input contract sample scope differs")
+    return scope
 
 
 def _unique_object(pairs):
@@ -86,9 +127,10 @@ def load_accepted_estimates(folder: str | Path):
     require(digest == manifest.get("estimates_json", {}).get("sha256") ==
             acceptance.get("estimates_sha256"), "accepted estimates fingerprint differs")
     validate_estimates(data)
+    scope = validate_sample_scope_binding(data, manifest, acceptance)
     return data, {"estimate_dir": str(folder), "manifest_sha256": manifest_hash,
                   "acceptance_sha256": acceptance_hash, "estimates_sha256": digest,
-                  "source_head": acceptance["source_head"]}
+                  "source_head": acceptance["source_head"], "sample_scope": scope}
 
 
 def _index(rows, fields, expected=None):
@@ -162,41 +204,60 @@ def _validate_model(model):
         require(metadata["n"] == model["n_observations"], "model sample and moment N differ")
 
 
-def _exclusion_rows(sample):
+def _exclusion_rows(sample, sample_scope="paper_cutoff"):
+    require(sample_scope in SAMPLE_SCOPES, "exclusion sample scope differs")
+    count_field = "precut_rows" if sample_scope == "paper_cutoff" else "scope_rows"
     monthly = sample.get("archive_exclusions")
     require(isinstance(monthly, dict), "monthly exclusion dictionary required")
     for month, rows in sorted(monthly.items()):
         require(isinstance(month, str) and isinstance(rows, list), "invalid monthly exclusion rows")
         for row in rows:
             require(isinstance(row, dict) and isinstance(row.get("reason"), str) and row["reason"] and
-                    all(key in row for key in ("side", "is_maker", "rows", "precut_rows")),
+                    all(key in row for key in ("side", "is_maker", "rows", count_field)),
                     "incomplete monthly exclusion row")
             require(row["is_maker"] is None or type(row["is_maker"]) is bool, "invalid exclusion role")
             _integer(row["rows"], "monthly source N")
-            _integer(row["precut_rows"], "monthly pre-cutoff N")
-            require(row["precut_rows"] <= row["rows"], "pre-cutoff exclusion count exceeds source")
+            _integer(row[count_field], "monthly scope N")
+            require(row[count_field] <= row["rows"], "scope exclusion count exceeds source")
+            if sample_scope == "all_available_dates":
+                require("precut_rows" not in row and row["scope_rows"] == row["rows"] and
+                        row["reason"] != "at_or_after_cutoff", "full-date waterfall retains a cutoff or omits source rows")
             yield row
 
 
 def validate_estimates(data: Mapping[str, Any]) -> None:
     require(data.get("schema_version") == "kaushik_replication_estimates_v1" and
             data.get("status") == "estimates_complete", "complete estimates summary required")
-    require(data.get("definitions", {}).get("cutoff_utc") == "2026-03-25T00:00:00Z",
-            "cutoff definition differs")
+    scope = _definition_scope(data.get("definitions", {}))
+    require(_sample_scope(data) == scope, "estimate sample scope differs from definitions")
     uncertainty = data["definitions"].get("uncertainty", {})
     require(uncertainty.get("primary") == "event_cluster_CR0" and
             uncertainty.get("full_N_minus_k_CR1_used") is False, "variance convention differs")
     sample = data.get("sample", {})
     for key in ("rows", "conditions", "normalized_claims", "clusters", "tail_rows",
-                "duration_tail_rows", "duration_tail_clusters", "future_ending_rows",
+                "duration_tail_rows", "duration_tail_clusters",
                 "unique_event_clusters", "market_fallback_clusters"):
         _integer(sample.get(key), key)
-    list(_exclusion_rows(sample))
+    if scope == "paper_cutoff":
+        _integer(sample.get("future_ending_rows"), "future_ending_rows")
+    else:
+        require("future_ending_rows" in sample and sample["future_ending_rows"] is None,
+                "full-date cutoff-based endpoint diagnostic must be null")
+        health = sample.get("metadata_health")
+        if isinstance(health, dict) and "endpoint_after_execution_cutoff_claims" in health:
+            require(health["endpoint_after_execution_cutoff_claims"] is None,
+                    "full-date metadata retains a cutoff-based diagnostic")
+    exclusion_rows = list(_exclusion_rows(sample, scope))
     for key in ("source", "baseline_all_roles", "excluded", "primary_taker"):
         _integer(sample.get("source_row_counts", {}).get(key), "source " + key)
     totals = sample["source_row_counts"]
     require(totals["source"] == totals["baseline_all_roles"]+totals["excluded"] and
             totals["primary_taker"] == sample["rows"], "source waterfall does not reconcile")
+    if scope == "all_available_dates":
+        require(sum(row["rows"] for row in exclusion_rows) == totals["source"] and
+                sum(row["rows"] for row in exclusion_rows if row["reason"] == "eligible") == totals["baseline_all_roles"] and
+                sum(row["rows"] for row in exclusion_rows if row["reason"] == "eligible" and row["is_maker"] is False) == sample["rows"],
+                "full-date eligibility waterfall does not exhaust source/admitted records")
     categories = _index(data.get("categories"), ("category",), [(name,) for name in CATEGORIES])
     for row in categories.values():
         _integer(row.get("n_observations"), "category N")
@@ -511,16 +572,21 @@ def figure_names():
 def render_source(data):
     validate_estimates(data)
     sample = data["sample"]
+    scope = _definition_scope(data["definitions"])
+    full_dates = scope == "all_available_dates"
+    date_note = (r"all available execution dates in the admitted source files; no execution-date cutoff. " if full_dates else
+                 r"executions before March 25, 2026, 00:00 UTC. ")
     parts = [r"\documentclass[11pt]{article}", r"\usepackage[margin=0.65in]{geometry}",
              r"\usepackage{booktabs,graphicx,caption,longtable,array}", r"\usepackage[T1]{fontenc}",
              r"\setlength{\parindent}{0pt}\setlength{\parskip}{5pt}\setlength{\tabcolsep}{4pt}",
              r"\makeatletter\setlength{\@fptop}{0pt}\makeatother",
              r"\captionsetup{font=small}\begin{document}",
              r"{\Large Favorite--longshot bias: Polymarket replication}\par",
-             r"September 28 specifications; existing native categories and available provider-covered sports cohort.\par",
+             (r"September 28 specifications with a full available-date sample; existing native categories and available provider-covered sports cohort.\par"
+              if full_dates else r"September 28 specifications; existing native categories and available provider-covered sports cohort.\par"),
              r"Archive-recorded taker BUY retains its claim; taker SELL uses its verified binary complement. "
              r"Roles/actions are archive conventions, not independently certified native own-order actions or unique fills. "
-             r"Equal record weights; $0<P<1$; no bot filter, price trim or up/down exclusion; executions before March 25, 2026, 00:00 UTC. "
+             r"Equal record weights; $0<P<1$; no bot filter, price trim or up/down exclusion; " + date_note +
              r"P is normalized claim price in dollars and Y is its eventual binary payout (0 or 1). "
              r"Payoff $100(Y-P)$ is cents per \$1 claim; individual return $100(Y/P-1)$ is averaged in percent, before fees and without annualization. "
              r"D1--D10 are fixed ten-cent bins; tail gaps are signed D10 minus D1; full profiles remain primary.\par",
@@ -539,21 +605,26 @@ def render_source(data):
                     ("rows", "Baseline records"), ("conditions", "Conditions"), ("normalized_claims", "Normalized claims"),
                     ("clusters", "Event/market clusters"), ("unique_event_clusters", "Unique native-event clusters"),
                     ("market_fallback_clusters", "Market fallback clusters"), ("tail_rows", "Baseline D1 + D10 records"),
-                    ("duration_tail_rows", "Duration-eligible tail records"), ("duration_tail_clusters", "Duration tail clusters"),
-                    ("future_ending_rows", "Records in future-ending claims"))]]
+                    ("duration_tail_rows", "Duration-eligible tail records"), ("duration_tail_clusters", "Duration tail clusters"))]]
+    if not full_dates:
+        coverage.append(("Records in future-ending claims", count(sample["future_ending_rows"])))
     parts.append(table("Sample. Coverage and inclusion", ["Quantity", "Polymarket"], coverage,
-                       r"Recorded source timestamps are approximate, not exact native block times. Eventual payouts/endpoints may follow the cutoff. "
+                       r"Recorded source timestamps are approximate, not exact native block times. " +
+                       (r"All available execution dates are retained subject to the same eligibility checks. " if full_dates else
+                        r"Eventual payouts/endpoints may follow the cutoff. ") +
                        r"The resolved-source build can omit unresolved long-horizon claims; this is not an exchange census or a recency trend."))
     totals = sample["source_row_counts"]
-    waterfall = [[tex(key.replace("_", " ")), count(value)] for key, value in sorted(totals.items())]
+    waterfall = [[tex("Excluded by eligibility" if full_dates and key == "excluded" else key.replace("_", " ")), count(value)] for key, value in sorted(totals.items())]
     excluded = defaultdict(int)
-    for row in _exclusion_rows(sample):
+    count_field = "scope_rows" if full_dates else "precut_rows"
+    for row in _exclusion_rows(sample, scope):
         excluded[(row["reason"], "Maker" if row["is_maker"] is True else "Taker" if row["is_maker"] is False else "Role absent",
-                  str(row["side"]) if row["side"] is not None else "Action absent")] += row["precut_rows"]
+                  str(row["side"]) if row["side"] is not None else "Action absent")] += row[count_field]
     parts.append(table("Sample. Source accounting", ["Population", "Records"], waterfall,
-                       r"Source totals span the admitted source files; the next table restricts counts to records before the cutoff. "
+                       (r"Source totals and the next eligibility table span all records in the admitted source files. " if full_dates else
+                        r"Source totals span the admitted source files; the next table restricts counts to records before the cutoff. ") +
                        r"Eligible maker records enter Appendix A2 only. The primary uses eligible taker records."))
-    parts.append(table("Sample. Pre-cutoff eligibility waterfall", ["First eligibility reason", "Role", "Action", "N"],
+    parts.append(table("Sample. " + ("All-date" if full_dates else "Pre-cutoff") + " eligibility waterfall", ["First eligibility reason", "Role", "Action", "N"],
                        [[tex(reason.replace("_", " ")), tex(role), tex(side), count(n)] for (reason, role, side), n in sorted(excluded.items())],
                        r"Reasons are disjoint first-failure assignments, including the eligible category; archive multiplicity is preserved.",
                        widths="p{9cm}llr", multipage=len(excluded)>25))
@@ -661,7 +732,7 @@ def render_source(data):
         rows += [[CONVENTION_LABELS[convention], count(saved["counts"]["rows"]), count(saved["counts"]["clusters"]), *(cell(row) for row in selected)],
                  ["", "", "", *(se(row) for row in selected)]]
     parts.append(table("Appendix A2. Archive observation-convention comparisons", ["Convention", "All-band N", "Clusters", "Payoff gap", "Return gap"], rows,
-                       r"Same archive, cutoff and binary-token eligibility; no duration filter or controls. BUY rows retain the recorded claim, "
+                       r"Same archive, " + ("available-date scope" if full_dates else "cutoff") + r" and binary-token eligibility; no duration filter or controls. BUY rows retain the recorded claim, " +
                        r"and all BUY partitions into maker and taker BUY. Equal counts do not imply identical prices or observations. "
                        r"Complemented SELL exposure is not realized seller investment return; role differences reflect selection/composition. " + VARIANCE_NOTE +
                        withholding_note((f"{CONVENTION_LABELS[name]} {outcome_label(row['outcome'])}", row) for (name,), saved in a2.items() for row in saved["gap_rows"])))
@@ -823,6 +894,7 @@ def render(estimate_dir, run_dir):
                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                    for path in sorted(staging.rglob("*")) if path.is_file()}
         manifest = {"schema_version": "kaushik_replication_report_v1", "status": "source_and_figures_complete",
+                    "sample_scope": binding["sample_scope"],
                     "inputs": binding, "outputs": outputs, "primary_deliverable": "source.tex",
                     "renderer_source": {"path": "analysis/kaushik_polymarket_replication/render_report.py",
                                         "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},

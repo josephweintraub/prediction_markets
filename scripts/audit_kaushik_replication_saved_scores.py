@@ -419,6 +419,7 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
     data = reads.json(folder / "estimates.json", acceptance["estimates_sha256"])
     require(identity(folder / "estimates.json")[2] == manifest["estimates_json"]["bytes"], "estimates bytes")
     grids.validate_estimates(data)  # Reuse the frozen complete-grid/suppression validator.
+    grids.validate_sample_scope_binding(data, manifest, acceptance)
     count_checks(data, manifest)
     records = list(joints(data))
     artifacts = data["score_artifacts"]

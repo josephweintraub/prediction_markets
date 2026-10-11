@@ -66,6 +66,63 @@ def fixture(con, folder):
 
 
 class EndToEndFixtureTests(unittest.TestCase):
+    def test_full_date_estimator_accepts_later_records_without_changing_models(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                _, manifest, binding = fixture(con, temporary)
+                later_start = int(datetime(2026, 4, 1, tzinfo=timezone.utc).timestamp())
+                shift = later_start - 1738368000
+                con.execute(f"UPDATE analysis_base SET timestamp=timestamp+{shift},opening_seconds=opening_seconds+{shift},endpoint_seconds=endpoint_seconds+{shift},trade_month='2026-04'")
+                old_map = binding["inputs"][0]["path"]
+                later_map = Path(temporary) / "later_sports_map.parquet"
+                con.execute(f"COPY (SELECT * REPLACE(actual_start_seconds+{shift} AS actual_start_seconds,actual_end_seconds+{shift} AS actual_end_seconds) FROM read_parquet({driver.inputs.literal(old_map)})) TO {driver.inputs.literal(later_map)} (FORMAT PARQUET)")
+                binding["inputs"][0].update(path=str(later_map), sha256=driver.inputs.sha256(later_map))
+                manifest.update(sample_scope="all_available_dates",
+                                definitions=driver.inputs.sample_definitions("all_available_dates"))
+                result = driver.estimate_all(con, Path(temporary) / "full", manifest, binding)
+                self.assertEqual(result["sample_scope"], "all_available_dates")
+                self.assertIsNone(result["definitions"]["cutoff_utc"])
+                self.assertIsNone(result["definitions"]["cutoff_seconds"])
+                self.assertIsNone(result["sample"]["future_ending_rows"])
+                self.assertTrue(result["sample"]["last_execution_utc"].startswith("2026-04-01"))
+                self.assertEqual(result["sample"]["rows"], manifest["rows"]["primary_taker"])
+                self.assertEqual([model["spec"] for model in result["table2"]],
+                                 [{**spec, "report_clocks": spec["clocks"]} for spec in driver.model_specs()])
+                self.assertEqual(len(result["sports"]["phase_rows"]), 60)
+                self.assertEqual(len(result["sports"]["profile_rows"]), 400)
+                self.assertEqual(len(result["sports"]["window_rows"]), 280)
+                del manifest["definitions"]
+                del manifest["sample_scope"]
+                with patch.object(driver, "prepare_sports_map", return_value=[]), \
+                        patch.object(driver, "create_sports_view", return_value={"bytes": 0}), \
+                        self.assertRaisesRegex(driver.inputs.InputBlocked, "sample-date/price"):
+                    driver.estimate_all(con, Path(temporary) / "cutoff_blocked", manifest, binding)
+            finally:
+                con.close()
+
+    def test_input_scope_provenance_defaults_and_conflicts_fail_closed(self):
+        legacy = {"definitions": {"cutoff_utc": driver.inputs.CUTOFF_ISO}}
+        self.assertEqual(driver.validate_input_sample_scope(legacy, {}), "paper_cutoff")
+        full = {"sample_scope": "all_available_dates",
+                "definitions": driver.inputs.sample_definitions("all_available_dates"),
+                "input_preflight": {"contract": {"sample_scope": "all_available_dates"}}}
+        receipt = {"sample_scope": "all_available_dates"}
+        self.assertEqual(driver.validate_input_sample_scope(full, receipt, require_contract=True), "all_available_dates")
+        from copy import deepcopy
+        mutations = [lambda item: item.update(sample_scope="paper_cutoff"),
+                     lambda item: item["definitions"].update(cutoff_utc=driver.inputs.CUTOFF_ISO),
+                     lambda item: item["definitions"].update(cutoff_seconds=driver.inputs.CUTOFF_SECONDS),
+                     lambda item: item["input_preflight"]["contract"].clear(),
+                     lambda item: item.pop("input_preflight")]
+        for mutation in mutations:
+            invalid = deepcopy(full)
+            mutation(invalid)
+            with self.subTest(invalid=invalid), self.assertRaises(driver.inputs.InputBlocked):
+                driver.validate_input_sample_scope(invalid, receipt, require_contract=True)
+        with self.assertRaisesRegex(driver.inputs.InputBlocked, "acceptance sample scope"):
+            driver.validate_input_sample_scope(full, {}, require_contract=True)
+
     def test_full_grid_common_samples_buy_partition_and_reopened_scores(self):
         with tempfile.TemporaryDirectory() as temporary:
             con = duckdb.connect()

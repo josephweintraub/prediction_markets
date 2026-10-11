@@ -1842,5 +1842,127 @@ class IndependentReportQA(unittest.TestCase):
         self.assertFalse((Path(self.temporary.name)/"unused_windows.pdf").exists())
 
 
+class IndependentFullSampleQA(unittest.TestCase):
+    """A second, explicit locator oracle for the approved date-only extension."""
+
+    def setUp(self):
+        fixture = IndependentInputQA()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        self.folder, self.con, self.paths = fixture.folder, fixture.con, fixture.paths
+
+    def test_date_policy_is_explicit_and_legacy_cutoff_is_unchanged(self):
+        self.assertEqual(build_inputs.sample_scope({}), "paper_cutoff")
+        self.assertEqual(build_inputs.sample_definitions(), {
+            "sample_scope": "paper_cutoff", "cutoff_utc": "2026-03-25T00:00:00Z",
+            "cutoff_seconds": 1774396800})
+        self.assertEqual(build_inputs.sample_definitions("all_available_dates"), {
+            "sample_scope": "all_available_dates", "cutoff_utc": None, "cutoff_seconds": None})
+        for wrong in (None, "all", "ALL_AVAILABLE_DATES", "paper", False, 0):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                build_inputs.sample_scope({"sample_scope": wrong})
+        for definitions in ({"sample_scope": "all_available_dates", "cutoff_utc": None},
+                {"sample_scope": "all_available_dates", "cutoff_utc": build_inputs.CUTOFF_ISO,
+                 "cutoff_seconds": None}, {"cutoff_utc": None, "cutoff_seconds": None}):
+            with self.subTest(definitions=definitions), self.assertRaises(ValueError):
+                build_inputs.validate_sample_definitions(definitions)
+
+    def test_full_dates_add_only_eligible_post_cut_locators_and_preserve_fields(self):
+        cutoff = 1774396800
+        schema = pa.schema([("proxyWallet", pa.string()), ("timestamp", pa.int64()),
+            ("conditionId", pa.string()), ("usdcSize", pa.float64()), ("price", pa.float64()),
+            ("side", pa.string()), ("outcome", pa.string()), ("eventSlug", pa.string()),
+            ("is_maker", pa.bool_()), ("counterparty", pa.string()), ("year_month", pa.string())])
+        def row(stamp, **changes):
+            value = {"proxyWallet": "retained-bot-wallet", "timestamp": stamp,
+                "conditionId": "100", "usdcSize": 2., "price": .04, "side": "BUY",
+                "outcome": "Yes", "eventSlug": "mechanical-updown", "is_maker": False,
+                "counterparty": "ignored", "year_month": "2026-03"}
+            value.update(changes)
+            return value
+        records = [row(cutoff-1), row(cutoff, side="SELL", price=.9000000000000001),
+            row(cutoff+1, price=np.nextafter(.9, 1)), row(cutoff+2, price=.005),
+            row(cutoff+3, price=.995), row(cutoff+4, is_maker=True), row(cutoff+5)]
+        records.append(dict(records[-1]))  # Distinct source ordinals, identical values.
+        bad = [("missing_archive_role", {"is_maker": None}),
+            ("invalid_archive_action", {"side": "BAD"}),
+            *[("invalid_recorded_price", {"price": p}) for p in (0., 1., float("nan"), float("inf"), None)],
+            *[("invalid_size", {"usdcSize": v}) for v in (0., float("inf"), None)],
+            ("unadmitted_token_pair", {"conditionId": "missing"}),
+            ("outcome_label_disagreement", {"outcome": "yes"})]
+        records += [row(cutoff+10+i, **changes) for i, (_, changes) in enumerate(bad)]
+        records.append(row(None))
+        path = self.folder / "date-extension.parquet"
+        pq.write_table(pa.Table.from_pylist(records, schema=schema), path)
+        select = ("SELECT source_ordinal,timestamp,recorded_token_code,claim_code,price,P,Y,"
+                  "usdcSize,side,is_maker,duration_clock_valid FROM annotated_month "
+                  "WHERE eligibility_reason='eligible' ORDER BY source_ordinal")
+        snapshots = {}
+        for policy in (None, "paper_cutoff", "all_available_dates"):
+            args = () if policy is None else (policy,)
+            build_inputs.annotate_month(self.con, path, "2026-03", *args)
+            snapshots[policy] = self.con.execute(select).fetchall()
+            reasons = [r[0] for r in self.con.execute(
+                "SELECT eligibility_reason FROM annotated_month ORDER BY source_ordinal").fetchall()]
+            counts = build_inputs.month_counts(self.con, len(records), "2026-03", *args)
+            self.assertEqual(sum(r["rows"] for r in counts), len(records))
+            if policy == "all_available_dates":
+                self.assertEqual(reasons, ["eligible"]*8 + [reason for reason, _ in bad] + ["invalid_timestamp"])
+                self.assertTrue(all(r["scope_rows"] == r["rows"] and "precut_rows" not in r for r in counts))
+                self.assertNotIn("at_or_after_cutoff", reasons)
+            else:
+                self.assertEqual(reasons, ["eligible"] + ["at_or_after_cutoff"]*(len(records)-2) + ["invalid_timestamp"])
+                self.assertTrue(all("precut_rows" in r and "scope_rows" not in r for r in counts))
+                self.assertEqual(sum(r["precut_rows"] for r in counts), 1)
+        self.assertEqual(snapshots[None], snapshots["paper_cutoff"])
+        self.assertEqual([r for r in snapshots["all_available_dates"] if r[1]<cutoff], snapshots[None])
+        self.assertEqual([r[0] for r in snapshots["all_available_dates"]], list(range(8)))
+        self.assertEqual(snapshots["all_available_dates"][1][5:7], (1-.9000000000000001, 0))
+        self.assertEqual(snapshots["all_available_dates"][2][5], np.nextafter(.9, 1))
+        self.assertEqual(snapshots["all_available_dates"][6][1:], snapshots["all_available_dates"][7][1:])
+        # After-native-end baseline rows, extreme valid prices, up/down slugs and
+        # repeated bot-named wallets remain admitted; duration eligibility stays false.
+        self.assertTrue(all(not r[-1] for r in snapshots["all_available_dates"]))
+
+    def test_full_policy_does_not_relax_source_month_validation_or_claim_map(self):
+        before = self.con.execute("SELECT * FROM claims ORDER BY claim_code").fetchall()
+        health = build_inputs.prepare_metadata(self.con, self.paths, sample_scope="all_available_dates")
+        self.assertEqual(before, self.con.execute("SELECT * FROM claims ORDER BY claim_code").fetchall())
+        self.assertIsNone(health["endpoint_after_execution_cutoff_claims"])
+        from tests.test_kaushik_replication_inputs import trade, annotate
+        path = annotate(self.con, self.folder, [trade(timestamp=1775001600)])  # April 1, marked March.
+        build_inputs.annotate_month(self.con, path, "2026-03", "all_available_dates")
+        with self.assertRaisesRegex(ValueError, "outside its immutable month"):
+            build_inputs.month_counts(self.con, 1, "2026-03", "all_available_dates")
+
+    def test_scope_binding_fails_closed_across_every_declared_layer(self):
+        full = "all_available_dates"
+        base = {"sample_scope": full, "definitions": build_inputs.sample_definitions(full),
+                "input_preflight": {"contract": {"sample_scope": full}}}
+        data = {"sample_scope": full, "definitions": build_inputs.sample_definitions(full)}
+        manifest = {"sample_scope": full, "preflight": {"base_manifest": base}}
+        acceptance = {"sample_scope": full}
+        self.assertEqual(report.validate_sample_scope_binding(data, manifest, acceptance), full)
+        self.assertEqual(driver.validate_input_sample_scope(base, acceptance, require_contract=True), full)
+        legacy = {"definitions": {"cutoff_utc": "2026-03-25T00:00:00Z"}}
+        self.assertEqual(report.validate_sample_scope_binding(legacy, {}, {}), "paper_cutoff")
+        for damage in ("data", "definitions", "manifest", "acceptance", "base", "base_definitions",
+                       "contract", "missing_base", "missing_contract"):
+            values = deepcopy((data, manifest, acceptance))
+            x, m, a = values
+            b = m["preflight"]["base_manifest"]
+            if damage == "data": x["sample_scope"] = "paper_cutoff"
+            elif damage == "definitions": x["definitions"] = build_inputs.sample_definitions()
+            elif damage == "manifest": m["sample_scope"] = "paper_cutoff"
+            elif damage == "acceptance": a["sample_scope"] = "paper_cutoff"
+            elif damage == "base": b["sample_scope"] = "paper_cutoff"
+            elif damage == "base_definitions": b["definitions"] = build_inputs.sample_definitions()
+            elif damage == "contract": b["input_preflight"]["contract"] = {}
+            elif damage == "missing_base": m["preflight"].clear()
+            elif damage == "missing_contract": b["input_preflight"].clear()
+            with self.subTest(damage=damage), self.assertRaises(ValueError):
+                report.validate_sample_scope_binding(*values)
+
+
 if __name__ == "__main__":
     unittest.main()

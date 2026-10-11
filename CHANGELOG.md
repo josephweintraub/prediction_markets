@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-10 - Full-available-date Polymarket replication
+
+- Added an explicit all-available-date scope without changing the accepted
+  cutoff convention, non-date eligibility, estimators, weights or support rules.
+- Added source-bound full-sample contracts, truthful date/exclusion reporting,
+  backward-compatible scope admission and cross-artifact policy checks.
+- Added a guarded serial-month comparison of accepted full-sample inputs with
+  the retained cutoff subset; kept prior outputs and provider coverage intact.
+
 ## 2026-10-10 - Polymarket-only replication of September 28 FLB specifications
 
 - Added a table-by-table replication contract for the full supplied writeup,

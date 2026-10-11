@@ -29,6 +29,7 @@ import pyarrow.parquet as pq
 REPO = Path(__file__).resolve().parents[2]
 CUTOFF_ISO = "2026-03-25T00:00:00Z"
 CUTOFF_SECONDS = int(datetime(2026, 3, 25, tzinfo=timezone.utc).timestamp())
+SAMPLE_SCOPES = ("paper_cutoff", "all_available_dates")
 CATEGORY_LABELS = ("Crypto", "Culture", "Economy", "Esports", "Finance", "Geopolitics",
                    "Iran", "Mentions", "Politics", "Sports", "Tech", "Weather", "Unclassified")
 REPAIR_ROOT = Path("/mnt/data/runs/2026-10-09_polymarket_wallet_attribution_repair_v1")
@@ -54,7 +55,8 @@ CAPS = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
 SOURCE_FILES = ("analysis/kaushik_polymarket_replication/build_inputs.py",
                 "scripts/build_kaushik_polymarket_replication.py",
                 "tests/test_kaushik_replication_inputs.py",
-                "docs/analysis_specs/kaushik_polymarket_replication_v1.md")
+                "docs/analysis_specs/kaushik_polymarket_replication_v1.md",
+                "docs/analysis_specs/kaushik_polymarket_full_sample_v1.md")
 
 
 class InputBlocked(ValueError):
@@ -64,6 +66,32 @@ class InputBlocked(ValueError):
 def require(condition, message):
     if not condition:
         raise InputBlocked(message)
+
+
+def sample_scope(contract):
+    """An absent policy preserves the accepted paper-cutoff contract."""
+    scope = contract.get("sample_scope", "paper_cutoff")
+    require(scope in SAMPLE_SCOPES, "sample scope differs from admitted policies")
+    return scope
+
+
+def sample_definitions(scope="paper_cutoff"):
+    scope = sample_scope({"sample_scope": scope})
+    return {"sample_scope": scope,
+            "cutoff_utc": CUTOFF_ISO if scope == "paper_cutoff" else None,
+            "cutoff_seconds": CUTOFF_SECONDS if scope == "paper_cutoff" else None}
+
+
+def validate_sample_definitions(definitions):
+    scope = sample_scope(definitions)
+    expected = sample_definitions(scope)
+    require("cutoff_utc" in definitions and definitions["cutoff_utc"] == expected["cutoff_utc"],
+            "cutoff contract differs from sample scope")
+    # Legacy estimate summaries did not serialize cutoff_seconds.
+    require((scope == "paper_cutoff" and "cutoff_seconds" not in definitions) or
+            ("cutoff_seconds" in definitions and definitions["cutoff_seconds"] == expected["cutoff_seconds"]),
+            "cutoff seconds differ from sample scope")
+    return scope
 
 
 def literal(value):
@@ -163,6 +191,7 @@ def source_snapshot(expected_head):
 def load_contract(path):
     contract, binding = read_json(path)
     require(contract.get("schema_version") == "kaushik_replication_input_contract_v1", "input contract version differs")
+    sample_scope(contract)
     require(contract.get("category_labels") == list(CATEGORY_LABELS), "retained native taxonomy/order differs")
     require(contract.get("caps") == CAPS, "resource caps differ from committed limits")
     require(contract.get("opening_field") == "created_at" and contract.get("unavailable_opening_field") == "start_date"
@@ -248,9 +277,10 @@ def configure(con, spill):
     con.execute("SET enable_object_cache=false")
 
 
-def prepare_metadata(con, paths, category_labels=CATEGORY_LABELS):
+def prepare_metadata(con, paths, category_labels=CATEGORY_LABELS, sample_scope="paper_cutoff"):
     """Build one-to-one claims; ambiguous metadata cannot multiply a trade."""
     require(tuple(category_labels) == CATEGORY_LABELS, "category taxonomy differs")
+    scope = sample_definitions(sample_scope)["sample_scope"]
     con.execute("SET TimeZone='UTC'")
     for name in REQUIRED_FIELDS.keys() - {"trades"}:
         con.execute(f"CREATE OR REPLACE TEMP VIEW raw_{name} AS SELECT * FROM read_parquet({literal(paths[name])}, hive_partitioning=false)")
@@ -338,13 +368,16 @@ def prepare_metadata(con, paths, category_labels=CATEGORY_LABELS):
             "missing_opening_claims": con.execute("SELECT count(*) FROM claims WHERE opening_seconds IS NULL OR NOT isfinite(opening_seconds)").fetchone()[0],
             "missing_endpoint_claims": con.execute("SELECT count(*) FROM claims WHERE endpoint_seconds IS NULL OR NOT isfinite(endpoint_seconds)").fetchone()[0],
             "nonpositive_lifetime_claims": con.execute("SELECT count(*) FROM claims WHERE endpoint_seconds<=opening_seconds").fetchone()[0],
-            "endpoint_after_execution_cutoff_claims": con.execute("SELECT count(*) FROM claims WHERE endpoint_seconds>=?", [CUTOFF_SECONDS]).fetchone()[0],
+            "endpoint_after_execution_cutoff_claims": (con.execute("SELECT count(*) FROM claims WHERE endpoint_seconds>=?", [CUTOFF_SECONDS]).fetchone()[0]
+                                                       if scope == "paper_cutoff" else None),
             "unavailable_opening_field": "start_date", "opening_field": "created_at", "endpoint_field": "end_date"}
 
 
-def annotate_month(con, path, month):
+def annotate_month(con, path, month, sample_scope="paper_cutoff"):
     """Create a lazy all-record audit view, retaining physical row multiplicity."""
     require(re.fullmatch(r"\d{4}-\d{2}", month or ""), "source month syntax invalid")
+    scope = sample_definitions(sample_scope)["sample_scope"]
+    cutoff_case = f"WHEN timestamp>={CUTOFF_SECONDS} THEN 'at_or_after_cutoff'" if scope == "paper_cutoff" else ""
     con.execute(f"CREATE OR REPLACE TEMP VIEW source_month AS SELECT *,file_row_number::BIGINT source_ordinal FROM read_parquet({literal(path)}, hive_partitioning=false,file_row_number=true)")
     con.execute("""CREATE OR REPLACE TEMP VIEW joined_month AS
         SELECT s.*, c.claim_code recorded_token_code,c.complement_code,
@@ -356,7 +389,7 @@ def annotate_month(con, path, month):
     con.execute(f"""CREATE OR REPLACE TEMP VIEW annotated_month AS
         SELECT *, CASE
           WHEN timestamp IS NULL OR timestamp<0 THEN 'invalid_timestamp'
-          WHEN timestamp>={CUTOFF_SECONDS} THEN 'at_or_after_cutoff'
+          {cutoff_case}
           WHEN is_maker IS NULL THEN 'missing_archive_role'
           WHEN side IS NULL OR side NOT IN ('BUY','SELL') THEN 'invalid_archive_action'
           WHEN price IS NULL OR NOT isfinite(price::DOUBLE) OR price<=0 OR price>=1 THEN 'invalid_recorded_price'
@@ -371,7 +404,8 @@ def annotate_month(con, path, month):
         FROM joined_month""")
 
 
-def month_counts(con, expected_rows, month):
+def month_counts(con, expected_rows, month, sample_scope="paper_cutoff"):
+    scope = sample_definitions(sample_scope)["sample_scope"]
     rows, locators, fanout, mismatched_month = con.execute(f"""SELECT count(*),count(DISTINCT source_ordinal),
         count(*)-count(DISTINCT source_ordinal),count(*) FILTER(WHERE year_month IS NULL OR year_month<>{literal(month)})
         FROM annotated_month""").fetchone()
@@ -382,12 +416,15 @@ def month_counts(con, expected_rows, month):
     end = int(datetime(year + (number == 12), number % 12 + 1, 1, tzinfo=timezone.utc).timestamp())
     outside = con.execute(f"SELECT count(*) FROM annotated_month WHERE timestamp IS NOT NULL AND (timestamp<{begin} OR timestamp>={end})").fetchone()[0]
     require(outside == 0, "source timestamp outside its immutable month partition")
-    records = con.execute("""SELECT eligibility_reason,side,is_maker,count(*) AS row_count,
-        count(*) FILTER(WHERE timestamp IS NOT NULL AND timestamp>=0 AND timestamp< ?) precut_rows,
+    scope_count = (f"count(*) FILTER(WHERE timestamp IS NOT NULL AND timestamp>=0 AND timestamp<{CUTOFF_SECONDS})"
+                   if scope == "paper_cutoff" else "count(*)")
+    records = con.execute(f"""SELECT eligibility_reason,side,is_maker,count(*) AS row_count,
+        {scope_count} scope_rows,
         count(*) FILTER(WHERE eligibility_reason='eligible' AND duration_clock_valid AND (P<.1 OR P>=.9)) duration_tail_rows
-        FROM annotated_month GROUP BY ALL ORDER BY eligibility_reason,side,is_maker""", [CUTOFF_SECONDS]).fetchall()
+        FROM annotated_month GROUP BY ALL ORDER BY eligibility_reason,side,is_maker""").fetchall()
+    count_field = "precut_rows" if scope == "paper_cutoff" else "scope_rows"
     return [{"reason": reason, "side": side, "is_maker": maker, "rows": count,
-             "precut_rows": precut, "duration_tail_rows": duration} for reason, side, maker, count, precut, duration in records]
+             count_field: scoped, "duration_tail_rows": duration} for reason, side, maker, count, scoped, duration in records]
 
 
 @contextmanager
@@ -486,13 +523,14 @@ def build_stage(reviewed, fresh, command, reviewed_identity=None):
     outputs, counts, frozen = {}, {}, {}
     con = None
     try:
+        scope = sample_scope(fresh["contract"])
         for item in [*fresh["metadata"].values(), *fresh["trades"]]:
             require(stat_identity(item["path"]) == item["stat"], "input stat drift before hashing")
             require(sha256(item["path"]) == item["expected_sha256"], "input content digest differs: " + item["path"])
             frozen[item["path"]] = item["expected_sha256"]
         con = duckdb.connect()
         configure(con, staging / "spill")
-        health = prepare_metadata(con, {name: item["path"] for name, item in fresh["metadata"].items()})
+        health = prepare_metadata(con, {name: item["path"] for name, item in fresh["metadata"].items()}, sample_scope=scope)
         _reserve_output(staging, CAPS["maximum_metadata_file_bytes"])
         with copy_ceiling(CAPS["maximum_metadata_file_bytes"]):
             con.execute(f"COPY claims TO {literal(staging / 'claims.parquet')} (FORMAT PARQUET,COMPRESSION ZSTD)")
@@ -501,8 +539,8 @@ def build_stage(reviewed, fresh, command, reviewed_identity=None):
             month = item["month"]
             folder = staging / ("year_month=" + month)
             folder.mkdir()
-            annotate_month(con, item["path"], month)
-            summary = month_counts(con, item["rows"], month)
+            annotate_month(con, item["path"], month, sample_scope=scope)
+            summary = month_counts(con, item["rows"], month, sample_scope=scope)
             counts[month] = summary
             eligible = sum(row["rows"] for row in summary if row["reason"] == "eligible")
             for name, query, expected in (
@@ -533,6 +571,7 @@ def build_stage(reviewed, fresh, command, reviewed_identity=None):
             require(stat_identity(binding["path"]) == binding["stat"] and sha256(binding["path"]) == binding["sha256"], "bound JSON metadata drift before publication")
         require(source_snapshot(fresh["source"]["head"]) == fresh["source"], "source drift before publication")
         manifest = {"schema_version": "kaushik_replication_inputs_v1", "status": "inputs_complete", "source": fresh["source"],
+            "sample_scope": scope,
             "binding": fresh["binding"], "reviewed_preflight": reviewed_identity,
             "input_preflight": reviewed, "caps": CAPS, "command": command,
             "inputs": frozen, "outputs": outputs, "metadata_health": health, "exclusions": counts, "support": support,
@@ -542,7 +581,7 @@ def build_stage(reviewed, fresh, command, reviewed_identity=None):
                                    "primary_taker": sum(row["nonfinite_analytic_outcomes"] for row in support if row["is_maker"] is False)},
             "estimation_gate": "Require zero nonfinite analytic outcomes in every selected convention; retain anomalies without silently dropping rows.",
             "publication_acceptance": "A matching acceptance.json with status inputs_reopened_accepted is required; manifest inputs_complete alone is insufficient.",
-            "definitions": {"cutoff_utc": CUTOFF_ISO, "cutoff_seconds": CUTOFF_SECONDS,
+            "definitions": {**sample_definitions(scope),
                 "observation": "archive published wallet-role row; physical multiplicity preserved; not certified native execution/action",
                 "primary": "is_maker=false; BUY retains claim; SELL complements verified binary native token/P/Y",
                 "quantity": "usdcSize/recorded_price", "capital": "quantity*normalized_P", "fees": "excluded gross execution amounts",
@@ -576,6 +615,7 @@ def build_stage(reviewed, fresh, command, reviewed_identity=None):
             reopened.close()
         write_json(target / "acceptance.json", {"schema_version": "kaushik_replication_input_acceptance_v1",
             "status": "inputs_reopened_accepted", "manifest_sha256": sha256(target / "manifest.json"),
+            "sample_scope": scope,
             "rows": manifest["rows"], "output_schema_hash_count_support_reopened": True,
             "source_head": fresh["source"]["head"], "accepted_at_utc": datetime.now(timezone.utc).isoformat()})
         return manifest

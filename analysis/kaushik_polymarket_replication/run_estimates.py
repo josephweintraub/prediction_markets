@@ -48,7 +48,8 @@ SOURCE_FILES = ("analysis/kaushik_polymarket_replication/run_estimates.py",
                 "analysis/kaushik_polymarket_replication/build_inputs.py",
                 "scripts/estimate_kaushik_polymarket_replication.py",
                 "tests/test_kaushik_replication_driver.py",
-                "docs/analysis_specs/kaushik_polymarket_replication_v1.md")
+                "docs/analysis_specs/kaushik_polymarket_replication_v1.md",
+                "docs/analysis_specs/kaushik_polymarket_full_sample_v1.md")
 WINDOWS = (
     ("pregame", "pre_lt24h", "<−24h", "sport_elapsed_seconds < -86400"),
     ("pregame", "pre_24to6h", "−24 to −6h", "sport_elapsed_seconds >= -86400 AND sport_elapsed_seconds < -21600"),
@@ -130,6 +131,19 @@ def parquet_footer(path):
             "schema": str(parquet.schema_arrow), "footer_sha256": digest}
 
 
+def validate_input_sample_scope(manifest, acceptance=None, *, require_contract=False):
+    scope = inputs.validate_sample_definitions(manifest.get("definitions", {}))
+    require(inputs.sample_scope(manifest) == scope, "input manifest sample scope differs")
+    contract = manifest.get("input_preflight", {}).get("contract")
+    if require_contract and scope == "all_available_dates":
+        require(isinstance(contract, dict), "full-date input contract provenance required")
+    if contract is not None:
+        require(inputs.sample_scope(contract) == scope, "input contract sample scope differs")
+    if acceptance is not None:
+        require(inputs.sample_scope(acceptance) == scope, "input acceptance sample scope differs")
+    return scope
+
+
 def load_base(stage, manifest_sha256, acceptance_sha256):
     stage = Path(stage).resolve()
     manifest, identity = inputs.read_json(stage / "manifest.json", manifest_sha256)
@@ -145,7 +159,7 @@ def load_base(stage, manifest_sha256, acceptance_sha256):
     require(all(manifest["reconciliation"].get(key) is True for key in (
         "all_records_accounted", "archive_multiplicity_preserved", "no_join_fanout",
         "unique_reciprocal_binary_complements", "outputs_reopened")), "input reconciliation incomplete")
-    require(manifest["definitions"]["cutoff_utc"] == inputs.CUTOFF_ISO, "cutoff contract differs")
+    validate_input_sample_scope(manifest, acceptance, require_contract=True)
     inventory = []
     for relative, expected in sorted(manifest["outputs"].items()):
         path = (stage / relative).resolve()
@@ -893,6 +907,9 @@ def create_sports_view(con, stage=None, ledger=None, base_bytes=0):
 
 
 def describe_sample(con, base_manifest, ledger, base_bytes):
+    scope = inputs.sample_scope(base_manifest)
+    future_count = (f"count(*) FILTER(WHERE endpoint_seconds>{inputs.CUTOFF_SECONDS})"
+                    if scope == "paper_cutoff" else "NULL::BIGINT")
     ledger.charge(base_bytes, "sample_counts")
     sample = rows(con, f"""SELECT count(*) AS "rows",count(DISTINCT market_id) conditions,count(DISTINCT claim_id) normalized_claims,
         count(DISTINCT event_cluster) clusters,count(DISTINCT event_cluster) FILTER(WHERE cluster_source='native_event') unique_event_clusters,
@@ -900,7 +917,7 @@ def describe_sample(con, base_manifest, ledger, base_bytes):
         min(timestamp) first_timestamp,max(timestamp) last_timestamp,count(*) FILTER(WHERE bin IN (1,10)) tail_rows,
         count(*) FILTER(WHERE duration_eligible AND bin IN (1,10)) duration_tail_rows,
         count(DISTINCT event_cluster) FILTER(WHERE duration_eligible AND bin IN (1,10)) duration_tail_clusters,
-        count(*) FILTER(WHERE endpoint_seconds>{inputs.CUTOFF_SECONDS}) future_ending_rows
+        {future_count} future_ending_rows
         FROM analysis_base WHERE NOT is_maker""")[0]
     sample["first_execution_utc"] = utc(sample.pop("first_timestamp"))
     sample["last_execution_utc"] = utc(sample.pop("last_timestamp"))
@@ -929,6 +946,11 @@ def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base
     stage = Path(stage)
     stage.mkdir(exist_ok=True)
     ledger = ledger or ReadLedger()
+    if "definitions" in base_manifest:
+        sample_policy = validate_input_sample_scope(base_manifest)
+    else:
+        sample_policy = inputs.sample_scope(base_manifest)
+        require(sample_policy == "paper_cutoff", "explicit full-date input definitions required")
     artifacts = {}
     if sports_binding.get("reviewed_metadata_stage", {}).get("reviewed") is True:
         review = sports_binding["reviewed_metadata_stage"]
@@ -938,8 +960,9 @@ def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base
     sports_cache = create_sports_view(con, stage, ledger, base_bytes)
     sports_bytes = sports_cache["bytes"]
     ledger.charge(base_bytes, "analytic_admission_gate")
-    anomalies = con.execute("SELECT count(*) FROM analysis_base WHERE NOT isfinite(payoff) OR NOT isfinite(roi) OR timestamp>=? OR NOT(P>0 AND P<1)", [inputs.CUTOFF_SECONDS]).fetchone()[0]
-    require(anomalies == 0, "accepted convention contains nonfinite outcomes or cutoff/price contract violation")
+    date_violation = f"OR timestamp>={inputs.CUTOFF_SECONDS}" if sample_policy == "paper_cutoff" else ""
+    anomalies = con.execute(f"SELECT count(*) FROM analysis_base WHERE NOT isfinite(payoff) OR NOT isfinite(roi) OR timestamp IS NULL OR timestamp<0 {date_violation} OR NOT(P>0 AND P<1)").fetchone()[0]
+    require(anomalies == 0, "accepted convention contains nonfinite outcomes or sample-date/price contract violation")
     sample, categories = describe_sample(con, base_manifest, ledger, base_bytes)
     con.execute("CREATE TEMP VIEW primary_taker AS SELECT * FROM analysis_base WHERE NOT is_maker")
     bins = tuple(f"D{i}" for i in range(1, 11))
@@ -1064,9 +1087,9 @@ def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base
     require(all(model["n_observations"] == sample["duration_tail_rows"] for model in table2) and
             all(model["n_observations"] == source_counts["lifespan_gt1_rows" if panel=="L_gt1" else "remaining_gt1_rows"]
                 for panel, models in table3.items() for model in models), "duration column/source populations differ")
-    return {"schema_version": "kaushik_replication_estimates_v1", "status": "estimates_complete", "definitions": {
+    return {"schema_version": "kaushik_replication_estimates_v1", "status": "estimates_complete", "sample_scope": sample_policy, "definitions": {
         "observation": "archive-recorded row preserving multiplicity; primary taker BUY plus complemented taker SELL",
-        "weight": "one per admitted archive record", "cutoff_utc": inputs.CUTOFF_ISO,
+        "weight": "one per admitted archive record", **inputs.sample_definitions(sample_policy),
         "price": "exact normalized binary64; fixed ten-cent bins; 0<P<1",
         "outcomes": {"payoff_cents": "100*(Y-P)", "roi_percent": "100*(Y/P-1), before averaging"},
         "duration": "created_at/end_date proxy; xL=log2(1+L),xR=log2(1+R); raw=no categorical effects",
@@ -1132,6 +1155,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
         for relative, expected in outputs.items():
             ledger.charge(expected["bytes"], "published_artifact_reopen_hash:" + relative)
         manifest = {"schema_version": "kaushik_replication_estimate_stage_v1", "status": "estimates_complete",
+            "sample_scope": output["sample_scope"],
             "source": fresh["source"], "preflight": reviewed, "command": command, "caps": CAPS,
             "base_binding": fresh["base_binding"], "sports_binding": fresh["sports_binding_identity"],
             "outputs": outputs, "estimates_json": {"sha256": result_id["sha256"], "bytes": result_id["stat"]["bytes"]},
@@ -1155,6 +1179,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
             require(inputs._output_info(target / relative) == expected, "published estimator artifact hash/schema/count drift")
         inputs.write_json(target / "acceptance.json", {"schema_version": "kaushik_replication_estimate_acceptance_v1",
             "status": "estimates_reopened_accepted", "manifest_sha256": saved_identity["sha256"],
+            "sample_scope": output["sample_scope"],
             "estimates_sha256": result_id["sha256"],
             "source_head": fresh["source"]["head"], "all_outputs_reopened": True})
         reserve_output(target, 0)

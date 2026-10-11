@@ -103,6 +103,17 @@ def suppress(row, reason="observation_support_below_floor"):
     row.update(suppressed=True, suppression_reasons=[reason], CR0=None, cluster_count_adjusted=None, influence=None)
 
 
+def synthetic_full_date_estimates():
+    data = synthetic_estimates()
+    data["sample_scope"] = "all_available_dates"
+    data["definitions"].update(sample_scope="all_available_dates", cutoff_utc=None, cutoff_seconds=None)
+    data["sample"].update(future_ending_rows=None, last_execution_utc="2026-06-23T23:59:59+00:00")
+    for monthly in data["sample"]["archive_exclusions"].values():
+        for row in monthly:
+            row["scope_rows"] = row.pop("precut_rows")
+    return data
+
+
 def save_stage(folder, data):
     folder.mkdir()
     def save(path, value):
@@ -114,10 +125,18 @@ def save_stage(folder, data):
                 "source": {"head": "a"*40}, "estimates_json": {"sha256": digest}, "reconciliation": {
                 key: True for key in ("all_inputs_reopened", "all_outputs_reopened", "common_duration_population",
                                      "buy_role_partition", "expected_grids_serialized")}}
+    if data.get("sample_scope") == "all_available_dates":
+        manifest.update(sample_scope="all_available_dates", preflight={"base_manifest": {
+            "sample_scope": "all_available_dates", "definitions": {key: data["definitions"][key]
+                for key in ("sample_scope", "cutoff_utc", "cutoff_seconds")},
+            "input_preflight": {"contract": {"sample_scope": "all_available_dates"}}}})
     manifest_digest = save(folder/"manifest.json", manifest)
-    save(folder/"acceptance.json", {"schema_version": "kaushik_replication_estimate_acceptance_v1",
+    acceptance = {"schema_version": "kaushik_replication_estimate_acceptance_v1",
          "status": "estimates_reopened_accepted", "manifest_sha256": manifest_digest, "estimates_sha256": digest,
-         "source_head": "a"*40, "all_outputs_reopened": True})
+         "source_head": "a"*40, "all_outputs_reopened": True}
+    if data.get("sample_scope") == "all_available_dates":
+        acceptance["sample_scope"] = "all_available_dates"
+    save(folder/"acceptance.json", acceptance)
 
 
 def fixture_review_report(report_dir):
@@ -144,6 +163,53 @@ def fixture_review_report(report_dir):
 
 
 class ReportTests(unittest.TestCase):
+    def test_full_date_source_labels_all_dates_and_preserves_all_outputs(self):
+        data = synthetic_full_date_estimates()
+        source = report.render_source(data)
+        self.assertIn("full available-date sample", source)
+        self.assertIn("no execution-date cutoff", source)
+        self.assertIn("All-date eligibility waterfall", source)
+        self.assertIn("Excluded by eligibility", source)
+        self.assertIn("2026-06-23", source)
+        self.assertEqual(source.count(r"\includegraphics"), 21)
+        for misleading in ("March 25", "before the cutoff", "Pre-cutoff", "future-ending claims", "Same archive, cutoff"):
+            self.assertNotIn(misleading, source)
+
+    def test_full_date_definitions_and_waterfall_cannot_silently_retain_cutoff(self):
+        mutations = [lambda data: data["definitions"].update(cutoff_utc="2026-03-25T00:00:00Z"),
+                     lambda data: data["definitions"].update(cutoff_seconds=1774396800),
+                     lambda data: data["sample"].update(future_ending_rows=0),
+                     lambda data: data.update(sample_scope="paper_cutoff"),
+                     lambda data: data["sample"]["archive_exclusions"]["2025-02"][0].update(scope_rows=89999),
+                     lambda data: data["sample"]["archive_exclusions"]["2025-02"][0].update(precut_rows=90000),
+                     lambda data: data["sample"]["archive_exclusions"]["2025-02"][0].update(reason="at_or_after_cutoff")]
+        for index, mutation in enumerate(mutations):
+            data = synthetic_full_date_estimates()
+            mutation(data)
+            with self.subTest(index=index), self.assertRaises(report.ReportBlocked):
+                report.validate_estimates(data)
+
+    def test_full_date_scope_must_match_estimate_stage_receipt_and_input_contract(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory) / "full"
+            save_stage(stage, synthetic_full_date_estimates())
+            data, binding = report.load_accepted_estimates(stage)
+            self.assertEqual(binding["sample_scope"], "all_available_dates")
+            manifest = json.loads((stage / "manifest.json").read_text())
+            receipt = json.loads((stage / "acceptance.json").read_text())
+            mutations = [lambda m, a: m.pop("sample_scope"), lambda m, a: a.pop("sample_scope"),
+                         lambda m, a: m.pop("preflight"),
+                         lambda m, a: m["preflight"]["base_manifest"].update(sample_scope="paper_cutoff"),
+                         lambda m, a: m["preflight"]["base_manifest"]["definitions"].update(sample_scope="paper_cutoff"),
+                         lambda m, a: m["preflight"]["base_manifest"]["input_preflight"]["contract"].clear()]
+            for index, mutation in enumerate(mutations):
+                invalid_manifest, invalid_receipt = deepcopy(manifest), deepcopy(receipt)
+                mutation(invalid_manifest, invalid_receipt)
+                with self.subTest(index=index), self.assertRaises(report.ReportBlocked):
+                    report.validate_sample_scope_binding(data, invalid_manifest, invalid_receipt)
+            legacy = synthetic_estimates()
+            self.assertEqual(report.validate_sample_scope_binding(legacy, {}, {}), "paper_cutoff")
+
     def test_complete_source_has_all_paper_outputs_and_material_definitions(self):
         source = report.render_source(synthetic_estimates())
         for text in ("Table 1.", "Table 2A.", "Table 2B.", "Table 3.", "Table 4.", "Table 5.",

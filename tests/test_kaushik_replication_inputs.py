@@ -51,13 +51,13 @@ def trade(**updates):
     return row
 
 
-def annotate(con, tmp_path, rows):
+def annotate(con, tmp_path, rows, sample_scope="paper_cutoff"):
     schema = pa.schema([("proxyWallet", pa.string()), ("timestamp", pa.int64()), ("conditionId", pa.string()),
                         ("usdcSize", pa.float64()), ("price", pa.float64()), ("side", pa.string()),
                         ("outcome", pa.string()), ("eventSlug", pa.string()), ("is_maker", pa.bool_()),
                         ("counterparty", pa.string()), ("year_month", pa.string())])
     path = write_rows(tmp_path / "trades.parquet", rows, schema)
-    b.annotate_month(con, path, "2026-03")
+    b.annotate_month(con, path, "2026-03", sample_scope=sample_scope)
     return path
 
 
@@ -208,6 +208,46 @@ class ReplicationInputTests(unittest.TestCase):
     def test_cutoff_price_size_label_duration(self):
         check_cutoff_price_size_label_and_duration_gates(self.metadata, self.tmp_path)
 
+    def test_sample_scope_defaults_and_invalid_policies_fail_closed(self):
+        self.assertEqual(b.sample_scope({}), "paper_cutoff")
+        self.assertEqual(b.sample_definitions(), {"sample_scope": "paper_cutoff",
+            "cutoff_utc": b.CUTOFF_ISO, "cutoff_seconds": b.CUTOFF_SECONDS})
+        self.assertEqual(b.sample_definitions("all_available_dates"), {"sample_scope": "all_available_dates",
+            "cutoff_utc": None, "cutoff_seconds": None})
+        for scope in (None, "", "all", "2026-06-23"):
+            with self.subTest(scope=scope), self.assertRaisesRegex(b.InputBlocked, "sample scope"):
+                b.sample_scope({"sample_scope": scope})
+        with patch.object(b, "read_json", return_value=({"schema_version": "kaushik_replication_input_contract_v1",
+                "sample_scope": "unapproved"}, {})):
+            with self.assertRaisesRegex(b.InputBlocked, "sample scope"):
+                b.load_contract(self.tmp_path / "invalid.json")
+
+    def test_full_dates_reapply_all_nondate_checks_and_account_every_source_row(self):
+        con = duckdb.connect()
+        self.addCleanup(con.close)
+        health = b.prepare_metadata(con, self.metadata[0], sample_scope="all_available_dates")
+        self.assertIsNone(health["endpoint_after_execution_cutoff_claims"])
+        later = {"timestamp": seconds(26)}
+        rows = [trade(timestamp=b.CUTOFF_SECONDS-1), trade(timestamp=b.CUTOFF_SECONDS),
+                trade(**later), trade(side="SELL", **later), trade(is_maker=True, **later),
+                trade(is_maker=None, **later), trade(side="BAD", **later), trade(price=0, **later),
+                trade(price=float("nan"), **later), trade(usdcSize=0, **later),
+                trade(conditionId="missing", **later), trade(outcome="yes", **later),
+                trade(timestamp=None)]
+        annotate(con, self.tmp_path, rows, sample_scope="all_available_dates")
+        full = con.execute("SELECT source_ordinal,P,Y,claim_code,eligibility_reason FROM annotated_month ORDER BY source_ordinal").fetchall()
+        self.assertEqual([row[-1] for row in full], ["eligible"]*5 + ["missing_archive_role",
+            "invalid_archive_action", "invalid_recorded_price", "invalid_recorded_price", "invalid_size",
+            "unadmitted_token_pair", "outcome_label_disagreement", "invalid_timestamp"])
+        self.assertEqual(full[3][1:3], (.7, 0))
+        counts = b.month_counts(con, len(rows), "2026-03", sample_scope="all_available_dates")
+        self.assertEqual(sum(row["scope_rows"] for row in counts), len(rows))
+        self.assertTrue(all(row["scope_rows"] == row["rows"] and "precut_rows" not in row for row in counts))
+        annotate(con, self.tmp_path, rows)
+        cutoff = con.execute("SELECT source_ordinal,P,Y,claim_code,eligibility_reason FROM annotated_month ORDER BY source_ordinal").fetchall()
+        self.assertEqual(full[0], cutoff[0])
+        self.assertTrue(all(row[-1] == "at_or_after_cutoff" for row in cutoff[1:12]))
+
     def test_ambiguous_pair_gates(self):
         original = copy.deepcopy(self.metadata[1])
         for corruption in ("duplicate_token", "duplicate_spine", "market_disagreement", "winner_disagreement", "third_token", "duplicate_native", "duplicate_category"):
@@ -295,11 +335,13 @@ class ReplicationInputTests(unittest.TestCase):
         assert con.execute("SELECT count(*) FROM claims WHERE market_id='0x1'").fetchone()[0] == 0
         con.close()
 
-    def test_complete_fixture_stage_reopens_and_reconciles(self):
+    def _check_complete_fixture_stage_reopens_and_reconciles(self, scope):
         con = duckdb.connect()
         b.prepare_metadata(con, self.metadata[0])
         rows = [trade(), trade(side="SELL", price=.9000000000000001), trade(is_maker=True),
                 trade(timestamp=b.CUTOFF_SECONDS), trade(conditionId="other_no", outcome="No")]
+        if scope == "all_available_dates":
+            rows += [trade(timestamp=seconds(26), price=0), trade(timestamp=None)]
         path = annotate(con, self.tmp_path, rows)
         con.close()
         metadata_info = {name: {**b.footer(value, name), "expected_sha256": b.sha256(value)}
@@ -308,7 +350,7 @@ class ReplicationInputTests(unittest.TestCase):
         source = {"head": "a"*40, "files": {}}
         fresh = {"schema_version": "kaushik_replication_input_preflight_v1", "status": "preflight_complete",
                  "target": str(self.tmp_path / "published-stage"), "source": source, "binding": {},
-                 "contract": {}, "caps": b.CAPS, "metadata": metadata_info, "trades": [trade_info],
+                 "contract": {"sample_scope": scope}, "caps": b.CAPS, "metadata": metadata_info, "trades": [trade_info],
                  "planned_read_bytes": 100_000, "required_free_bytes": 1_000_000}
         review_path = self.tmp_path / "reviewed-preflight.json"
         b.write_json(review_path, fresh)
@@ -318,22 +360,34 @@ class ReplicationInputTests(unittest.TestCase):
         with patch("production_guard.require_production_host"), patch.object(b, "validate_destination"), \
              patch.object(b, "source_snapshot", return_value=source), patch.object(b, "_reserve_output"):
             manifest = b.build_stage(reviewed, fresh, ["fixture-only"], reviewed_identity)
-        assert manifest["rows"] == {"source": 5, "baseline_all_roles": 4, "excluded": 1, "primary_taker": 3}
+        expected = ({"source": 5, "baseline_all_roles": 4, "excluded": 1, "primary_taker": 3}
+                    if scope == "paper_cutoff" else
+                    {"source": 7, "baseline_all_roles": 5, "excluded": 2, "primary_taker": 4})
+        assert manifest["rows"] == expected
+        assert manifest["sample_scope"] == scope
+        assert manifest["definitions"] | b.sample_definitions(scope) == manifest["definitions"]
         assert manifest["status"] == "inputs_complete"
         output = Path(fresh["target"])
         saved, _ = b.read_json(output / "manifest.json")
         assert saved["rows"] == manifest["rows"]
         acceptance, _ = b.read_json(output / "acceptance.json")
         assert acceptance["status"] == "inputs_reopened_accepted"
+        assert acceptance["sample_scope"] == scope
         assert acceptance["manifest_sha256"] == b.sha256(output / "manifest.json")
         con = duckdb.connect()
         inventory = [output / name for name in sorted(saved["outputs"]) if name.endswith("/base.parquet")]
         b.create_analysis_view(con, output, explicit_month_paths=inventory)
         with self.assertRaisesRegex(b.InputBlocked, "month paths differ"):
             b.create_analysis_view(con, output, explicit_month_paths=[])
-        assert con.execute("SELECT count(DISTINCT source_month||':'||source_ordinal) FROM analysis_base").fetchone()[0] == 4
+        assert con.execute("SELECT count(DISTINCT source_month||':'||source_ordinal) FROM analysis_base").fetchone()[0] == expected["baseline_all_roles"]
         assert con.execute("SELECT P FROM analysis_base WHERE side='SELL'").fetchone()[0] == 1-.9000000000000001
         con.close()
+
+    def test_complete_fixture_stage_reopens_and_reconciles(self):
+        self._check_complete_fixture_stage_reopens_and_reconciles("paper_cutoff")
+
+    def test_complete_full_date_fixture_stage_reopens_and_reconciles(self):
+        self._check_complete_fixture_stage_reopens_and_reconciles("all_available_dates")
 
 
 if __name__ == "__main__":
