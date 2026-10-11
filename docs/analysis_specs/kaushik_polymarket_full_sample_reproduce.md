@@ -1,12 +1,19 @@
 # Reproducing the Kaushik Polymarket full available-date sample
 
 Status: staged reproduction guide, 11 October 2026. Full-date inputs v2 have
-reopened and been accepted, the cutoff-subset audit has passed, and new sports
-metadata has reopened and been accepted. Root has dispatched full estimation
-after a fresh reviewed preflight; estimation v1 failed during sports-cache COPY
-before fitting and is not accepted. Root verified EC2 stopped after confirming
-no process or transfer still needed it. A physical-only retry/source version,
-saved-score auditing, report QA and shared publication remain pending. This guide
+reopened and been accepted, the cutoff-subset audit has passed, and fresh sports
+metadata v2 has reopened and been accepted. The physical-only retry producer is
+frozen; estimation v2 failed before fitting and is not accepted. Removing the
+raw-cache sort did not solve production capacity. Read-only production join-plan
+diagnostics completed; root independently verified EC2 stopped at
+2026-10-11 15:58:09 UTC. Configure-wide physical join-policy repair and source-bound
+v3 stages have locally frozen candidate files and seven passing focused tests.
+The final fixture binding, 145-test broader suite and independent QA have passed.
+Root restarted the instance; the AWS readiness wait completed with exit 0 and the
+serial production-runtime fixture suite passed 145 tests in 37.458 seconds without
+real-data scans. Committed H14 and exact v3 bindings remain pending.
+Estimation v1/v2 failures and verified shutdowns remain preserved history.
+Saved-score auditing, report QA and shared publication remain pending. This guide
 records stage admission, reconciliation and failure evidence, not estimated
 findings. Root must append later accepted bindings and execution receipts as
 those stages finish.
@@ -64,9 +71,13 @@ production-host guard. Local work is limited to source review, fixture tests,
 bounded summaries and report-only rendering. Follow [EC2_SETUP.md](../EC2_SETUP.md);
 root alone manages instance/storage lifecycle and production execution.
 
-Recorded input/subset/sports producer and failed estimation v1 HEAD:
+Recorded original input/subset and sports/failed estimation v1 HEAD:
 `2aa260ac127c85f1a2c6efb9ab3c4ef4b8449c9a`, branch
 `codex/kaushik-polymarket-full-sample`.
+Most recent executed sports metadata/estimation v2 HEAD:
+`94cd21798e9961f6cfdb173ec034df75228ed19b` on the same branch. Input and subset
+acceptances remain unchanged. AWS reports the same `r5.8xlarge`; no instance-type
+change was made. Fresh measured capacity, not an assumed host size, gates v2.
 Canonical controls directory:
 `/mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1`.
 Local small evidence copies:
@@ -102,6 +113,22 @@ Verified small-artifact SHA256 bindings:
 | Failed estimate body execution receipt v1 | `12c000c024af95ef6fcae644efc75f9852d7c311dd516dabcc079e5b5ad96460` |
 | Estimate failure record v1 | `2d9710b24f98f531b2c63e69dee25f432dd2483d5f72abc7ec6966a38c9f16de` |
 | Estimate stderr v1 | `7f75bffe51c28aebea0d06f71df823db24200301bcae47c7f88592d3fc32036a` |
+| Cache-fix EC2 fixture execution receipt v2 | `977ac44058e5fd88d10d7370f228375a1700b4b713e35c38f6bcf065543b16f7` |
+| Root-confirmed direct preflight execution records v2 | `548ff3dfce3c3ff1e619b7c8f75a81736dd326946342076ef4435c6520377cb2` |
+| Sports reviewed preflight v2 | `03ca6ddb6af72ea6b069ae5489347314a52f2885288c00b0960902dc0f848975` |
+| Accepted sports metadata manifest v2 | `97a774fcad3c80d74aa1970a594c91186a6da3e19ffb974146f50389468d1a3e` |
+| Sports metadata acceptance v2 | `b282e6cd15a7b40ca24cd845a7c00d97e44b3a9dbc26945f2464b2a24c5d07dd` |
+| Sports body execution receipt v2 | `783085681c79f5017b1c443ff5c6dbaa39c95a8781ee081dcd1a03e112326a79` |
+| Reviewed sports binding v2, with accepted metadata v2 | `ad60852b83c922cb11711d4b22d23bf5cd153aaeb26f4ea43e0481f8aa8f8abe` |
+| Estimate reviewed preflight v2 | `ab266c8e31abc83baaeaf1591a4ba9ec44ce144f0b1ce095e4351040e0e56307` |
+| Estimate root preflight review v2 | `339e09735f944cbf92f896eed47f7469d9221ca732c8a3d005cd37cc32fd756f` |
+| Failed estimate body execution receipt v2 | `0b028c03cb8c3ba76be8e846819637295ed09f1bfe3f0037e50fde7bf8377ddb` |
+| Estimate failure record v2 | `a3e78d249f27b87d9aeebd60b71ad30656fc89b904f2845d490cdb5a251de748` |
+| Estimate stderr v2 | `47afebbc6e0a807873d25748086f3adf9ae8f288d6381ea421f34a00735ebdfb` |
+| Estimate resource log v2 | `bc70e5852c03af2c9112c8ffd008e9d9c48390bb3a4dd707c101c91ea7996cea` |
+| Original read-only production sports plan diagnostic v1 | `9f795eb5dad7d5075da58f0a5c5fb200025fa9432f5e1e5c636810c55c412ecf` |
+| Production baseline/controlled join-plan diagnostic v1 | `882e91f248f8d45ac341cd60e78696e6368f889c478de719edab2c56a62eb007` |
+| Verified post-estimate-v2 shutdown receipt | `90f133385939386b5a33ee7d5620d31a722ea11125e467dccdf2a498f8dee26a` |
 | Failed-build recovery receipt v1 | `40b45e436bbb712ffa2dacd44fe7ce6be8c011b6e19aa9de993949813a24cf13` |
 
 Per-file source and data inventories belong in the bound manifests, not the
@@ -333,7 +360,7 @@ cd /home/ubuntu/prediction_markets
   --reviewed-preflight-sha256 f96d6d50a8ae3306e6060a65b14b20875b6f5ddae062dc788ae010b87332341c
 ```
 
-### Preserved failure and pending physical-only retry
+### Preserved v1 failure and then-pending physical-only retry
 
 The body started at `2026-10-11T14:57:10.006609+00:00` and ended at
 `2026-10-11T15:02:33.134285+00:00`. Its `estimates_incomplete` failure record and
@@ -352,7 +379,9 @@ and accepted sports metadata remain unchanged. No estimates, saved-score audit
 or report have been accepted.
 
 Root verified no processes or transfers remained, stopped EC2 and verified the
-stopped state. No stop timestamp is asserted here. Local implementation is
+stopped state. No stop timestamp is asserted here. The following records the
+retry's status at that failure; the subsequent v2 admission below supersedes its
+pending bindings. Local implementation is
 removing only the unnecessary global raw sports-cache `ORDER BY`, with
 equivalence fixtures. This physical-only hypothesis is not yet production-proven
 and does not authorize any scientific predicate, model, weighting or resource-cap
@@ -369,6 +398,250 @@ clock-equation mismatches; legacy `u/r/R` caches remain inadmissible. Estimator
 source files must agree with the accepted sports metadata's source binding.
 Record actual manifest, acceptance and estimates JSON digests when available.
 
+## Reviewed physical-only retry and executed v2 commands
+
+The frozen retry removes only the unnecessary global raw sports-cache `ORDER BY`.
+Projected fields, joins, predicates, prices, clocks, source locators, multiplicity,
+scientific definitions and caps remain unchanged; keyed numerical summaries and
+caches retain their own sorting. The local suite passed 143 tests in 33.201
+seconds. The first EC2 fixture run's host-assumption failure remains preserved;
+only that test assumption was corrected, not the production guard. The retained
+second EC2 fixture receipt records exit zero and 143 tests in 35.958 seconds.
+These fixture gates do not yet prove full-date cache or estimation capacity.
+
+Both v2 preflights were direct root CLI invocations, not timed body wrappers.
+Their exact commands, canonical working directory, exit-zero completions and
+manifest digests are retained in `preflight_execution_records_v2.json`; no
+preflight timestamp is invented. The commands below record existing immutable
+operations, not destinations to overwrite for another reproduction. Keep bodies
+serial when they share inputs or caches, and use fresh reviewed targets for any
+new run.
+
+Executed sports preflight v2, root-confirmed in that execution record:
+
+```sh
+cd /home/ubuntu/prediction_markets
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_v1.json \
+  --sports-binding-sha256 0c207591b610f5231091fc2d6d33606e98a6ce3ca28d543e2763eae5023a5cfe \
+  --expected-head 94cd21798e9961f6cfdb173ec034df75228ed19b \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_metadata_v2 \
+  --sports-metadata-only \
+  --preflight-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_preflight_v2
+```
+
+Accepted sports body v2, from `sports_body_execution_v2.py`; the saved
+`sports_v2_execution_receipt.json` records exit zero:
+
+```sh
+cd /home/ubuntu/prediction_markets
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_v1.json \
+  --sports-binding-sha256 0c207591b610f5231091fc2d6d33606e98a6ce3ca28d543e2763eae5023a5cfe \
+  --expected-head 94cd21798e9961f6cfdb173ec034df75228ed19b \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_metadata_v2 \
+  --sports-metadata-only \
+  --reviewed-preflight /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_preflight_v2/manifest.json \
+  --reviewed-preflight-sha256 03ca6ddb6af72ea6b069ae5489347314a52f2885288c00b0960902dc0f848975
+```
+
+The sports v2 body ran from `2026-10-11T15:31:01.001956+00:00` to
+`2026-10-11T15:31:06.371088+00:00`, with empty stderr. Its new
+`sports_metadata_complete` manifest and `sports_metadata_reopened_accepted`
+receipt bind the frozen retry source and unchanged accepted inputs v2. Both
+metadata outputs have exactly v1's byte counts, hashes and schemas; the provider
+inventory and coverage also match v1. The retained map remains 13,909 games and
+14,383 markets across nine sports. No trade bodies were read; native
+pair/provider-result proof remains true. No provider games, resolution refresh
+or API collection entered v2. All sport-date limits, EPL draws and ATP clock
+qualification remain. The new `sports_binding_reviewed_v2.json` binds this
+accepted source-matched metadata; v1 metadata and failures remain preserved.
+
+Executed estimate preflight v2, root-confirmed in the direct execution record:
+
+```sh
+cd /home/ubuntu/prediction_markets
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_reviewed_v2.json \
+  --sports-binding-sha256 ad60852b83c922cb11711d4b22d23bf5cd153aaeb26f4ea43e0481f8aa8f8abe \
+  --expected-head 94cd21798e9961f6cfdb173ec034df75228ed19b \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v2 \
+  --preflight-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimate_preflight_v2
+```
+
+The fresh `preflight_complete` manifest and root review bind the same accepted
+inputs, accepted sports metadata v2 and source files. The root review reports
+`admitted_same_sample_same_caps_physical_cache_fix`. Fresh observed RAM is
+264,739,303,424 bytes and data free space is 64,682,438,656 bytes, against the
+unchanged 60,000,000,000-byte reservation. Planned maximum reads remain
+6,951,547,448,572 bytes under the 8TB ceiling. All v1 caps match: 192GB DuckDB
+plus 32GB NumPy within 224GB, at least 240GB available RAM, four threads, 16GB
+spill and the unchanged cache/output/transient/free-floor limits. These are
+preflight observations and limits, not completed-body usage.
+
+Executed estimate body v2, from `estimate_body_execution_v2.py`; the completed
+`estimate_v2_execution_receipt.json` records exit 1, not estimate acceptance:
+
+```sh
+cd /home/ubuntu/prediction_markets
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_reviewed_v2.json \
+  --sports-binding-sha256 ad60852b83c922cb11711d4b22d23bf5cd153aaeb26f4ea43e0481f8aa8f8abe \
+  --expected-head 94cd21798e9961f6cfdb173ec034df75228ed19b \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v2 \
+  --reviewed-preflight /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimate_preflight_v2/manifest.json \
+  --reviewed-preflight-sha256 ab266c8e31abc83baaeaf1591a4ba9ec44ce144f0b1ce095e4351040e0e56307
+```
+
+Do not reuse or relabel either failed stage, cache or execution receipt. The same
+output reopening, full-date provenance, duration/BUY/support/numerical and
+distinct-seconds clock gates remain required before any estimate acceptance.
+These guide/run status edits are local only; no canonical synchronization is
+asserted, preserving the frozen producer checkout and failure evidence.
+
+### Preserved v2 failure; sort removal unsuccessful in production
+
+The v2 body ran from `2026-10-11T15:33:59.002652+00:00` to
+`2026-10-11T15:40:51.389462+00:00`, ending with exit 1 after 6 minutes 52.387
+seconds. Its `estimates_incomplete` / `OutOfMemoryException` again occurs during
+the sports-observation Parquet `COPY`, before fitting. It reached the unchanged
+16GB temporary-spill cap (14.9 GiB/14.9 GiB in the diagnostic) under 192GB DuckDB
+memory. The resource log records 189,177,812 KiB peak resident size and no swap;
+the failure ledger charged 58,701,085,017 read bytes.
+
+Root reports the final failed stage is preserved at
+`/mnt/data/runs/.2026-10-10_kaushik_polymarket_full_sample_estimates_v2.staging-xjev5f0z`,
+with the raw sports cache absent. Its receipt, failure, stderr and resource log
+are retained locally and bound above. Sort removal was not a successful
+production-capacity fix. Fixture equivalence and unchanged metadata remain valid
+evidence of those narrower gates, not evidence that a cache or model fit finished.
+Inputs v2, the exact subset audit and accepted sports metadata v2 remain accepted
+and unchanged. No models, saved-score audit or report have been accepted.
+
+At the preceding failure update, the instance remained on only for root's bounded
+metadata-only `EXPLAIN` diagnostic; diagnostic results and post-v2-failure
+shutdown were not yet confirmed. The following entry records their completion
+and independent stopped-state verification, not an inference from v1's earlier
+shutdown receipt.
+
+### Completed plan diagnostics and verified shutdown
+
+The saved production diagnostics bind the unchanged accepted inputs and sports
+metadata v2 at clean HEAD `94cd21798e9961f6cfdb173ec034df75228ed19b`, DuckDB
+1.5.0. Baseline sports SELECT/COPY, Table 1 grouped-mean and duration-tail plans
+put the large trade branch on the right/build side of both claims joins because
+of underestimated trade cardinalities. Those cardinalities are planner estimates,
+not observed body counts. The evidence identifies this build-side problem but
+does not establish the full cause of the failed production runs.
+
+The controlled follow-up temporarily set
+`disabled_optimizers='join_order,build_side_probe_side'`, the exact supported
+controls in the saved runtime. All three controlled query plans put the smaller
+claims input on the right/build side of each claims join. The previous empty
+setting was restored and the connection closed. Both diagnostics ran `EXPLAIN`
+only: no `ANALYZE`, body query or COPY ran, no remote file was written, and the
+probe COPY target was absent before and after. This is plan-orientation evidence,
+not capacity success, completed cache output, accepted coefficients or findings.
+
+Root then verified zero active research/transfer processes, clean canonical
+source and both failures preserved. The shutdown waiter exited zero; a separate
+AWS describe verified exact instance `i-0f5b31a268af53938` was `stopped`, actual
+type `r5.8xlarge`, at `2026-10-11 15:58:09 UTC`. The saved
+`estimate_v2_shutdown_receipt.json` binds that verified state, superseding the
+earlier pending-shutdown entry above. No stopped state is inferred from waiter
+completion alone.
+
+### Locally frozen physical policy; fresh v3 admission pending
+
+The local implementation candidate adds explicit configure-wide join policy
+outside `CAPS`, without changing scientific definitions, fields, eligibility,
+weights or resource limits. It saves actual scalar optimizer-setting readback
+and runtime provenance in fresh preflight, checks them before body work and before
+publication, and fails closed on drift for both sports metadata and estimate
+stages. Core numerical estimators, `build_inputs.py` and the frozen scientific
+specifications remain unchanged.
+
+The local candidate files are frozen at these SHA256 bindings:
+
+| Local candidate file | SHA256 |
+| --- | --- |
+| `analysis/kaushik_polymarket_replication/run_estimates.py` | `003fd2068681afd94a831cc19dd972ace888cabfe051131874c5917e9cac320c` |
+| `tests/test_kaushik_replication_driver.py` | `1e2703b752f9df2b71c6e89aed76d86f97312ff13b448e7e9d24c95f337c786e` |
+
+The earlier implementation-agent focused result was seven passing tests in 1.802
+seconds, using DuckDB 1.5 and Python 3.10.13, not the older DuckDB 1.4.4
+runtime. The fixture covariance difference remains
+`1.8189894035458565e-11`, inside the unchanged `1e-10` absolute allowance. No
+bitwise aggregate identity or production-capacity success is implied.
+
+The first root 145-test suite reported three failing subtests in 32.150 seconds
+only because JSON operator labels were whitespace-padded. Authorized fixture-only
+`.strip()` normalization handles DuckDB 1.4.4/1.5.0 without changing production
+code or its guard. The original fixture binding
+`351d7b99168069ef1abb055de8dc98498cb585358a62bc6b943024277f994f0c`
+is superseded by the final binding above. Root's broader suite then passed 145
+tests in 30.514 seconds under Python 3.13.1 and DuckDB 1.4.4. Independent QA passed
+seven tests in 1.002 seconds plus five dense oracles in 1.507 seconds, with 14
+configured scalar-setting readbacks.
+
+Reversing only the authorized policy additions in memory recovers exact H13
+producer file SHA256
+`8d8b24c68becb5f2f5a7de2d5c6e5a734143c95e42e6082e803ed6ce1160f687`,
+preserving the prior code/scientific/cap boundary. These local tests and review
+passed, but no production-capacity success follows. Root initiated restart for
+reviewed production fixtures and fresh v3 admission. Root reports the same
+`r5.8xlarge` running, verified UUID mounted at `/mnt/data`, clean canonical H13,
+zero active research/transfer processes and a passed production-host guard. The
+AWS status-ok wait completed with exit 0. Root synced only the reviewed producer/test
+and fixed fixture wrapper, inspected the exact canonical diff (29 producer lines
+and 90 test lines), and started the serial six-module production-runtime fixture
+suite under `controls/join_policy_ec2_fixture_execution_v1`, without real-data
+scans. It passed all 145 tests in 37.458 seconds; its saved receipt records
+`2026-10-11T16:10:39.729823+00:00` through
+`2026-10-11T16:11:18.487637+00:00`, exit 0. Root confirmed session 96378 closed
+and canonical producer/test hashes match the final bindings above. Size-checked
+local evidence bindings are:
+
+| Production-runtime fixture evidence | SHA256 |
+| --- | --- |
+| `join_policy_ec2_fixture_v1_receipt.json` | `b24cea6d9b88794d58e86e9d6b9214b214bd6938a0547ef780ff22fbfffdedf8` |
+| `join_policy_ec2_fixture_v1_stderr.log` | `d0eab82ee84e897d7ecc01e58974e57b45e4e5f82fd01cc05bf51e13232d260e` |
+| `join_policy_ec2_fixture_v1_resources.log` | `bb1fca1aa8b7150fc93c078e44d38a87747ff740f48e742965cdad6363933d80` |
+
+The fixture receipt records this command, run serially without real-data scans:
+
+```sh
+/home/ubuntu/venv/bin/python -B -m unittest tests.test_kaushik_replication_inputs tests.test_kaushik_replication_estimators tests.test_kaushik_replication_driver tests.test_kaushik_replication_report tests.test_kaushik_replication_independent_qa tests.test_kaushik_full_sample_subset_audit
+```
+
+Fixture passage is not production-capacity success. Preliminary free data space is 64,681,312,256 bytes
+and available RAM 264,999,567,360 bytes; fresh v3 preflights must still bind their
+own capacity observations. The
+local documents are frozen-ready, not a reviewed committed H14 or accepted
+production stage. Committed H14, exact v3 source, commands, controls
+and stage hashes remain pending; no v3 execution or acceptance is asserted.
+
+Use fresh immutable targets under the existing full-sample prefix:
+`_sports_metadata_v3`, `_sports_preflight_v3`, `_estimate_preflight_v3` and
+`_estimates_v3`. Reuse accepted inputs v2 and the exact subset audit only through
+their existing bindings. Reopen new source-matched sports metadata and review a
+fresh capacity preflight before a v3 estimate body. Preserve all accepted v1/v2
+metadata and both failed estimate stages. The future audit/report templates below
+now target planned estimates v3, not the failed v2 stage; their missing bindings
+remain explicitly pending.
+
 ## Serial later-stage templates: pending
 
 The following are templates, not execution or acceptance records. Replace every
@@ -381,7 +654,7 @@ Pending independent saved-score audit, after estimate acceptance:
 
 ```sh
 /home/ubuntu/venv/bin/python -B scripts/audit_kaushik_replication_saved_scores.py \
-  --estimate-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v1 \
+  --estimate-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v3 \
   --manifest-sha256 PENDING_ESTIMATE_MANIFEST_SHA256 \
   --acceptance-sha256 PENDING_ESTIMATE_ACCEPTANCE_SHA256 \
   --expected-head PENDING_AUDITOR_SOURCE_HEAD \
@@ -403,7 +676,7 @@ The following report-only paths are planned, not existing accepted artifacts:
 ```sh
 cd /Users/josephweintraub/prediction_markets
 python3 -B -m analysis.kaushik_polymarket_replication.render_report \
-  --estimate-dir /Users/josephweintraub/prediction_markets/output/kaushik_polymarket_full_sample_2026-10-10_v1/accepted_estimates_v1 \
+  --estimate-dir /Users/josephweintraub/prediction_markets/output/kaushik_polymarket_full_sample_2026-10-10_v1/accepted_estimates_v3 \
   --run-dir /Users/josephweintraub/prediction_markets/output/kaushik_polymarket_full_sample_2026-10-10_v1/report_v1
 ```
 
@@ -436,8 +709,8 @@ committed source/tests or retrievable revisions, reviewed controls, accepted
 small summaries, both audits, portable report assets and verified preview.
 Exclude raw/cache/score bodies, failure-recovery bodies, spill, credentials and
 scratch page images. Do not append this run into the completed cutoff bundle.
-Publication destination, finished-bundle transfer verification and any later
-retry's final shutdown receipt remain pending. The failed v1 run has already been
+Publication destination, finished-bundle transfer verification and any future
+v3 run's final shutdown receipt remain pending. The failed v1/v2 runs have been
 verified stopped by root as recorded above. After any future restart, root must
 again confirm no agent/process/transfer still needs the instance, stop it and
 verify stopped. The local run index and actual receipts track current execution

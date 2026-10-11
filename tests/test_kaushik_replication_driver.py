@@ -191,6 +191,7 @@ class EndToEndFixtureTests(unittest.TestCase):
             try:
                 records, manifest, binding = fixture(con, temporary)
                 stage = Path(temporary) / "out"
+                driver.configure(con, stage / "spill")
                 result = driver.estimate_all(con, stage, manifest, binding)
                 self.assertEqual(result["schema_version"], "kaushik_replication_estimates_v1")
                 self.assertEqual(result["status"], "estimates_complete")
@@ -327,6 +328,7 @@ class SportsCachePhysicalFixtureTests(unittest.TestCase):
                 con.execute("CREATE TEMP TABLE sorted_reference AS " + SORTED_SPORTS_CACHE_REFERENCE)
                 stage = Path(temporary) / "cache"
                 stage.mkdir()
+                driver.configure(con, stage / "spill")
                 info = driver.create_sports_view(con, stage, driver.ReadLedger(), 10)
                 reference_schema = con.execute("DESCRIBE sorted_reference").fetchall()
                 self.assertEqual(len(reference_schema), 17)
@@ -376,6 +378,7 @@ class SportsCachePhysicalFixtureTests(unittest.TestCase):
                 def inspected_copy(connection, query, path, *args, **kwargs):
                     suffix = " TO " + driver.inputs.literal(path) + " (FORMAT PARQUET,COMPRESSION ZSTD,ROW_GROUP_SIZE 65536)"
                     observed["current"] = connection.execute("EXPLAIN COPY ("+query+")"+suffix).fetchone()[1]
+                    observed["copy_plan"] = json.loads(connection.execute("EXPLAIN (FORMAT JSON) COPY ("+query+")"+suffix).fetchone()[1])
                     observed["sorted"] = connection.execute("EXPLAIN COPY ("+query+" ORDER BY sport,game_key,timestamp,P,Y,source_month,source_ordinal)"+suffix).fetchone()[1]
                     return original(connection, query, path, *args, **kwargs)
                 with patch.object(driver, "copy_parquet", side_effect=inspected_copy):
@@ -386,6 +389,29 @@ class SportsCachePhysicalFixtureTests(unittest.TestCase):
                 self.assertIn("READ_PARQUET", observed["current"])
                 self.assertIn("HASH_JOIN", observed["current"])
                 self.assertTrue(con.execute("SELECT current_setting('preserve_insertion_order')").fetchone()[0])
+                con.execute("CREATE TEMP VIEW primary_taker AS SELECT * FROM analysis_base WHERE NOT is_maker")
+                con.execute("CREATE TEMP VIEW duration_source AS SELECT *,CASE WHEN bin=10 THEN 1 ELSE 0 END tail FROM analysis_base WHERE NOT is_maker AND duration_eligible AND bin IN (1,10)")
+                shapes = {"sports_copy": observed["copy_plan"],
+                    "table1": json.loads(con.execute("EXPLAIN (FORMAT JSON) SELECT event_cluster AS cluster,'D'||bin cell,count(*) n,sum(P) s0,sum(Y) s1,sum(payoff) s2,sum(roi) s3 FROM primary_taker WHERE TRUE GROUP BY 1,2 ORDER BY 1,2").fetchone()[1]),
+                    "duration_tail": json.loads(con.execute("EXPLAIN (FORMAT JSON) SELECT event_cluster,claim_code,source_month,source_ordinal,tail,category,P,Y,timestamp,trade_month,L,R,xL,xR,payoff,roi FROM duration_source").fetchone()[1])}
+                def hash_joins(node):
+                    found = [node] if node["name"].strip() == "HASH_JOIN" else []
+                    for child in node["children"]:
+                        found.extend(hash_joins(child))
+                    return found
+                bounded_rows = pq.ParquetFile(Path(temporary) / "accepted_fixture" / "claims.parquet").metadata.num_rows
+                for name, plan in shapes.items():
+                    with self.subTest(shape=name):
+                        joins = hash_joins(plan[0])
+                        self.assertEqual(len(joins), 3 if name == "sports_copy" else 2)
+                        for join in joins:
+                            build = join["children"][1]
+                            self.assertIn(build["name"].strip(), ("READ_PARQUET", "SEQ_SCAN"))
+                            self.assertLessEqual(int(build["extra_info"]["Estimated Cardinality"]), bounded_rows)
+                            self.assertFalse(build["children"])
+                        probe = joins[-1]["children"][0]
+                        self.assertEqual(probe["name"].strip(), "READ_PARQUET")
+                        self.assertIn("recorded_token_code", probe["extra_info"]["Projections"])
             finally:
                 con.close()
 
@@ -401,6 +427,7 @@ class SportsCachePhysicalFixtureTests(unittest.TestCase):
                     for _, key, _, predicate in driver.WINDOWS))
                 stage = Path(temporary) / "cache"
                 stage.mkdir()
+                driver.configure(con, stage / "spill")
                 driver.create_sports_view(con, stage, driver.ReadLedger(), 10)
                 phases = tuple(f"D{tail}:{phase}" for phase in ("pregame", "in_play") for tail in (1, 10))
                 profiles = tuple(f"D{bin_number}:{phase}" for phase in ("pregame", "in_play") for bin_number in range(1, 11))
@@ -611,6 +638,44 @@ class LeanProjectionFixtureTests(unittest.TestCase):
 
 
 class AdmissionFixtureTests(unittest.TestCase):
+    def test_join_planning_policy_readback_and_runtime_drift_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                class IgnoredPlannerSet:
+                    def execute(self, query):
+                        if query.startswith("SET disabled_optimizers="):
+                            return self
+                        return con.execute(query)
+                with self.assertRaisesRegex(driver.inputs.InputBlocked, "join planning policy drift"):
+                    driver.configure(IgnoredPlannerSet(), Path(temporary) / "spill")
+                observed = driver.configure(con, Path(temporary) / "spill")
+                self.assertEqual(observed, {"disabled_optimizers": "join_order,build_side_probe_side"})
+                self.assertEqual(driver.join_planning_policy(con), observed)
+                self.assertTrue(con.execute("SELECT current_setting('preserve_insertion_order')").fetchone()[0])
+                for drift in ("", "join_order", "join_order,build_side_probe_side,filter_pushdown"):
+                    with self.subTest(drift=drift):
+                        con.execute("SET disabled_optimizers=" + driver.inputs.literal(drift))
+                        with self.assertRaisesRegex(driver.inputs.InputBlocked, "join planning policy drift"):
+                            driver.join_planning_policy(con)
+            finally:
+                con.close()
+
+    def test_join_planning_preflight_drift_rejected_before_stage_or_input_discovery(self):
+        identity = {"path": "/tmp/synthetic-reviewed-policy", "sha256": "0" * 64}
+        good = {"join_planning_policy": driver.JOIN_PLANNING_POLICY}
+        for stage in (driver.run_stage, driver.run_sports_metadata_stage):
+            for reviewed, fresh in (({}, {}), (good, {}), ({}, good),
+                                    ({"join_planning_policy": {"disabled_optimizers": ""}},
+                                     {"join_planning_policy": {"disabled_optimizers": ""}})):
+                with self.subTest(stage=stage.__name__, reviewed=reviewed, fresh=fresh), \
+                        patch("production_guard.require_production_host"), \
+                        patch.object(driver.inputs, "read_json", return_value=(reviewed, identity)), \
+                        patch.object(driver.inputs, "validate_destination", side_effect=AssertionError("discovered stage")), \
+                        patch.object(driver.duckdb, "connect", side_effect=AssertionError("opened runtime connection")), \
+                        self.assertRaisesRegex(driver.inputs.InputBlocked, "preflight drift: join_planning_policy"):
+                    stage(reviewed, fresh, ["synthetic fixture"], reviewed_identity=identity)
+
     def test_memory_budget_arithmetic_configuration_and_admission_boundary(self):
         self.assertEqual(driver.CAPS["memory_limit"], "192GB")
         self.assertEqual(driver.CAPS["total_memory_bytes"], 192_000_000_000 + driver.CAPS["numpy_memory_bytes"])
@@ -626,10 +691,15 @@ class AdmissionFixtureTests(unittest.TestCase):
                 self.commands = []
             def execute(self, command):
                 self.commands.append(command)
+                return self
+            def fetchone(self):
+                return (driver.JOIN_PLANNING_POLICY["disabled_optimizers"],)
         con = RecordedConfiguration()
         driver.configure(con, "/tmp/synthetic-estimator-spill")
         self.assertIn("SET memory_limit='192GB'", con.commands)
         self.assertIn("SET max_temp_directory_size='16000000000B'", con.commands)
+        self.assertIn("SET disabled_optimizers='join_order,build_side_probe_side'", con.commands)
+        self.assertIn("SELECT current_setting('disabled_optimizers')", con.commands)
         roles = ("six_candidates", "six_timing", "six_proof", "six_tokens", "nfl_moneylines", "nba_moneylines", "mlb_phase")
         inventory = [{"role":role, "path":"/tmp/synthetic-" + role, "stat":{"bytes":0}} for role in roles]
         with patch("production_guard.require_production_host"), \
@@ -648,6 +718,7 @@ class AdmissionFixtureTests(unittest.TestCase):
             self.assertEqual(admitted["required_free_bytes"], 60_000_000_000)
             self.assertEqual(admitted["caps"]["minimum_available_ram_bytes"], 240_000_000_000)
             self.assertEqual(admitted["observed_available_ram_bytes"], 240_000_000_000)
+            self.assertEqual(admitted["join_planning_policy"], driver.JOIN_PLANNING_POLICY)
             self.assertEqual(admitted["memory_budget_policy"], {
                 "duckdb_memory_limit":"192GB", "duckdb_memory_bytes":192_000_000_000,
                 "numpy_memory_bytes":32_000_000_000, "combined_memory_bytes":224_000_000_000,
@@ -822,7 +893,8 @@ class AdmissionFixtureTests(unittest.TestCase):
                 "base_binding":{"manifest":json_ids["manifest"],"acceptance":json_ids["acceptance"]},
                 "base_manifest":{},"base_files":[claims],"monthly_paths":[],"sports_binding":binding,
                 "sports_binding_identity":json_ids["sports"],"sports_files":driver.sports_input_inventory(binding),"caps":driver.CAPS,
-                "required_free_bytes":0,"write_limit_policy":{},"memory_budget_policy":{},"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2}
+                "required_free_bytes":0,"write_limit_policy":{},"memory_budget_policy":{},"mode":"sports_metadata_only","sports_metadata_review":None,"observed_free_bytes":2,
+                "join_planning_policy":driver.JOIN_PLANNING_POLICY}
             reviewed = {**fresh,"observed_free_bytes":1}
             driver.inputs.write_json(folder / "reviewed_preflight.json",reviewed)
             reviewed_id = driver.inputs.read_json(folder / "reviewed_preflight.json")[1]
@@ -830,8 +902,24 @@ class AdmissionFixtureTests(unittest.TestCase):
                     patch.object(driver,"source_snapshot",return_value=source):
                 manifest = driver.run_sports_metadata_stage(reviewed,fresh,["synthetic fixture"],reviewed_identity=reviewed_id)
             self.assertFalse(manifest["trade_bodies_read"])
+            self.assertEqual(manifest["join_planning_policy"], driver.JOIN_PLANNING_POLICY)
+            self.assertEqual(manifest["preflight"]["join_planning_policy"], manifest["join_planning_policy"])
             self.assertEqual(manifest["coverage"][0]["markets"],1)
             self.assertEqual(set(manifest["outputs"]),{"sports_market_map.parquet","sports_metadata_exclusions.parquet"})
+            drifted = {**fresh, "target":str(folder / "metadata_drift")}
+            driver.inputs.write_json(folder / "drift_preflight.json", drifted)
+            drift_id = driver.inputs.read_json(folder / "drift_preflight.json")[1]
+            original_prepare = driver.prepare_sports_map
+            def mutate_runtime_policy(connection, *args, **kwargs):
+                result = original_prepare(connection, *args, **kwargs)
+                connection.execute("SET disabled_optimizers=''")
+                return result
+            with patch("production_guard.require_production_host"), patch.object(driver.inputs,"validate_destination"), \
+                    patch.object(driver,"source_snapshot",return_value=source), \
+                    patch.object(driver,"prepare_sports_map",side_effect=mutate_runtime_policy), \
+                    self.assertRaisesRegex(driver.inputs.InputBlocked,"join planning policy drift"):
+                driver.run_sports_metadata_stage(drifted,drifted,["synthetic drift fixture"],reviewed_identity=drift_id)
+            self.assertFalse(Path(drifted["target"]).exists())
             target = Path(fresh["target"])
             binding["reviewed_metadata_stage"] = {"reviewed":True,"manifest_path":str(target / "manifest.json"),
                 "manifest_sha256":driver.inputs.sha256(target / "manifest.json"),"acceptance_path":str(target / "acceptance.json"),

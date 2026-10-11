@@ -35,6 +35,7 @@ from . import estimators as engine
 REPO = Path(__file__).resolve().parents[2]
 SPORTS = ("mlb", "nfl", "nba", "nhl", "cbb", "atp", "epl", "cfb", "wnba")
 TARGETS = ("payoff_cents", "roi_percent")
+JOIN_PLANNING_POLICY = {"disabled_optimizers": "join_order,build_side_probe_side"}
 CAPS = {"memory_limit": "192GB", "threads": 4, "spill_bytes": 16_000_000_000,
         "numpy_memory_bytes": 32_000_000_000, "total_memory_bytes": 224_000_000_000,
         "minimum_available_ram_bytes": 240_000_000_000,
@@ -260,12 +261,16 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
                (3 * (6 * CAPS["maximum_projection_iterations"] + 12) + 4 * 10 + 4 * 4 + 10 + 196)
                + 4 * CAPS["maximum_output_bytes"] + 6 * sum(item["stat"]["bytes"] for item in sports_files))
     require(planned <= CAPS["maximum_read_bytes"], "declared worst-case serial cache/read plan exceeds ceiling")
+    # Settings/scalar readback only: this connection opens no input relations.
+    with duckdb.connect() as con:
+        planning_policy = configure(con, Path(target) / "spill")
     return {"schema_version": "kaushik_replication_estimate_preflight_v1", "status": "preflight_complete",
             "target": str(Path(target).resolve()), "source": source, "base_dir": str(Path(base_dir).resolve()),
             "base_binding": base_binding, "base_manifest": manifest, "base_files": base_files,
             "monthly_paths": monthly, "sports_binding": sports, "sports_binding_identity": sports_id,
             "mode": "sports_metadata_only" if sports_metadata_only else "estimates", "sports_metadata_review": sports_review,
             "sports_files": sports_files, "caps": CAPS, "required_free_bytes": reserve,
+            "join_planning_policy": planning_policy,
             "write_limit_policy": {"process_per_file_transient_bytes": CAPS["maximum_transient_file_bytes"],
                 "accepted_cache_bytes": CAPS["maximum_cache_bytes"], "accepted_total_bytes": CAPS["maximum_output_bytes"],
                 "enforcement": "RLIMIT_FSIZE bounds transient COPY/score writes including spill; actual artifact size and total accepted size checked immediately afterward before reuse/publication",
@@ -283,6 +288,12 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
             "limits": "metadata/footer preflight only; no trade bodies read; accepted artifacts checked post-write; transient process file writes and read-pass ledger bounded separately"}
 
 
+def join_planning_policy(con):
+    observed = {"disabled_optimizers": con.execute("SELECT current_setting('disabled_optimizers')").fetchone()[0]}
+    require(observed == JOIN_PLANNING_POLICY, "estimator join planning policy drift")
+    return observed
+
+
 def configure(con, spill):
     con.execute("SET TimeZone='UTC'")
     con.execute("SET memory_limit=" + inputs.literal(CAPS["memory_limit"]))
@@ -291,6 +302,10 @@ def configure(con, spill):
     con.execute("SET temp_directory=" + inputs.literal(spill))
     con.execute("SET preserve_insertion_order=true")
     con.execute("SET enable_object_cache=false")
+    # Parquet cardinality underestimation must not swap the full trade stream
+    # onto a hash-build side. Written joins keep bounded claims/maps on the right.
+    con.execute("SET disabled_optimizers=" + inputs.literal(JOIN_PLANNING_POLICY["disabled_optimizers"]))
+    return join_planning_policy(con)
 
 
 def reserve_output(stage, ceiling):
@@ -1109,6 +1124,8 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
     require(isinstance(reviewed_identity, dict), "reviewed preflight file identity required")
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed preflight content/stat drift")
+    require(reviewed.get("join_planning_policy") == fresh.get("join_planning_policy") == JOIN_PLANNING_POLICY,
+            "reviewed estimator preflight drift: join_planning_policy")
     for field in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
                   "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[field] == fresh[field], "reviewed estimator preflight drift: " + field)
@@ -1132,7 +1149,8 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
             ledger.charge(item["stat"]["bytes"], "input_hash_before:" + item["path"])
             require(inputs.sha256(item["path"]) == item["expected_sha256"], "estimator input digest differs")
         con = duckdb.connect()
-        configure(con, stage / "spill")
+        runtime_policy = configure(con, stage / "spill")
+        require(runtime_policy == fresh["join_planning_policy"], "runtime estimator join planning policy differs from preflight")
         inputs.create_analysis_view(con, fresh["base_dir"], explicit_month_paths=fresh["monthly_paths"])
         con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(Path(fresh['base_dir'])/'claims.parquet')})")
         body_bytes = sum(item["stat"]["bytes"] for item in fresh["base_files"])
@@ -1156,9 +1174,11 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
         require(source_snapshot(fresh["source"]["head"]) == fresh["source"], "estimator source drift before publication")
         for relative, expected in outputs.items():
             ledger.charge(expected["bytes"], "published_artifact_reopen_hash:" + relative)
+        require(join_planning_policy(con) == runtime_policy, "runtime estimator join planning policy changed before publication")
         manifest = {"schema_version": "kaushik_replication_estimate_stage_v1", "status": "estimates_complete",
             "sample_scope": output["sample_scope"],
             "source": fresh["source"], "preflight": reviewed, "command": command, "caps": CAPS,
+            "join_planning_policy": runtime_policy,
             "base_binding": fresh["base_binding"], "sports_binding": fresh["sports_binding_identity"],
             "outputs": outputs, "estimates_json": {"sha256": result_id["sha256"], "bytes": result_id["stat"]["bytes"]},
             "read_ledger": ledger.to_dict(), "wall_seconds": time.monotonic() - started,
@@ -1204,6 +1224,8 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
     require(isinstance(reviewed_identity, dict), "reviewed preflight file identity required")
     reopened_review, reopened_id = inputs.read_json(reviewed_identity["path"], reviewed_identity["sha256"])
     require(reopened_review == reviewed and reopened_id == reviewed_identity, "reviewed sports metadata preflight content/stat drift")
+    require(reviewed.get("join_planning_policy") == fresh.get("join_planning_policy") == JOIN_PLANNING_POLICY,
+            "reviewed sports metadata preflight drift: join_planning_policy")
     for name in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[name] == fresh[name], "reviewed sports metadata preflight drift: " + name)
@@ -1224,7 +1246,8 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
             ledger.charge(item["stat"]["bytes"], "sports_metadata_input_hash_before:" + item["path"])
             require(inputs.stat_identity(item["path"]) == item["stat"] and inputs.sha256(item["path"]) == item["expected_sha256"], "sports metadata input drift")
         con = duckdb.connect()
-        configure(con, stage / "spill")
+        runtime_policy = configure(con, stage / "spill")
+        require(runtime_policy == fresh["join_planning_policy"], "runtime sports metadata join planning policy differs from preflight")
         con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(Path(fresh['base_dir'])/'claims.parquet')})")
         ledger.charge(4 * sum(item["stat"]["bytes"] for item in selected), "sports_metadata_proof_and_coverage_queries")
         coverage = prepare_sports_map(con, fresh["sports_binding"], stage, ledger=ledger)
@@ -1241,7 +1264,9 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
         require(source_snapshot(fresh["source"]["head"]) == fresh["source"], "sports metadata source drift")
         for relative, output in outputs.items():
             ledger.charge(output["bytes"], "published_sports_metadata_reopen_hash:" + relative)
+        require(join_planning_policy(con) == runtime_policy, "runtime sports metadata join planning policy changed before publication")
         manifest = {"schema_version": "kaushik_replication_sports_metadata_v1", "status": "sports_metadata_complete",
+            "join_planning_policy": runtime_policy,
             "source": fresh["source"], "base_binding": fresh["base_binding"], "provider_inputs": fresh["sports_binding"]["inputs"],
             "coverage_qualification": fresh["sports_binding"]["coverage_qualification"], "coverage": coverage,
             "metadata_exclusions": exclusions, "six_candidate_coverage": candidate_counts, "six_match_timing_audit": audit_counts,

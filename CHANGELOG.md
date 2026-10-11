@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-11 - Full-sample join-plan execution repair
+
+- Preserved the second pre-estimation spill failure and its read-only production
+  plan diagnostics; both earlier failed stages remain unaccepted.
+- Fixed estimator connection planning so written claims and metadata inputs stay
+  on hash-build sides; bound actual setting readback in preflight and runtime.
+- Added fail-closed policy-drift and three-query plan fixtures, retaining exact
+  cache, numerical, scientific and resource contracts.
+- Normalized only fixture plan-operator whitespace across supported test runtimes.
+
 ## 2026-10-11 - Full-sample sports-cache execution repair
 
 - Preserved the pre-estimation sports-cache spill failure and removed only the
