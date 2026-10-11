@@ -65,6 +65,68 @@ def fixture(con, folder):
     return records, manifest, binding
 
 
+def sports_copy_fixture(con, folder):
+    """Small accepted-base-shaped Parquets, including complemented SELL records."""
+    records, _, binding = fixture(con, folder)
+    folder = Path(folder)
+    start = int(datetime(2026, 4, 1, tzinfo=timezone.utc).timestamp())
+    shift = start - 1738368000
+    fields = ("claim_code", "timestamp", "P", "Y", "is_maker", "side", "duration_eligible")
+    base_records = []
+    for ordinal, record in enumerate(records):
+        saved = {name: record[name] for name in fields}
+        saved["timestamp"] += shift
+        saved["recorded_price"] = 1.0-record["P"] if record["side"] == "SELL" else record["P"]
+        if record["side"] == "SELL":
+            saved["P"] = 1.0-saved["recorded_price"]
+        saved.update(recorded_token_code=record["claim_code"] ^ (record["side"] == "SELL"),
+                     usdcSize=3.0, source_ordinal=ordinal)
+        base_records.append(saved)
+    first_buy = next(row for row in base_records if not row["is_maker"] and row["side"] == "BUY")
+    first_buy["P"] = first_buy["recorded_price"] = float(np.nextafter(.1, 0.))
+    first_sell = next(row for row in base_records if not row["is_maker"] and row["side"] == "SELL")
+    for _ in range(2):
+        base_records.append({**first_sell, "source_ordinal": len(base_records)})
+    for timestamp in (start-1, start, start+7200, start+7201):
+        base_records.append({**first_buy, "timestamp": timestamp, "source_ordinal": len(base_records)})
+    base_records.append({**first_buy, "timestamp": start+30*86400, "source_ordinal": first_buy["source_ordinal"]})
+    for record in base_records:
+        record["source_month"] = datetime.fromtimestamp(record["timestamp"], timezone.utc).strftime("%Y-%m")
+    first_by_claim = {row["claim_code"]: row for row in reversed(records)}
+    claim_rows = driver.rows(con, "SELECT * FROM claims ORDER BY claim_code")
+    for claim in claim_rows:
+        original = first_by_claim[claim["claim_code"]]
+        claim.update({name: original[name] for name in ("event_cluster", "cluster_source", "category")})
+        claim.update(opening_seconds=original["opening_seconds"]+shift,
+                     endpoint_seconds=original["endpoint_seconds"]+shift)
+    base = folder / "accepted_fixture"
+    base.mkdir()
+    pq.write_table(pa.Table.from_pylist(claim_rows), base / "claims.parquet")
+    for month in sorted({row["source_month"] for row in base_records}):
+        partition = base / ("year_month="+month)
+        partition.mkdir()
+        pq.write_table(pa.Table.from_pylist([row for row in base_records if row["source_month"] == month]), partition / "base.parquet")
+    mapped = con.execute("SELECT * REPLACE(actual_start_seconds+? AS actual_start_seconds,actual_end_seconds+? AS actual_end_seconds) FROM read_parquet(?) WHERE market_id<>'m26'", [shift, shift, binding["inputs"][0]["path"]]).fetch_arrow_table()
+    map_path = folder / "physical_sports_map.parquet"
+    pq.write_table(mapped, map_path)
+    binding["inputs"][0].update(path=str(map_path), sha256=driver.inputs.sha256(map_path))
+    con.execute("DROP TABLE analysis_base")
+    con.execute("DROP TABLE claims")
+    driver.inputs.create_analysis_view(con, base)
+    driver.prepare_sports_map(con, binding)
+    return base_records
+
+
+# Original ordered cache SELECT, independently joined to the admitted base/map.
+SORTED_SPORTS_CACHE_REFERENCE = """SELECT sport,game_key,event_cluster,market_id,P,Y,bin,payoff,roi,timestamp,
+    CASE WHEN sport_elapsed_seconds<0 THEN 'pregame' ELSE 'in_play' END phase,
+    sport_elapsed_seconds,sport_remaining_seconds,actual_start_seconds,actual_end_seconds,source_month,source_ordinal
+    FROM (SELECT a.*,m.sport,m.game_key,m.actual_start_seconds,m.actual_end_seconds,
+        a.timestamp-m.actual_start_seconds sport_elapsed_seconds,m.actual_end_seconds-a.timestamp sport_remaining_seconds
+        FROM analysis_base a JOIN sports_market_map m USING(market_id) WHERE NOT a.is_maker) reference_source
+    ORDER BY sport,game_key,timestamp,P,Y,source_month,source_ordinal"""
+
+
 class EndToEndFixtureTests(unittest.TestCase):
     def test_full_date_estimator_accepts_later_records_without_changing_models(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -254,6 +316,122 @@ class EndToEndFixtureTests(unittest.TestCase):
                             self.assertEqual(con.execute('SELECT "R" FROM sports_joined WHERE source_ordinal=1').fetchone()[0],2.)
                     finally:
                         con.close()
+
+
+class SportsCachePhysicalFixtureTests(unittest.TestCase):
+    def test_unsorted_cache_matches_all_17_sorted_reference_fields_exactly(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                records = sports_copy_fixture(con, temporary)
+                con.execute("CREATE TEMP TABLE sorted_reference AS " + SORTED_SPORTS_CACHE_REFERENCE)
+                stage = Path(temporary) / "cache"
+                stage.mkdir()
+                info = driver.create_sports_view(con, stage, driver.ReadLedger(), 10)
+                reference_schema = con.execute("DESCRIBE sorted_reference").fetchall()
+                self.assertEqual(len(reference_schema), 17)
+                self.assertEqual(con.execute("DESCRIBE sports_joined").fetchall(), reference_schema)
+                for left, right in (("sports_joined", "sorted_reference"), ("sorted_reference", "sports_joined")):
+                    self.assertEqual(con.execute(f"SELECT count(*) FROM (SELECT * FROM {left} EXCEPT ALL SELECT * FROM {right})").fetchone()[0], 0)
+                prices = [np.asarray(con.execute(f"SELECT P FROM {name} ORDER BY source_month,source_ordinal").fetchall(), dtype=np.float64).view(np.uint64)
+                          for name in ("sports_joined", "sorted_reference")]
+                np.testing.assert_array_equal(*prices)
+                self.assertEqual(con.execute("SELECT count(*) FROM sports_joined WHERE P=?", [float(np.nextafter(.1, 0.))]).fetchone()[0], 6)
+                claims_path = driver.inputs.literal(Path(temporary) / "accepted_fixture" / "claims.parquet")
+                sell = con.execute("SELECT count(*) FROM sports_joined c JOIN analysis_base a USING(source_month,source_ordinal) "
+                    "JOIN read_parquet("+claims_path+") r ON a.recorded_token_code=r.claim_code "
+                    "WHERE a.side='SELL' AND c.P=1.0-a.recorded_price AND c.Y=1-r.Y AND a.recorded_token_code<>a.claim_code").fetchone()[0]
+                self.assertGreater(sell, 0)
+                self.assertEqual(sell, con.execute("SELECT count(*) FROM sorted_reference c JOIN analysis_base a USING(source_month,source_ordinal) WHERE a.side='SELL'").fetchone()[0])
+                duplicate = next(row for row in records if not row["is_maker"] and row["side"] == "SELL")
+                ordinals = (duplicate["source_ordinal"], 1080, 1081)
+                copied = con.execute("SELECT * EXCLUDE(source_month,source_ordinal) FROM sports_joined WHERE source_ordinal IN (?,?,?) ORDER BY source_ordinal", ordinals).fetchall()
+                self.assertEqual(len(copied), 3)
+                self.assertEqual(copied, [copied[0]]*3)
+                self.assertTrue(info["source_locator_retained"] and info["source_locator_unique"])
+                self.assertEqual(info["rows"], con.execute("SELECT count(*) FROM sorted_reference").fetchone()[0])
+                self.assertLess(info["rows"], sum(not row["is_maker"] for row in records))  # Uncovered m26 stays excluded.
+                self.assertEqual(con.execute("SELECT count(*) FROM sports_joined c JOIN analysis_base a USING(source_month,source_ordinal) WHERE a.is_maker").fetchone()[0], 0)
+                counts = driver.rows(con, """SELECT count(*) joined_rows,count(*) FILTER(WHERE timestamp<=actual_end_seconds) admitted_rows,
+                    count(*) FILTER(WHERE timestamp>actual_end_seconds) after_end_rows,
+                    count(*) FILTER(WHERE timestamp<actual_start_seconds) pregame_rows,
+                    count(*) FILTER(WHERE timestamp>=actual_start_seconds AND timestamp<=actual_end_seconds) in_play_rows
+                    FROM sorted_reference""")[0]
+                self.assertEqual(info["reconciliation"], {**counts, "sport_clock_mismatch_rows": 0})
+                self.assertGreater(counts["after_end_rows"], 0)
+                self.assertGreater(con.execute("SELECT count(*) FROM sports_base WHERE timestamp=actual_start_seconds OR timestamp=actual_end_seconds").fetchone()[0], 0)
+            finally:
+                con.close()
+
+    def test_production_shaped_copy_plan_has_no_global_order_by(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                sports_copy_fixture(con, temporary)
+                stage = Path(temporary) / "cache"
+                stage.mkdir()
+                driver.configure(con, stage / "spill")
+                original = driver.copy_parquet
+                observed = {}
+                def inspected_copy(connection, query, path, *args, **kwargs):
+                    suffix = " TO " + driver.inputs.literal(path) + " (FORMAT PARQUET,COMPRESSION ZSTD,ROW_GROUP_SIZE 65536)"
+                    observed["current"] = connection.execute("EXPLAIN COPY ("+query+")"+suffix).fetchone()[1]
+                    observed["sorted"] = connection.execute("EXPLAIN COPY ("+query+" ORDER BY sport,game_key,timestamp,P,Y,source_month,source_ordinal)"+suffix).fetchone()[1]
+                    return original(connection, query, path, *args, **kwargs)
+                with patch.object(driver, "copy_parquet", side_effect=inspected_copy):
+                    driver.create_sports_view(con, stage, driver.ReadLedger(), 10)
+                self.assertNotIn("ORDER_BY", observed["current"])
+                self.assertIn("ORDER_BY", observed["sorted"])
+                self.assertIn("COPY_TO_FILE", observed["current"])
+                self.assertIn("READ_PARQUET", observed["current"])
+                self.assertIn("HASH_JOIN", observed["current"])
+                self.assertTrue(con.execute("SELECT current_setting('preserve_insertion_order')").fetchone()[0])
+            finally:
+                con.close()
+
+    def test_grouped_support_means_and_joint_covariance_equal_sorted_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            con = duckdb.connect()
+            try:
+                sports_copy_fixture(con, temporary)
+                con.execute("CREATE TEMP TABLE sorted_reference AS " + SORTED_SPORTS_CACHE_REFERENCE)
+                con.execute("CREATE TEMP VIEW reference_base AS SELECT * EXCLUDE(event_cluster),game_key event_cluster FROM sorted_reference WHERE timestamp<=actual_end_seconds")
+                con.execute("CREATE TEMP VIEW reference_windows AS " + " UNION ALL ".join(
+                    f"SELECT *,{driver.inputs.literal(key)} clock_window FROM reference_base WHERE {predicate}"
+                    for _, key, _, predicate in driver.WINDOWS))
+                stage = Path(temporary) / "cache"
+                stage.mkdir()
+                driver.create_sports_view(con, stage, driver.ReadLedger(), 10)
+                phases = tuple(f"D{tail}:{phase}" for phase in ("pregame", "in_play") for tail in (1, 10))
+                profiles = tuple(f"D{bin_number}:{phase}" for phase in ("pregame", "in_play") for bin_number in range(1, 11))
+                windows = tuple(f"D{tail}:{item[1]}" for item in driver.WINDOWS for tail in (1, 10))
+                grids = (("sports_base", "reference_base", phases, "'D'||bin||':'||phase", "bin IN (1,10)"),
+                         ("sports_base", "reference_base", profiles, "'D'||bin||':'||phase", "TRUE"),
+                         ("sports_windows", "reference_windows", windows, "'D'||bin||':'||clock_window", "bin IN (1,10)"))
+                maximum_covariance_error = 0.0
+                for scope in ("pooled", *driver.SPORTS):
+                    for actual, reference, cells, expression, where in grids:
+                        predicate = where if scope == "pooled" else where+" AND sport="+driver.inputs.literal(scope)
+                        with self.subTest(scope=scope, grid=actual, cells=len(cells)):
+                            left, right = [driver.group_mean_result(con, relation, cells, expression, sports=True, where=predicate)
+                                           for relation in (actual, reference)]
+                            self.assertEqual(left.names, right.names)
+                            self.assertEqual(left.metadata, right.metadata)
+                            self.assertEqual(left.reasons, right.reasons)
+                            np.testing.assert_array_equal(left.supported, right.supported)
+                            np.testing.assert_allclose(left.values, right.values, rtol=1e-12, atol=1e-12, equal_nan=True)
+                            np.testing.assert_allclose(left.coefficient_cluster_influence, right.coefficient_cluster_influence, rtol=1e-12, atol=1e-12)
+                            # Parallel sums can change rounding near zero when
+                            # physical row order changes; use the existing
+                            # covariance oracle's 1e-10 absolute allowance.
+                            np.testing.assert_allclose(left.covariance, right.covariance, rtol=1e-12, atol=1e-10)
+                            maximum_covariance_error = max(maximum_covariance_error, float(np.max(np.abs(left.covariance-right.covariance))))
+                            self.assertEqual(driver.support_record(left, cells, sports=True), driver.support_record(right, cells, sports=True))
+                print(json.dumps({"fixture":"sports_cache_physical_only", "scope_grid_comparisons":30,
+                    "maximum_covariance_absolute_difference":maximum_covariance_error,
+                    "covariance_rtol":1e-12, "covariance_atol":1e-10}, sort_keys=True), flush=True)
+            finally:
+                con.close()
 
 
 class LeanProjectionFixtureTests(unittest.TestCase):

@@ -867,10 +867,12 @@ def create_sports_view(con, stage=None, ledger=None, base_bytes=0):
                     "sports raw source locator missing or not unique; join fanout or duplicated locator")
         if ledger:
             ledger.charge(base_bytes, "sports_observation_cache")
+        # Cache record order has no analytical role; grouped estimates sort their
+        # own keys. Avoid a global sort of this full observation-level payload.
         cache_info = copy_parquet(con, f"""SELECT sport,game_key,event_cluster,market_id,P,Y,bin,payoff,roi,timestamp,
             CASE WHEN sport_elapsed_seconds<0 THEN 'pregame' ELSE 'in_play' END phase,
             sport_elapsed_seconds,sport_remaining_seconds,actual_start_seconds,actual_end_seconds{locator_sql}
-            FROM sports_joined ORDER BY sport,game_key,timestamp,P,Y{locator_sql}""", path, ledger=ledger)
+            FROM sports_joined""", path, ledger=ledger)
         require(raw_count["joined_rows"] == cache_info["rows"], "sports raw source/COPY count differs")
         cache_info["raw_source_count"] = raw_count["joined_rows"]
         cache_info["source_locator_retained"] = len(locators) == 2

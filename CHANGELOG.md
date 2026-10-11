@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-11 - Full-sample sports-cache execution repair
+
+- Preserved the pre-estimation sports-cache spill failure and removed only the
+  blocking global sort from raw sports-observation export.
+- Kept all sample predicates, exact prices, clocks, source locators, reconciliation
+  gates, numerical estimators and resource limits unchanged.
+- Added sorted-reference multiset, downstream moment and production-shaped query
+  plan fixtures; fresh source-bound metadata and estimation stages remain required.
+- Made the non-production-host rejection fixture explicitly simulate its target
+  environment without changing the production guard.
+
 ## 2026-10-11 - Full-sample capacity recovery
 
 - Preserved the full-date final-support spill failure and added a memory-only
@@ -184,6 +195,12 @@
 - Kept market/event membership outputs on EC2 and required exact baseline
   reproduction and cross-grain exposure conservation before publication.
 
+## 2026-10-03 - Results-delivery chat explanations
+
+- Recorded the requirement to accompany completed results with a chat explanation
+  of the question, data choices, methods, findings and remaining uncertainty,
+  defining unfamiliar terms while keeping LaTeX reports concise and data-first.
+
 ## 2026-10-03 - Completed two-grain profit-taking run
 
 - Completed native-gated source recovery, full-history FIFO and serialized
@@ -228,6 +245,17 @@
 - Recorded the scoped contract in
   [`docs/analysis_specs/sports_profit_taking_v1.md`](docs/analysis_specs/sports_profit_taking_v1.md)
   and added protocol/fee guidance to the methods reference.
+
+## 2026-10-02 - Local resource protection
+
+- Isolated the Mac working folder in its own Git repository so project status
+  and file discovery no longer inherit the home-directory repository.
+- Added Git and search exclusions for generated datasets, production outputs,
+  runtime caches, and local credentials; capped broad local text searches in
+  the operating guide.
+- Added production-host checks before computation, collection, and embedding
+  entrypoints, requiring the documented Linux checkout and mounted data volume
+  while retaining local fixture tests and report rendering.
 
 ## 2026-10-02 - Tennis timing and terminal wallet-sequence investigation
 

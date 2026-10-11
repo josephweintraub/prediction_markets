@@ -298,10 +298,11 @@ class IndependentFullSampleSubsetAuditQA(unittest.TestCase):
             "--previous-acceptance-sha256","b"*64,"--full-dir","/not/read2",
             "--full-manifest-sha256","c"*64,"--full-acceptance-sha256","d"*64,
             "--expected-head","e"*40,"--run-dir","/not/write","--preflight-dir","/not/write2"]
-        with patch.object(audit,"source_snapshot",side_effect=AssertionError("source discovery started")),\
+        with patch("production_guard.platform.system",return_value="Darwin"),\
+             patch.object(audit,"source_snapshot",side_effect=AssertionError("source discovery started")),\
              patch.object(audit,"preflight",side_effect=AssertionError("data discovery started")):
-            with self.assertRaises(Exception) as raised: audit.main(argv)
-        self.assertNotIsInstance(raised.exception,AssertionError)
+            with self.assertRaisesRegex(RuntimeError,"Production computation is blocked outside the canonical EC2 environment"):
+                audit.main(argv)
 
 
 if __name__ == "__main__":
