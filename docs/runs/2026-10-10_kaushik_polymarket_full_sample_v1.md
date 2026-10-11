@@ -1,15 +1,14 @@
 # Kaushik Polymarket replication: full available-date rerun
 
-**Status:** recovery, input v2, exact cutoff-subset audit and sports metadata v2
-accepted; estimation v2 failed before fitting, and raw-cache sort removal did not
-solve production capacity. Read-only join-plan diagnostics completed; root verified
-EC2 stopped at 2026-10-11 15:58:09 UTC. Configure-wide physical join policy and
-its final driver fixtures are locally frozen; broader tests and independent QA
-passed. Root restarted the instance; the AWS readiness wait completed with exit
-0 and the serial production-runtime fixture suite passed 145 tests in 37.458
-seconds without real-data scans. Committed H14 and exact v3 bindings remain pending.
-No estimate,
-saved-score audit or report accepted,
+**Status:** input v2, exact cutoff-subset audit and fresh sports metadata v3
+accepted; full estimation v3 and independent saved-score audit v1 are accepted
+under H14. The v3 body completed under the unchanged resource caps and physical
+join policy; this is run-specific capacity evidence, not a general guarantee. Estimates v1/v2
+failed before fitting and remain preserved. Root previously verified shutdown at
+2026-10-11 15:58:09 UTC, then restarted for tested v3 execution; the current run's
+shutdown remains pending. Independent numerical release QA and report v1
+numerical/visual QA are accepted. Final source release/push, finished-bundle
+assembly/QA and publication remain pending,
 11 October 2026. The user
 confirmed removing the March 25 execution cutoff and rerunning the full writeup
 over all available source dates, keeping all other scientific definitions
@@ -75,16 +74,17 @@ controls and report-only artifacts are planned under
 
 | Stage | Required completion evidence | Current status |
 | --- | --- | --- |
-| Source and fixture QA | Committed explicit full-date mode; focused and relevant broader tests; unchanged cutoff behavior and scientific definitions | v3 final local files frozen; 145 local and 145 production-runtime tests plus independent QA passed; H14 pending |
+| Source and fixture QA | Committed explicit full-date mode; focused and relevant broader tests; unchanged cutoff behavior and scientific definitions | H14 committed; 145 local and 145 production-runtime tests plus independent QA passed; source remained frozen through completed body/audit; final release head pending |
 | Input preflight | Reopened same-source inventory and field semantics; fresh read/RAM/cache/spill/output/disk admission | v2 root reviewed |
 | Full-date inputs | Immutable outputs and reopened acceptance; source/exclusion/support reconciliation; no fanout or silent repairs | v2 accepted |
 | Cutoff-subset reconciliation | Exact source-locator membership and analytic-field agreement with inputs v2; full population partitions into retained earlier and newly eligible later records | v1 accepted; independent metadata review passed |
-| Sports metadata | New-base binding to unchanged provider inputs; native pair/result/timing proof; retained date ranges and exclusions | v2 accepted; v1 preserved |
-| Estimator preflight | Fresh committed-source/base/provider bindings and separately reviewed resource admission | v2 reviewed; fresh v3 source/metadata/preflight bindings pending; unchanged caps |
-| Full estimation | Full writeup grids; common duration samples; BUY-role partition; numerical/rank/convergence gates; distinct sports seconds and zero clock-equation mismatches | v2 failed during sports-cache COPY before fitting; v1/v2 failures preserved |
-| Independent saved-score audit | `saved_scores_reconciled`; reopened covariance, contrasts, intervals, influence, support and clock metadata | Planned |
-| Data-first report QA | Accepted-summary-only rendering; portable source/vector assets; displayed-value reconciliation, successful compilation and every-page review | Planned |
-| Publication and shutdown | Root verifies finished-bundle transfer and no active dependencies, stops exact instance and verifies stopped | v2 shutdown verified; restart initiated, readiness pending; publication/future shutdown pending |
+| Sports metadata | New-base binding to unchanged provider inputs; native pair/result/timing proof; retained date ranges and exclusions | v3 accepted; v1/v2 preserved; provider maps byte-identical |
+| Estimator preflight | Fresh committed-source/base/provider bindings and separately reviewed resource admission | v3 root-admitted; actual physical policy bound; unchanged scientific definitions/caps |
+| Full estimation | Full writeup grids; common duration samples; BUY-role partition; numerical/rank/convergence gates; distinct sports seconds and zero clock-equation mismatches | v3 reopened accepted; root-reviewed; v1/v2 failures preserved |
+| Independent saved-score audit | `saved_scores_reconciled`; reopened covariance, contrasts, intervals, influence, support and clock metadata | v1 accepted; 47 score files/all seven checks passed |
+| Independent numerical release QA | Source-bound accepted summaries, models, saved-score algebra and reference comparisons | v3 accepted; 39 gates passed; no failed/pending numerical checks |
+| Data-first report QA | Accepted-summary-only rendering; portable source/vector assets; displayed-value reconciliation, successful compilation and every-page review | v1 accepted; 31 pages/21 vector figures/36 native tables; two compile passes and all-page review passed |
+| Publication and shutdown | Root verifies finished-bundle transfer and no active dependencies, stops exact instance and verifies stopped | Historical v2 shutdown verified; current release/report work remains active; publication/final shutdown pending |
 
 The subset comparison must use source month plus original physical row ordinal,
 not estimated coefficients or coincidentally matching aggregate counts. Compare
@@ -599,8 +599,168 @@ evidence was size-checked before reading:
 | `join_policy_ec2_fixture_v1_stderr.log` | `d0eab82ee84e897d7ecc01e58974e57b45e4e5f82fd01cc05bf51e13232d260e` |
 | `join_policy_ec2_fixture_v1_resources.log` | `bb1fca1aa8b7150fc93c078e44d38a87747ff740f48e742965cdad6363933d80` |
 
-This is fixture admission evidence, not production-capacity success. Committed H14, exact
+This is fixture admission evidence, not production-capacity success. At that
+fixture-admission moment, committed H14, exact
 reviewed v3 source/control/metadata/preflight bindings and all v3 execution remain
 pending. The local documents are frozen-ready for integration, not a production
 acceptance record. Accepted stages and both failed estimates remain unchanged
 and preserved; root alone owns subsequent lifecycle and execution.
+
+### Committed H14, accepted sports metadata v3 and running estimation v3
+
+Root committed exactly the five reviewed files as H14
+`7c7d2badcddcb28ac9d24189ce35096bbfc78201` on the existing full-sample branch.
+Producer/test file hashes remain `003fd2068681afd94a831cc19dd972ace888cabfe051131874c5917e9cac320c`
+and `1e2703b752f9df2b71c6e89aed76d86f97312ff13b448e7e9d24c95f337c786e`.
+Canonical source remained frozen through the estimate body and audits; these
+status edits are local only. Final source release is pending. Accepted inputs v2
+and subset audit v1 are unchanged.
+
+The fresh sports metadata stage is
+`/mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_metadata_v3`.
+Its fixed body receipt records `2026-10-11T16:16:17.638530+00:00` through
+`2026-10-11T16:16:23.178347+00:00`, exit 0. Reopening accepted all outputs;
+native binary-pair/provider-result proof is true and `trade_bodies_read` is false.
+Small manifest comparison verifies output bytes/hashes/schema, per-sport coverage
+and provider inventory identical to v1/v2: 13,909 provider games, 14,383 markets,
+nine sports. No provider-game or resolution expansion is implied.
+
+Fresh sports and estimate preflights, metadata acceptance, reviewed provider
+binding and root capacity review are bound as follows:
+
+| v3 evidence | SHA256 |
+| --- | --- |
+| Sports preflight manifest | `7292ef0db184b8f05d10246c676ea46f49e8cd32845e8b04c4fbf9ebb7bbb862` |
+| Sports metadata manifest | `3b51578df6958d991151e41befe5f2f1a1ef68a12c3978065403504ee432ee6c` |
+| Sports metadata acceptance | `f0bd0918a18c850a89e841f55fb8b1dd450813ad3b2afdb0a65c8dbc38e2353a` |
+| Sports body execution receipt | `0f5c167c2f372e799be1ba17eccd0438b7b7e9632add4b95516b27c4c9161af0` |
+| Reviewed sports binding | `e52cefcd23d2451faccc1c2d1cc7861dc85d5cd7161913bfe6d86cdcd4ca881d` |
+| Estimate preflight manifest | `ed1c444987a194f29bcb1d363a88510d21179c74b0d4d208506e033e1fd03603` |
+| Root estimate preflight review | `eb43fcee8450d95e2cab40cf050335ccc6ac42c91090b1b4907eb6435b34fb39` |
+| Direct preflight execution records | `6aaaddea709585a948941a41efb5288fad9510a808809af6f281efc528677573` |
+| Fixed sports body wrapper | `db6cd4348653f049ccdc19288a8f4d6c4f7b64469f72d542f845025961e508e3` |
+| Fixed estimate body wrapper | `a09b8226011c8274ccdde7f7702e7d46b9d557f7c4e0e938d9a04040ffa4cbec` |
+
+The exact four executed/dispatched commands are recorded in the
+[full-sample reproduction guide](../analysis_specs/kaushik_polymarket_full_sample_reproduce.md#committed-v3-admission-and-dispatched-commands).
+Preflight records identify actual root direct CLI invocations, each exit 0;
+their root-observation timestamps are not timed remote body-receipt timestamps.
+Sports metadata used the unchanged retained binding, then estimates used the
+reviewed v3 binding. All targets retain the full-sample prefix and fresh v3 suffixes.
+
+Estimate preflight observed available RAM 264,716,660,736 bytes and free data
+space 64,679,702,528 bytes, against the unchanged 60,000,000,000-byte reservation
+and 6,951,547,448,572-byte read plan. Sports preflight separately observed
+264,754,626,560 bytes RAM and 64,681,246,720 bytes free. The physical policy
+`disabled_optimizers=join_order,build_side_probe_side` is outside `CAPS`; actual
+scalar readback/runtime bindings are validated in preflight and runtime, before
+body work and publication, with fail-closed drift gates. Resource caps remain
+192GB DuckDB, 32GB NumPy, 224GB combined, 240GB available-RAM floor, four threads,
+16GB spill, 3GB cache, 8GB outputs and the prior read/projection limits. Scientific
+predicates, models, weights and provider/source vintage remain unchanged.
+
+Root dispatched the fixed `estimate_body_execution_v3.py` wrapper, execution
+directory `_controls_v1/estimate_body_execution_v3`, session 83963, targeting
+`/mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v3`.
+At that dispatch update, the body was running; no completion receipt, accepted estimate, successful
+capacity outcome or numerical finding is asserted. Saved-score auditing,
+accepted-summary report rendering, numerical/layout QA, publication and final
+shutdown remain pending. Preserve both failed estimate stages and all prior
+accepted stages; root alone owns execution, synchronization and lifecycle.
+
+### Accepted estimation v3 and independent saved-score audit v1
+
+The unchanged fixed v3 command completed from
+`2026-10-11T16:19:14.106945+00:00` to `2026-10-11T17:55:34.970494+00:00`, exit 0.
+The manifest reports `estimates_complete`; reopening reports
+`estimates_reopened_accepted`, full-date scope and all outputs reopened. Root's
+`accepted_estimate_root_review_v3.json` binds H14, the exact command, input/sports
+bindings, caps, output fingerprints and reconciliation gates. Canonical source
+remained unchanged throughout estimation and the following audit.
+
+| Accepted stage evidence | SHA256 |
+| --- | --- |
+| Estimate manifest v3 | `3d4611756e0e9df9cb93d418861cd0041dd7adff087f080ace05b833a4950103` |
+| Estimate acceptance v3 | `9d723fe5dfc0517033737c8be5df44c9cbba49df6b343453d0fa3773d6eb90eb` |
+| Estimates JSON v3 | `6c3543cb4f4065dfd80d4961c85b86e5371ce3e5ba436f8e8dff01e8597f049a` |
+| Estimate body receipt v3 | `14f58f61135f1f59276ae91b76e47a89955fd13e45b26ad702102cbf03b5b60e` |
+| Root accepted-estimate review v3 | `f4918b1d2e76fb0d8de7a75f16d7b76367af711b1888aad1fbe49ffe4c83a169` |
+| Saved-score audit v1 | `ca0d2b9198cec65fe5022da326a8849cf8b2173f819dce59029aad14a273bf86` |
+| Saved-score audit body receipt v1 | `c53cbebb88bbb39b5269257cf1b12ab8250f65271c256bc496137cc23b2a7cce` |
+
+Reopened support is 1,000,970,616 primary records and 2,001,941,232 baseline
+all-role records. The common duration sample reconciles at N=252,319,669 and
+G=497,313. These are cohort/support provenance, not a release findings table.
+Observed primary executions range from `2022-11-21T19:50:09+00:00` through
+`2026-06-21T21:41:20+00:00`; no new execution cutoff was introduced. The same
+source-resolution vintage, provider cohort and timing qualifications remain.
+
+Accepted caps remain 192GB DuckDB, 32GB NumPy, 224GB combined memory,
+240GB available-RAM floor, four threads, 16GB spill, 3GB cache, 8GB outputs,
+8TB read ceiling and unchanged projection bounds. Charged estimate reads were
+598,451,354,311 bytes. Actual scalar physical-policy readbacks before body and
+publication matched `join_order,build_side_probe_side`; no scientific predicate,
+model, weight or cap changed in v3. The estimate manifest records Python 3.12.3
+(GCC 13.3.0), DuckDB 1.5.0 and NumPy 2.4.3. Root additionally confirmed PyArrow
+23.0.1 on Linux 7.0.0-1014-aws, x86_64, glibc 2.39; distinguish this production
+environment from the local source-only fixture capsule.
+
+The exact saved-score command is recorded in the reproduction guide. Under the
+same H14, its receipt records `2026-10-11T18:01:50.458272+00:00` through
+`2026-10-11T18:02:19.144175+00:00`, exit 0. The immutable audit target is
+`/mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_saved_score_audit_v1`.
+Status is `saved_scores_reconciled`: all 47 saved-score files and seven checks
+passed—CR0 outer products; common duration/BUY partition; influence diagnostics;
+named contrasts/SE/CI; saved sports-seconds contract; saved support/complete grids;
+and supplementary `G/(G-1)` distinguished from CR1. Charged audit reads were
+1,855,979,124 bytes under the 25,000,000,000-byte ceiling, with unchanged
+relative/absolute tolerances `2e-8`/`1e-10` and 2,048-row batches.
+
+The audit reconstructs covariance/influence from saved scores and contrasts from
+saved coefficients; it does not independently refit coefficients, reconstruct
+raw membership/timing or certify native actions or whole-history completeness.
+At this accepted-stage update, independent numerical release QA and report/visual
+QA were still pending; the next entry records their subsequent acceptance.
+Final documentation/source release and push, finished-bundle assembly/QA,
+Dropbox publication and final verified shutdown remain pending. No release
+transfer or current-run stopped state is inferred from estimation/audit acceptance.
+
+### Accepted independent numerical release and report v1 QA
+
+`release_numerical_qa_v3.json` is sealed with status
+`accepted_summary_and_saved_score_reconciled`: all 39 gates passed, with no failed
+or pending numerical checks and 18 JSON bindings reopened. All 12 model
+rank/convergence gates, 47 saved-score artifacts and 2,118 coefficient/contrast
+checks passed. The review reconciles 878 keyed result rows, unchanged results for
+the three unchanged sports populations, and 22 Table 1/A2 reference rows across
+308 scalars. These checks do not certify a raw coefficient refit or complete
+historical collection. All 28 duration/A1 headline effective cluster counts
+remain below 30; concentration warnings and nominal-interval qualifications
+remain, separately from support admission. The combined absorbed fixed-effect
+rank is not independently certified.
+
+`report_v1_qa.json` is sealed with status `report_qa_passed`, recorded at
+`2026-10-11T18:11:38.535Z`. Report v1 contains 31 pages, 21 vector PDF figures
+and 36 native tables (35 tabular and one longtable). Both `pdflatex` passes
+exited zero; every page was visually inspected and passed. QA reconciled 1,998
+PDF-text numerical table cells, 660 plotted CR0 marks and omission of 80 withheld
+plot cells. All 28 duration/A1 influence marks and nominal qualifications remain.
+No substantive compilation/layout failure remains; minor underfull-box and
+isolated-cache notices are recorded in the QA receipt. The report manifest's
+initial compile/visual fields remain immutable; the external QA receipt records
+completed acceptance. Portable TeX and relative vector figures are primary;
+the verified PDF is a preview.
+
+| Release QA/report artifact | SHA256 |
+| --- | --- |
+| Independent numerical release QA v3 | `5623dd9bd969a38ddd42d359a754375f01c4648f57bbb718f0a722180896ff28` |
+| Report v1 QA | `6b282bd1ee61d22be8e7e7bda7bf87035ea0402bdf70c1bc668b44740f19c8cb` |
+| Report v1 source | `429cb940cde5a3b2a6e4d13f509b87bcf137112822de74eff78d7160f5dc5acb` |
+| Report v1 immutable manifest | `71fd5d7cd54e402bc34ea0fd27b25cdd4c26c2f939becaa3f10b8d100c90c47a` |
+| Report v1 compiled preview | `26aac815332a6ce4a6e753f8df797dedf077fbc27569e8dfd8d8bd4b47e1240b` |
+
+The no-cutoff dates, eligibility waterfall, unchanged provider-cohort/source
+vintage and resolution/clock qualifications were retained. Report QA reconciles
+presentation to accepted saved outputs, not raw eligibility or timing. Final
+release source head/push, finite bundle assembly and independent capsule QA,
+Dropbox transfer verification and current-run shutdown are not yet asserted.

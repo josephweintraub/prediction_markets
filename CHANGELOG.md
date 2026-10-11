@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-11 - Full-sample replication acceptance
+
+- Completed immutable full-date input and estimation acceptance while preserving
+  the earlier execution-cutoff run and all failed-stage evidence.
+- Verified the exact cutoff-subset record/field reconciliation, unchanged
+  provider cohort and all saved-score covariance, contrast and support gates.
+- Completed independent accepted-summary numerical QA; retained nominal-interval
+  influence qualifications rather than treating record count as independence.
+- Produced the portable full-date LaTeX report from accepted summaries and
+  verified all 31 compiled pages, native tables and vector figures.
+- Recorded accepted stage bindings and reproducible commands without replacing
+  the earlier cutoff artifacts.
+
 ## 2026-10-11 - Full-sample join-plan execution repair
 
 - Preserved the second pre-estimation spill failure and its read-only production

@@ -2,18 +2,19 @@
 
 Status: staged reproduction guide, 11 October 2026. Full-date inputs v2 have
 reopened and been accepted, the cutoff-subset audit has passed, and fresh sports
-metadata v2 has reopened and been accepted. The physical-only retry producer is
-frozen; estimation v2 failed before fitting and is not accepted. Removing the
-raw-cache sort did not solve production capacity. Read-only production join-plan
-diagnostics completed; root independently verified EC2 stopped at
-2026-10-11 15:58:09 UTC. Configure-wide physical join-policy repair and source-bound
-v3 stages have locally frozen candidate files and seven passing focused tests.
-The final fixture binding, 145-test broader suite and independent QA have passed.
-Root restarted the instance; the AWS readiness wait completed with exit 0 and the
-serial production-runtime fixture suite passed 145 tests in 37.458 seconds without
-real-data scans. Committed H14 and exact v3 bindings remain pending.
+metadata v3 has reopened and been accepted. Estimation v3 and saved-score audit
+v1 have completed and been accepted under
+committed H14 with fresh reviewed source/metadata/preflight bindings and actual
+physical optimizer-policy readbacks and unchanged caps. V3 completion is
+run-specific capacity evidence, not a general guarantee. Removing the raw-cache sort did not solve the preserved
+v1/v2 estimation failures. Read-only join-plan diagnostics, local/independent QA
+and 145 production-runtime fixture tests passed before H14 admission. Root's
+verified shutdown at 2026-10-11 15:58:09 UTC is historical; it subsequently
+restarted for v3. Canonical source remained frozen through the body/audit.
 Estimation v1/v2 failures and verified shutdowns remain preserved history.
-Saved-score auditing, report QA and shared publication remain pending. This guide
+Independent numerical release QA and report v1 numerical/visual QA are accepted.
+Final source release/push, finished-bundle assembly/QA, shared publication and
+current-run shutdown remain pending. This guide
 records stage admission, reconciliation and failure evidence, not estimated
 findings. Root must append later accepted bindings and execution receipts as
 those stages finish.
@@ -74,10 +75,12 @@ root alone manages instance/storage lifecycle and production execution.
 Recorded original input/subset and sports/failed estimation v1 HEAD:
 `2aa260ac127c85f1a2c6efb9ab3c4ef4b8449c9a`, branch
 `codex/kaushik-polymarket-full-sample`.
-Most recent executed sports metadata/estimation v2 HEAD:
-`94cd21798e9961f6cfdb173ec034df75228ed19b` on the same branch. Input and subset
+Earlier sports metadata/failed estimation v2 HEAD:
+`94cd21798e9961f6cfdb173ec034df75228ed19b` on the same branch. Current sports
+metadata/accepted estimation v3 committed H14:
+`7c7d2badcddcb28ac9d24189ce35096bbfc78201`. Input and subset
 acceptances remain unchanged. AWS reports the same `r5.8xlarge`; no instance-type
-change was made. Fresh measured capacity, not an assumed host size, gates v2.
+change was made. Fresh measured capacity, not an assumed host size, gates v3.
 Canonical controls directory:
 `/mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1`.
 Local small evidence copies:
@@ -130,6 +133,23 @@ Verified small-artifact SHA256 bindings:
 | Production baseline/controlled join-plan diagnostic v1 | `882e91f248f8d45ac341cd60e78696e6368f889c478de719edab2c56a62eb007` |
 | Verified post-estimate-v2 shutdown receipt | `90f133385939386b5a33ee7d5620d31a722ea11125e467dccdf2a498f8dee26a` |
 | Failed-build recovery receipt v1 | `40b45e436bbb712ffa2dacd44fe7ce6be8c011b6e19aa9de993949813a24cf13` |
+| Sports reviewed preflight v3 | `7292ef0db184b8f05d10246c676ea46f49e8cd32845e8b04c4fbf9ebb7bbb862` |
+| Accepted sports metadata manifest v3 | `3b51578df6958d991151e41befe5f2f1a1ef68a12c3978065403504ee432ee6c` |
+| Sports metadata acceptance v3 | `f0bd0918a18c850a89e841f55fb8b1dd450813ad3b2afdb0a65c8dbc38e2353a` |
+| Sports body execution receipt v3 | `0f5c167c2f372e799be1ba17eccd0438b7b7e9632add4b95516b27c4c9161af0` |
+| Reviewed sports binding v3 | `e52cefcd23d2451faccc1c2d1cc7861dc85d5cd7161913bfe6d86cdcd4ca881d` |
+| Estimate reviewed preflight v3 | `ed1c444987a194f29bcb1d363a88510d21179c74b0d4d208506e033e1fd03603` |
+| Root estimate preflight review v3 | `eb43fcee8450d95e2cab40cf050335ccc6ac42c91090b1b4907eb6435b34fb39` |
+| Actual direct preflight execution records v3 | `6aaaddea709585a948941a41efb5288fad9510a808809af6f281efc528677573` |
+| Fixed sports body wrapper v3 | `db6cd4348653f049ccdc19288a8f4d6c4f7b64469f72d542f845025961e508e3` |
+| Fixed estimate body wrapper v3 | `a09b8226011c8274ccdde7f7702e7d46b9d557f7c4e0e938d9a04040ffa4cbec` |
+| Accepted estimate manifest v3 | `3d4611756e0e9df9cb93d418861cd0041dd7adff087f080ace05b833a4950103` |
+| Estimate acceptance v3 | `9d723fe5dfc0517033737c8be5df44c9cbba49df6b343453d0fa3773d6eb90eb` |
+| Accepted estimates JSON v3 | `6c3543cb4f4065dfd80d4961c85b86e5371ce3e5ba436f8e8dff01e8597f049a` |
+| Estimate body execution receipt v3 | `14f58f61135f1f59276ae91b76e47a89955fd13e45b26ad702102cbf03b5b60e` |
+| Root accepted-estimate review v3 | `f4918b1d2e76fb0d8de7a75f16d7b76367af711b1888aad1fbe49ffe4c83a169` |
+| Independent saved-score audit v1 | `ca0d2b9198cec65fe5022da326a8849cf8b2173f819dce59029aad14a273bf86` |
+| Saved-score audit body execution receipt v1 | `c53cbebb88bbb39b5269257cf1b12ab8250f65271c256bc496137cc23b2a7cce` |
 
 Per-file source and data inventories belong in the bound manifests, not the
 reader-facing manuscript. The local accepted input copies contain small manifest
@@ -629,11 +649,12 @@ The fixture receipt records this command, run serially without real-data scans:
 Fixture passage is not production-capacity success. Preliminary free data space is 64,681,312,256 bytes
 and available RAM 264,999,567,360 bytes; fresh v3 preflights must still bind their
 own capacity observations. The
-local documents are frozen-ready, not a reviewed committed H14 or accepted
+local documents at that prior fixture-admission moment were frozen-ready, not a
+reviewed committed H14 or accepted
 production stage. Committed H14, exact v3 source, commands, controls
-and stage hashes remain pending; no v3 execution or acceptance is asserted.
+and stage hashes were then pending; no v3 execution or acceptance was then asserted.
 
-Use fresh immutable targets under the existing full-sample prefix:
+The next admitted version was planned with fresh immutable targets under the existing full-sample prefix:
 `_sports_metadata_v3`, `_sports_preflight_v3`, `_estimate_preflight_v3` and
 `_estimates_v3`. Reuse accepted inputs v2 and the exact subset audit only through
 their existing bindings. Reopen new source-matched sports metadata and review a
@@ -642,66 +663,216 @@ metadata and both failed estimate stages. The future audit/report templates belo
 now target planned estimates v3, not the failed v2 stage; their missing bindings
 remain explicitly pending.
 
-## Serial later-stage templates: pending
+## Committed v3 admission and dispatched commands
 
-The following are templates, not execution or acceptance records. Replace every
-`PENDING_*` token with a separately reviewed actual source/hash binding before
-execution. Verify that each future stage target is absent; bump versions if
-needed. Keep bodies serial when they share inputs or caches. Estimate acceptance
-and every later audit/report/publication gate remain pending.
+Root committed exactly five reviewed files as H14
+`7c7d2badcddcb28ac9d24189ce35096bbfc78201`; producer/test hashes remain
+`003fd2068681afd94a831cc19dd972ace888cabfe051131874c5917e9cac320c` and
+`1e2703b752f9df2b71c6e89aed76d86f97312ff13b448e7e9d24c95f337c786e`.
+Canonical source remains frozen until the body and audits finish. The following
+are actual root-executed preflights, the completed sports metadata body and the
+dispatched estimate body, not pending templates. They run from the canonical
+`/home/ubuntu/prediction_markets` directory; do not rerun into existing targets.
+Local status-document edits do not mutate the bound production source.
 
-Pending independent saved-score audit, after estimate acceptance:
+`preflight_execution_records_v3.json` records both actual direct CLI preflights
+with exit 0. Its root-observation start times, `2026-10-11 16:14:14 UTC` for sports
+and `2026-10-11 16:17:43 UTC` for estimates, are not remote timed body timestamps.
+The fixed body controls are `sports_body_execution_v3.py` and
+`estimate_body_execution_v3.py`; their immutable execution directories are
+`_controls_v1/sports_body_execution_v3` and `_controls_v1/estimate_body_execution_v3`.
+
+Actual sports preflight command:
+
+```sh
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_v1.json \
+  --sports-binding-sha256 0c207591b610f5231091fc2d6d33606e98a6ce3ca28d543e2763eae5023a5cfe \
+  --expected-head 7c7d2badcddcb28ac9d24189ce35096bbfc78201 \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_metadata_v3 \
+  --sports-metadata-only \
+  --preflight-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_preflight_v3
+```
+
+Completed sports metadata body command, taken from its fixed wrapper/receipt:
+
+```sh
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_v1.json \
+  --sports-binding-sha256 0c207591b610f5231091fc2d6d33606e98a6ce3ca28d543e2763eae5023a5cfe \
+  --expected-head 7c7d2badcddcb28ac9d24189ce35096bbfc78201 \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_metadata_v3 \
+  --sports-metadata-only \
+  --reviewed-preflight /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_sports_preflight_v3/manifest.json \
+  --reviewed-preflight-sha256 7292ef0db184b8f05d10246c676ea46f49e8cd32845e8b04c4fbf9ebb7bbb862
+```
+
+The body receipt records `2026-10-11T16:16:17.638530+00:00` through
+`2026-10-11T16:16:23.178347+00:00`, exit 0; outputs reopened and accepted under
+the committed H14/base/preflight bindings. Native pair/provider-result proof is
+true, no trade bodies were read, and small-manifest comparison verifies output
+bytes/hashes/schema, coverage and provider inventory identical to v1/v2. The map
+still has 13,909 provider games and 14,383 markets across nine sports, not an
+expanded historical census. Provider date limits, EPL draws, ATP clock qualification
+and the unchanged source-resolution vintage remain material.
+
+Actual estimate preflight command, using the newly reviewed metadata binding:
+
+```sh
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_reviewed_v3.json \
+  --sports-binding-sha256 e52cefcd23d2451faccc1c2d1cc7861dc85d5cd7161913bfe6d86cdcd4ca881d \
+  --expected-head 7c7d2badcddcb28ac9d24189ce35096bbfc78201 \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v3 \
+  --preflight-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimate_preflight_v3
+```
+
+Root separately admitted the estimate preflight after reopening the accepted
+base and fresh metadata. It observed 264,716,660,736 bytes available RAM and
+64,679,702,528 bytes free data space, against the unchanged 60,000,000,000-byte
+reservation and 6,951,547,448,572-byte maximum read plan. Sports preflight separately
+observed 264,754,626,560 bytes RAM and 64,681,246,720 bytes free.
+Actual scalar optimizer-policy readbacks bind both fresh preflight and runtime:
+`disabled_optimizers=join_order,build_side_probe_side`, outside `CAPS`, with
+checks before body work and publication and fail-closed drift admission.
+This is physical planning policy only. Caps remain 192GB DuckDB, 32GB NumPy,
+224GB combined, 240GB available-RAM floor, four threads, 16GB spill, 3GB cache,
+8GB outputs and the unchanged read/projection bounds; scientific definitions,
+predicates, models, weights, source and provider cohort are unchanged.
+
+Dispatched estimate body command, taken from the fixed wrapper:
+
+```sh
+/home/ubuntu/venv/bin/python -B scripts/estimate_kaushik_polymarket_replication.py \
+  --base-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_inputs_v2 \
+  --base-manifest-sha256 72405a22ee5efb8550b29d7105551a9c6286faabcec08526d932d4c27e26280c \
+  --base-acceptance-sha256 e0ca7144c8766de9c68d337cef4430d2214320cc85e31c648a359673f6c08519 \
+  --sports-binding /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_controls_v1/sports_binding_reviewed_v3.json \
+  --sports-binding-sha256 e52cefcd23d2451faccc1c2d1cc7861dc85d5cd7161913bfe6d86cdcd4ca881d \
+  --expected-head 7c7d2badcddcb28ac9d24189ce35096bbfc78201 \
+  --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v3 \
+  --reviewed-preflight /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimate_preflight_v3/manifest.json \
+  --reviewed-preflight-sha256 ed1c444987a194f29bcb1d363a88510d21179c74b0d4d208506e033e1fd03603
+```
+
+At dispatch, root session 83963 was running this body, with execution evidence under
+`_controls_v1/estimate_body_execution_v3`; no completion or acceptance was then
+asserted. Accepted
+inputs/subset and sports metadata v1/v2/v3 remain preserved, as do both failed
+estimate stages. The following entry records subsequent actual acceptance; no
+report/publication/shutdown completion is inferred from it.
+
+## Accepted estimation and saved-score audit
+
+The v3 body completed from `2026-10-11T16:19:14.106945+00:00` through
+`2026-10-11T17:55:34.970494+00:00`, exit 0. Its manifest is `estimates_complete`,
+and acceptance is `estimates_reopened_accepted`, with all outputs reopened and
+`sample_scope: all_available_dates`. Root's saved acceptance review binds the
+unchanged H14, command, caps, physical policy and reopened artifact identities.
+Primary/all-role records reconcile at 1,000,970,616/2,001,941,232; common duration
+support is N=252,319,669/G=497,313. These are support provenance, not findings.
+Observed primary executions span `2022-11-21T19:50:09+00:00` through
+`2026-06-21T21:41:20+00:00`. Provider coverage and resolution/clock caveats remain.
+
+The production manifest records Python 3.12.3/GCC 13.3.0, DuckDB 1.5.0 and
+NumPy 2.4.3; root additionally confirmed PyArrow 23.0.1 and Linux
+7.0.0-1014-aws/x86_64/glibc 2.39. Caps and actual physical-policy readbacks match
+the v3 admission above. Charged estimate reads were 598,451,354,311 bytes under
+the 8,000,000,000,000-byte ceiling. Local fixture runtime is separately recorded.
+
+Actual independent saved-score audit command, from the completed execution receipt:
 
 ```sh
 /home/ubuntu/venv/bin/python -B scripts/audit_kaushik_replication_saved_scores.py \
   --estimate-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_estimates_v3 \
-  --manifest-sha256 PENDING_ESTIMATE_MANIFEST_SHA256 \
-  --acceptance-sha256 PENDING_ESTIMATE_ACCEPTANCE_SHA256 \
-  --expected-head PENDING_AUDITOR_SOURCE_HEAD \
+  --manifest-sha256 3d4611756e0e9df9cb93d418861cd0041dd7adff087f080ace05b833a4950103 \
+  --acceptance-sha256 9d723fe5dfc0517033737c8be5df44c9cbba49df6b343453d0fa3773d6eb90eb \
+  --expected-head 7c7d2badcddcb28ac9d24189ce35096bbfc78201 \
   --run-dir /mnt/data/runs/2026-10-10_kaushik_polymarket_full_sample_saved_score_audit_v1
 ```
 
-Require `saved_scores_reconciled`. This auditor reconstructs covariance,
+The audit receipt records `2026-10-11T18:01:50.458272+00:00` through
+`2026-10-11T18:02:19.144175+00:00`, exit 0, under unchanged H14. Accepted status
+is `saved_scores_reconciled`, with 47 score files and all seven checks true:
+CR0 outer products, common duration/BUY partition, influence, named contrasts/SE/CI,
+saved sports-seconds contract, support/complete grids, and supplementary
+`G/(G-1)` distinguished from CR1. Audit reads were 1,855,979,124 bytes under
+25,000,000,000, with unchanged `2e-8` relative/`1e-10` absolute tolerances and
+2,048-row batches. This auditor reconstructs covariance,
 contrasts/SE/CI and influence from saved scores and reconciles saved support and
 clock metadata. It does not independently refit coefficients or reconstruct raw
 window membership. The two audits answer different questions; neither certifies
 native actions, exact archive clocks or complete historical collection.
 
-## Pending report, package and completion
+## Accepted numerical release and report QA
 
-After accepted estimates and audits, copy only small accepted `estimates.json`,
-`manifest.json` and `acceptance.json` to the new local run without changing bytes.
-The following report-only paths are planned, not existing accepted artifacts:
+The sealed numerical receipt is `release_numerical_qa_v3.json`, status
+`accepted_summary_and_saved_score_reconciled`, SHA256
+`5623dd9bd969a38ddd42d359a754375f01c4648f57bbb718f0a722180896ff28`.
+All 39 gates passed, with no failed/pending numerical checks and 18 JSON bindings
+reopened. It reconciles all 12 model rank/convergence gates, 47 saved-score
+artifacts/2,118 coefficient-and-contrast checks, 878 keyed rows, results for the
+three unchanged sports populations and 22 Table 1/A2 reference rows/308 scalars.
+It is not a raw coefficient refit, independent raw timing reconstruction or
+whole-history completeness certificate. All 28 duration/A1 headline effective
+cluster counts remain below 30; concentration warnings and nominal-interval
+qualifications remain distinct from support admission. The combined absorbed
+fixed-effect rank is not independently certified.
+
+Report v1 used only byte-verified accepted `estimates.json`, `manifest.json` and
+`acceptance.json`. Actual report-only rendering command from its QA receipt:
 
 ```sh
 cd /Users/josephweintraub/prediction_markets
-python3 -B -m analysis.kaushik_polymarket_replication.render_report \
+PYTHONDONTWRITEBYTECODE=1 MPLCONFIGDIR=/private/tmp/kaushik-report-v1-cache.11esHy /opt/anaconda3/bin/python -B -m analysis.kaushik_polymarket_replication.render_report \
   --estimate-dir /Users/josephweintraub/prediction_markets/output/kaushik_polymarket_full_sample_2026-10-10_v1/accepted_estimates_v3 \
   --run-dir /Users/josephweintraub/prediction_markets/output/kaushik_polymarket_full_sample_2026-10-10_v1/report_v1
 ```
 
-Require new portable `source.tex`, all 21 relative vector figure assets and a
-report manifest. Rendered scope must say no execution-date cutoff, use all-date
-eligibility accounting, retain provider-map versus observed-game distinctions
-and actual sport-date ranges, and preserve resolved-source/clock limitations.
-Do not describe new execution eligibility as new provider games or resolutions.
+Portable `source.tex`, all 21 relative vector figures and the report manifest
+were reopened and bound. Rendered scope has no execution-date cutoff, uses
+all-date eligibility accounting, retains provider-map versus observed-game
+distinctions and actual sport-date ranges, and preserves resolved-source/clock
+limitations. No expanded provider games or resolution refresh is implied.
 
-Use the project's data-first reporting workflow. Compile twice in a new clean
-`build/` directory, then render page images for QA:
+Actual compilation and scratch preview commands, executed from `report_v1/`:
 
 ```sh
 pdflatex -interaction=nonstopmode -halt-on-error -output-directory=build source.tex
 pdflatex -interaction=nonstopmode -halt-on-error -output-directory=build source.tex
-pdftoppm -r 85 -png build/source.pdf build/page
+pdftoppm -r 85 -png build/source.pdf qa_pages/page
 ```
 
-These preview commands are pending and run from the finished full-date report
-folder. Inspect every generated page, not an assumed old page count. Reconcile
-every displayed number/support/status/influence mark and plotted CR0 interval to
-saved outputs. Require legible native tables, isolated discrete points with
-capped whiskers/zero references, omitted suppressed marks, complete pooled and
-nine-sport panels, and no substantive compilation/layout failures. Source and
-vector assets are primary; the verified PDF is a preview. Open both in Codex.
+The sealed external `report_v1_qa.json` has status `report_qa_passed`, recorded
+`2026-10-11T18:11:38.535Z`. Both compile passes and preview rendering exited zero;
+all 31 pages were visually inspected and passed. The report contains 36 native
+tables (35 tabular/one longtable) and 21 vector PDFs. QA reconciled 1,998 PDF-text
+numeric table cells and 660 plotted CR0 marks, with all 80 withheld plot cells
+omitted. All 28 duration/A1 influence marks and nominal qualifications are
+preserved. Points are isolated with capped whiskers/zero references; all pooled
+and nine-sport panels are present. No substantive compilation/layout failures
+remain. Minor underfull-box/isolated-cache notices are recorded in the receipt.
+The immutable report manifest retains initial pending compile/visual fields;
+the external QA receipt records their completed acceptance. Source/vector assets
+are primary; the verified PDF is a preview. Scratch page PNGs are not deliverables.
+
+| Accepted report artifact | SHA256 |
+| --- | --- |
+| Report v1 external QA | `6b282bd1ee61d22be8e7e7bda7bf87035ea0402bdf70c1bc668b44740f19c8cb` |
+| Portable TeX source | `429cb940cde5a3b2a6e4d13f509b87bcf137112822de74eff78d7160f5dc5acb` |
+| Immutable report manifest | `71fd5d7cd54e402bc34ea0fd27b25cdd4c26c2f939becaa3f10b8d100c90c47a` |
+| Compiled PDF preview | `26aac815332a6ce4a6e753f8df797dedf077fbc27569e8dfd8d8bd4b47e1240b` |
+
+## Pending finite package and completion
 
 Root must record final source/control/estimate/audit/report/QA digests before
 publishing a new finished bundle. Include this guide, both scientific contracts,
@@ -710,8 +881,13 @@ small summaries, both audits, portable report assets and verified preview.
 Exclude raw/cache/score bodies, failure-recovery bodies, spill, credentials and
 scratch page images. Do not append this run into the completed cutoff bundle.
 Publication destination, finished-bundle transfer verification and any future
-v3 run's final shutdown receipt remain pending. The failed v1/v2 runs have been
+current v3 run's final shutdown receipt remain pending. The failed v1/v2 runs have been
 verified stopped by root as recorded above. After any future restart, root must
 again confirm no agent/process/transfer still needs the instance, stop it and
 verify stopped. The local run index and actual receipts track current execution
-state; this guide's pending templates do not imply completion.
+state; accepted report QA does not imply publication or final shutdown. The finite
+source-and-summary capsule requires separately preserved external production
+input/provider and accepted input/cache/score bodies to reproduce production;
+those bodies are intentionally excluded. A fresh final-candidate 145-test import
+origin/summary-loader/inventory/credential QA is still required. The earlier
+source-only fixture precheck is supporting evidence, not final bundle acceptance.
