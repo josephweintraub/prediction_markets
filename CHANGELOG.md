@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-11 - Full-sample capacity recovery
+
+- Preserved the full-date final-support spill failure and added a memory-only
+  retry with 192 GB DuckDB memory and a 240 GB available-RAM admission floor.
+- Bound the sole approved resource-contract difference in the saved-input
+  subset checker while retaining exact scientific and non-memory comparisons.
+- Added root-only verified recovery for the two approved failed input builds;
+  originals remain until both destination copies pass file-level verification.
+
 ## 2026-10-10 - Full-available-date Polymarket replication
 
 - Added an explicit all-available-date scope without changing the accepted

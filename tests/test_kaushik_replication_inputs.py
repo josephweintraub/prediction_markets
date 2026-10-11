@@ -269,7 +269,7 @@ class ReplicationInputTests(unittest.TestCase):
 
     def test_retry_resource_caps(self):
         self.assertEqual(b.CAPS, {
-            "memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
+            "memory_limit": "192GB", "threads": 4, "spill_bytes": 16_000_000_000,
             "minimum_free_bytes": 20_000_000_000, "maximum_output_bytes": 32_000_000_000,
             "maximum_month_file_bytes": 4_000_000_000, "maximum_metadata_file_bytes": 1_000_000_000,
             "maximum_read_bytes": 8_000_000_000_000, "maximum_manifest_bytes": 16_000_000,
@@ -291,7 +291,7 @@ class ReplicationInputTests(unittest.TestCase):
              patch.object(b, "source_snapshot", return_value={"head": "a"*40}), \
              patch.object(b, "validate_destination"), patch.object(b.os, "cpu_count", return_value=4), \
              patch.object(b.shutil, "disk_usage", return_value=SimpleNamespace(free=required_disk)) as disk, \
-             patch.object(Path, "read_text", return_value="MemAvailable: 68359375 kB\n") as memory:
+             patch.object(Path, "read_text", return_value="MemAvailable: 234375000 kB\n") as memory:
             result = b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
             self.assertEqual(result["required_free_bytes"], required_disk)
             self.assertEqual(result["observed_free_bytes"], required_disk)
@@ -299,8 +299,8 @@ class ReplicationInputTests(unittest.TestCase):
             with self.assertRaisesRegex(b.InputBlocked, "output/spill/free-floor"):
                 b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
             disk.return_value = SimpleNamespace(free=required_disk)
-            memory.return_value = "MemAvailable: 68359374 kB\n"
-            with self.assertRaisesRegex(b.InputBlocked, "64GB DuckDB"):
+            memory.return_value = "MemAvailable: 234374999 kB\n"
+            with self.assertRaisesRegex(b.InputBlocked, "240GB available RAM required for 192GB DuckDB"):
                 b.preflight(self.tmp_path / "contract.json", self.tmp_path / "stage", "a"*40)
 
     def test_retry_copy_output_and_disk_reserves(self):
