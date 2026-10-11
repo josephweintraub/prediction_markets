@@ -31,6 +31,8 @@
 - Withheld final-hour sports outputs after independent release QA found a
   case-insensitive day/second clock collision; preserved the unshared draft and
   required realistic clock-boundary fixtures and a fresh full corrected run.
+- Completed the corrected full run, independent saved-score reconciliation and
+  all-page portable LaTeX QA; added a source-bound reproducibility guide.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 

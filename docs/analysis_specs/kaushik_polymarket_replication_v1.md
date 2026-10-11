@@ -2,8 +2,9 @@
 
 **Status:** frozen execution contract, 10 October 2026. The scientific definitions
 and user-selected controls below are frozen. The versioned input build has
-reopened and passed its schema, hash, count and support gates; complete estimation
-and independent saved-score QA remain pending. This is not certification of
+reopened and passed its schema, hash, count and support gates. Corrected full v5
+estimation, independent saved-score QA and final report review passed. Publication
+and verified shutdown are tracked in the run record. This is not certification of
 native actions, exact timestamps or whole-history collection completeness.
 This document authorizes no estimates from unadmitted inputs. It is a Polymarket-only replication of the specifications in the 12-page September 28,
 2026 writeup, with explicit category, sports-cohort and display adaptations. It

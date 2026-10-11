@@ -1,6 +1,6 @@
 # September 28 FLB writeup: Polymarket-only replication
 
-Status: input and provider gates accepted; v4 final-hour sports windows invalidated during independent release QA. Corrected full estimation and final reporting remain pending.
+Status: corrected v5 estimation, independent numerical/saved-score QA and final report QA accepted. Source/shared publication and verified shutdown are finalized in the local run-control receipt after this source record is committed.
 
 ## Contract and authority
 
@@ -206,3 +206,72 @@ guarded estimator will run again in a new immutable directory after fresh
 source-bound metadata/preflight admission. No partial-source reuse, new sample
 rule or relaxed numerical/resource gate is authorized. No v4 report was opened
 or uploaded to Dropbox.
+
+## Corrected full fifth estimation and independent saved-score audit
+
+- Reviewed correction source: `df33a370ebb88ee15389b5770c1869d6b7abd677`.
+  All 112 focused fixture tests passed locally and on the canonical host; the
+  realistic inherited-`R` boundary fixtures and legacy-output rejection guards
+  are included. Scientific definitions and resource ceilings are unchanged.
+- Fresh sports metadata v5 preserves both provider-output fingerprints and the
+  entire accepted coverage/exclusion census. Inputs v2 remain unchanged.
+- Estimates: `/mnt/data/runs/2026-10-10_kaushik_polymarket_estimates_v5`.
+  Execution: 2026-10-11 00:24:31 to 01:28:34 UTC; exit 0. Wall time 1:04:02;
+  peak RSS 174,211,320 KiB; no swaps or stderr. All 12 model gates passed.
+- All inputs/outputs reopened, complete grids and shared duration populations
+  reconciled, and the BUY role partition passed. The 47 saved joint-score files
+  are included in 971,953,855 bytes of bound Parquet outputs.
+- The sports cache contains the distinct seconds fields and zero clock-equation
+  mismatches. Corrected pooled final-hour all-band support is 1,480,330 records
+  at 60–30 minutes; 905,874 at 30–15; 649,998 at 15–5; and 301,443 at 5–0.
+- Manifest SHA256:
+  `600866e9f5a60bee4f9441917d789dfe271318acd3c819f725eaa6ce06fd6f50`.
+  Acceptance SHA256:
+  `59d4a0457c0f991f115fc4e6dbc2ef8387e4b89944b691bf7334f3dc1a7bc6b5`.
+  Estimates SHA256:
+  `fcd46b268400f429ad39348273c7c54d906674a5e6914f93704b77567cdbf269`.
+- Independent auditor source is the same clean H9 commit; run:
+  `/mnt/data/runs/2026-10-10_kaushik_polymarket_saved_score_audit_v5`.
+  All 47 score files reconcile covariance, named-contrast SE/CI, supplementary
+  G adjustment, influence diagnostics, saved support/grids and new clock metadata.
+  Auditor reads 853,733,326 bytes under its 25 GB ceiling; no raw/cache bodies.
+  Audit SHA256:
+  `539dcef4ea6016f79c5aba52323366fd225982cb720e4e437873b3728aabdd81`.
+- This certifies the stated saved-artifact computations, not independent raw
+  window membership, native own-order actions, exact execution clocks or a
+  complete historical collection.
+- Independent release QA accepts v5: all 120,430 non-final-hour v4-to-v5 leaf
+  comparisons pass relative tolerance 2e-8 and absolute tolerance 1e-10,
+  including 78,969 floating values; population and support counts match exactly.
+  Corrected final-hour all-band support totals 3,337,645 records. The score
+  audit's source, 47 artifact bindings and 2,118 estimates/contrasts reconcile.
+  Publication and shutdown checks are tracked in the local run-control receipt.
+
+## Final data-first report and release review
+
+- Portable report: local run `report_v2/source.tex` plus 21 saved vector PDFs;
+  companion `report_v2/build/source.pdf` has 31 pages. All pages were individually
+  reviewed. Two clean compilation passes succeed, with no overfull boxes or
+  package warnings; two cosmetic underfull lines in a provider note remain.
+- Source SHA256:
+  `246700771196f9091beca6db26bcf68bf0ed50a05038336ff6b276b5ed128599`.
+  Preview SHA256:
+  `4a6b00f6e817016c293dff62e3721a2f458b4b38b9a6e8063ffee3e58f9c7bb2`.
+  Report manifest SHA256:
+  `ced0f2c781b7985d91e6df66153112b3b1c9e6f034e48af44fed0d7fdd5834a4`.
+- Saved-value review reconciles 858 scalar row occurrences, 112 suppressed rows,
+  620 influence flags and 644 supported plotted points with exact saved CR0
+  endpoints and no connecting lines. All expected grids remain visible.
+  `report_v2_qa.json` SHA256:
+  `677e51398c53e92b7b30fb26676fecdb73da9b40c69b4a413428477cd45adfe0`.
+- Root accepts the completed numerical and page gates. Source and preview are
+  requested in native Codex panels; the app returned queued panel opens.
+- Finished source, reproducibility guide, computed summaries, audit/QA records,
+  portable source/figures and compiled preview are the publication scope.
+  Raw/cache/score bodies, credentials, failed stages and invalid v4 drafts remain
+  excluded. The immutable Dropbox destination is
+  `Polymarket Data and Code/Kaushik Polymarket Replication 2026-10-10 v1`.
+- Root must verify the transfer, finish any active process/agent requirements,
+  stop the exact instance and verify stopped. The local `index.json` and shutdown
+  receipt are authoritative for these post-commit publication/lifecycle steps;
+  do not restart EC2 just to update this source record.
