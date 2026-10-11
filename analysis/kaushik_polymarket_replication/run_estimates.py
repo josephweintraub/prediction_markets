@@ -50,20 +50,20 @@ SOURCE_FILES = ("analysis/kaushik_polymarket_replication/run_estimates.py",
                 "tests/test_kaushik_replication_driver.py",
                 "docs/analysis_specs/kaushik_polymarket_replication_v1.md")
 WINDOWS = (
-    ("pregame", "pre_lt24h", "<−24h", "u < -86400"),
-    ("pregame", "pre_24to6h", "−24 to −6h", "u >= -86400 AND u < -21600"),
-    ("pregame", "pre_6to1h", "−6 to −1h", "u >= -21600 AND u < -3600"),
-    ("pregame", "pre_60to15m", "−60 to −15m", "u >= -3600 AND u < -900"),
-    ("pregame", "pre_15to0m", "−15 to 0m", "u >= -900 AND u < 0"),
-    ("since_start", "live_0to15m", "0–15m", "u >= 0 AND u < 900"),
-    ("since_start", "live_15to30m", "15–30m", "u >= 900 AND u < 1800"),
-    ("since_start", "live_30to60m", "30–60m", "u >= 1800 AND u < 3600"),
-    ("since_start", "live_1to2h", "1–2h", "u >= 3600 AND u < 7200"),
-    ("since_start", "live_2hplus", "2h+", "u >= 7200"),
-    ("final_hour", "final_60to30m", "60–30m", "u >= 0 AND r > 1800 AND r <= 3600"),
-    ("final_hour", "final_30to15m", "30–15m", "u >= 0 AND r > 900 AND r <= 1800"),
-    ("final_hour", "final_15to5m", "15–5m", "u >= 0 AND r > 300 AND r <= 900"),
-    ("final_hour", "final_5to0m", "5–0m", "u >= 0 AND r >= 0 AND r <= 300"),
+    ("pregame", "pre_lt24h", "<−24h", "sport_elapsed_seconds < -86400"),
+    ("pregame", "pre_24to6h", "−24 to −6h", "sport_elapsed_seconds >= -86400 AND sport_elapsed_seconds < -21600"),
+    ("pregame", "pre_6to1h", "−6 to −1h", "sport_elapsed_seconds >= -21600 AND sport_elapsed_seconds < -3600"),
+    ("pregame", "pre_60to15m", "−60 to −15m", "sport_elapsed_seconds >= -3600 AND sport_elapsed_seconds < -900"),
+    ("pregame", "pre_15to0m", "−15 to 0m", "sport_elapsed_seconds >= -900 AND sport_elapsed_seconds < 0"),
+    ("since_start", "live_0to15m", "0–15m", "sport_elapsed_seconds >= 0 AND sport_elapsed_seconds < 900"),
+    ("since_start", "live_15to30m", "15–30m", "sport_elapsed_seconds >= 900 AND sport_elapsed_seconds < 1800"),
+    ("since_start", "live_30to60m", "30–60m", "sport_elapsed_seconds >= 1800 AND sport_elapsed_seconds < 3600"),
+    ("since_start", "live_1to2h", "1–2h", "sport_elapsed_seconds >= 3600 AND sport_elapsed_seconds < 7200"),
+    ("since_start", "live_2hplus", "2h+", "sport_elapsed_seconds >= 7200"),
+    ("final_hour", "final_60to30m", "60–30m", "sport_elapsed_seconds >= 0 AND sport_remaining_seconds > 1800 AND sport_remaining_seconds <= 3600"),
+    ("final_hour", "final_30to15m", "30–15m", "sport_elapsed_seconds >= 0 AND sport_remaining_seconds > 900 AND sport_remaining_seconds <= 1800"),
+    ("final_hour", "final_15to5m", "15–5m", "sport_elapsed_seconds >= 0 AND sport_remaining_seconds > 300 AND sport_remaining_seconds <= 900"),
+    ("final_hour", "final_5to0m", "5–0m", "sport_elapsed_seconds >= 0 AND sport_remaining_seconds >= 0 AND sport_remaining_seconds <= 300"),
 )
 
 
@@ -828,11 +828,14 @@ def prepare_sports_map(con, binding, stage=None, *, ledger=None):
 
 
 def create_sports_view(con, stage=None, ledger=None, base_bytes=0):
+    # DuckDB identifiers are case-insensitive: native R is maturity days, not
+    # the game-end seconds needed here. Distinct names prevent silent shadowing.
     con.execute("""CREATE TEMP VIEW sports_joined AS SELECT a.*,m.sport,m.game_key,m.actual_start_seconds,m.actual_end_seconds,
-        m.timing_quality,m.provenance,a.timestamp-m.actual_start_seconds u,m.actual_end_seconds-a.timestamp r
+        m.timing_quality,m.provenance,a.timestamp-m.actual_start_seconds sport_elapsed_seconds,
+        m.actual_end_seconds-a.timestamp sport_remaining_seconds
         FROM analysis_base a JOIN sports_market_map m USING(market_id) WHERE NOT a.is_maker""")
     con.execute("""CREATE TEMP VIEW sports_base AS SELECT * EXCLUDE(event_cluster),game_key event_cluster,
-        CASE WHEN u<0 THEN 'pregame' ELSE 'in_play' END phase FROM sports_joined WHERE timestamp<=actual_end_seconds""")
+        CASE WHEN sport_elapsed_seconds<0 THEN 'pregame' ELSE 'in_play' END phase FROM sports_joined WHERE timestamp<=actual_end_seconds""")
     cache_info = None
     if stage is not None:
         path = Path(stage) / "sports_observations.parquet"
@@ -851,7 +854,8 @@ def create_sports_view(con, stage=None, ledger=None, base_bytes=0):
         if ledger:
             ledger.charge(base_bytes, "sports_observation_cache")
         cache_info = copy_parquet(con, f"""SELECT sport,game_key,event_cluster,market_id,P,Y,bin,payoff,roi,timestamp,
-            CASE WHEN u<0 THEN 'pregame' ELSE 'in_play' END phase,u,r,actual_start_seconds,actual_end_seconds{locator_sql}
+            CASE WHEN sport_elapsed_seconds<0 THEN 'pregame' ELSE 'in_play' END phase,
+            sport_elapsed_seconds,sport_remaining_seconds,actual_start_seconds,actual_end_seconds{locator_sql}
             FROM sports_joined ORDER BY sport,game_key,timestamp,P,Y{locator_sql}""", path, ledger=ledger)
         require(raw_count["joined_rows"] == cache_info["rows"], "sports raw source/COPY count differs")
         cache_info["raw_source_count"] = raw_count["joined_rows"]
@@ -869,11 +873,19 @@ def create_sports_view(con, stage=None, ledger=None, base_bytes=0):
         if ledger:
             ledger.charge(cache_info["bytes"], "sports_cache_phase_counts")
         counts = rows(con, """SELECT count(*) joined_rows,count(*) FILTER(WHERE timestamp<=actual_end_seconds) admitted_rows,
-            count(*) FILTER(WHERE timestamp>actual_end_seconds) after_end_rows,count(*) FILTER(WHERE timestamp<=actual_end_seconds AND u<0) pregame_rows,
-            count(*) FILTER(WHERE timestamp<=actual_end_seconds AND u>=0) in_play_rows FROM sports_joined""")[0]
+            count(*) FILTER(WHERE timestamp>actual_end_seconds) after_end_rows,
+            count(*) FILTER(WHERE timestamp<=actual_end_seconds AND sport_elapsed_seconds<0) pregame_rows,
+            count(*) FILTER(WHERE timestamp<=actual_end_seconds AND sport_elapsed_seconds>=0) in_play_rows,
+            count(*) FILTER(WHERE sport_elapsed_seconds IS NULL OR sport_remaining_seconds IS NULL
+                OR NOT isfinite(sport_elapsed_seconds) OR NOT isfinite(sport_remaining_seconds)
+                OR sport_elapsed_seconds<>timestamp-actual_start_seconds
+                OR sport_remaining_seconds<>actual_end_seconds-timestamp) sport_clock_mismatch_rows
+            FROM sports_joined""")[0]
         require(counts["joined_rows"] == cache_info["rows"] and counts["admitted_rows"] == counts["pregame_rows"]+counts["in_play_rows"] and
                 counts["joined_rows"] == counts["admitted_rows"]+counts["after_end_rows"], "sports cache phase/endpoint partition differs")
         cache_info["reconciliation"] = counts
+        require(counts["sport_clock_mismatch_rows"] == 0, "sports cached seconds differ from accepted timestamp/start/end clocks")
+        cache_info["sport_clock_columns"] = {"elapsed_seconds":"sport_elapsed_seconds", "remaining_seconds":"sport_remaining_seconds"}
     unions = [f"SELECT *,{inputs.literal(key)} clock_window,{inputs.literal(panel)} clock_panel FROM sports_base WHERE {predicate}"
               for panel, key, _, predicate in WINDOWS]
     con.execute("CREATE TEMP VIEW sports_windows AS " + " UNION ALL ".join(unions))

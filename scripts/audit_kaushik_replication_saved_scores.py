@@ -373,7 +373,26 @@ def count_checks(data, manifest):
     phases = {r["phase"]:r["n_observations"] for r in sports["phase_counts"] if r["scope"] == "pooled"}
     require(sum(r["n_observations"] for r in sports["window_counts"] if r["panel"] == "pregame") == phases["pregame"] and
             sum(r["n_observations"] for r in sports["window_counts"] if r["panel"] == "since_start") == phases["in_play"], "sports window partitions")
-    cache = sports["observation_cache"]["reconciliation"]
+    cache_info = sports["observation_cache"]
+    require(cache_info.get("sport_clock_columns") == {
+        "elapsed_seconds": "sport_elapsed_seconds", "remaining_seconds": "sport_remaining_seconds"},
+        "corrected sports seconds clock columns required")
+    cache = cache_info["reconciliation"]
+    require(type(cache.get("sport_clock_mismatch_rows")) is int and
+            cache["sport_clock_mismatch_rows"] == 0,
+            "saved sports seconds clock equation proof required")
+    saved_footer = manifest["outputs"].get("sports_observations.parquet", {})
+    schema = cache_info.get("schema")
+    require(isinstance(schema, str) and schema == saved_footer.get("schema"),
+            "sports cache/saved footer schema differs")
+    fields = [line.split(": ", 1) for line in schema.splitlines()]
+    require(all(len(field) == 2 for field in fields) and
+            len({field[0].casefold() for field in fields}) == len(fields),
+            "sports cache seconds schema fields must be distinct")
+    types = dict(fields)
+    require(types.get("sport_elapsed_seconds") == types.get("sport_remaining_seconds") == "double" and
+            not ({"u", "r"} & {name.casefold() for name in types}),
+            "sports cache requires distinct seconds fields, not legacy u/r/R")
     require(cache["joined_rows"] == cache["admitted_rows"] + cache["after_end_rows"] and
             cache["admitted_rows"] == cache["pregame_rows"] + cache["in_play_rows"] == sum(phases.values()), "saved sports cache partitions")
     for field in ("joined_rows", "admitted_rows", "after_end_rows"):
@@ -420,13 +439,15 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
                   "estimates_sha256": acceptance["estimates_sha256"], "producer_source_head": acceptance["source_head"]},
         "score_artifacts": results, "checks": {"CR0_score_outer_products": True, "named_contrasts_SE_CI": True,
             "supplementary_G_over_G_minus_1_not_CR1": True, "influence_diagnostics": True,
-            "saved_support_and_complete_grids": True, "common_duration_and_BUY_partition": True},
+            "saved_support_and_complete_grids": True, "common_duration_and_BUY_partition": True,
+            "saved_sports_seconds_clock_contract": True},
         "bounds": {"read_bytes": reads.bytes, "read_ceiling_bytes": MAX_READ, "batch_rows": BATCH_ROWS,
                    "per_score_file_bytes": MAX_SCORE, "total_score_file_bytes": MAX_TOTAL_SCORE,
                    "relative_tolerance": RTOL, "absolute_tolerance": ATOL},
         "limitations": "No raw trade or cache bodies read; no independent raw membership or coefficient estimation certified. "
             "Support N/cell G reconcile saved joint/input metadata, not raw participation. Union G is independently score-row count. "
-            "Contrast point estimates are reconstructed from saved coefficient estimates; covariance and influence diagnostics from saved scores."}
+            "Contrast point estimates are reconstructed from saved coefficient estimates; covariance and influence diagnostics from saved scores. "
+            "Sports clock equations and distinct seconds fields reconcile saved metadata/footer descriptions, not an independent timing reconstruction."}
 
 
 def source_snapshot(expected_head):

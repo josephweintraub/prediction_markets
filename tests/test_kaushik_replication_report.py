@@ -59,6 +59,10 @@ def synthetic_estimates():
                    "profile_rows": [{**deepcopy(row), "n_observations": n, "scope": convention} for row in profiles],
                    "gap_rows": [{"outcome": target, **estimate(n=n, g=360, cells=2)} for target in report.OUTCOMES]})
     sports = {"coverage_qualification": "Available audited provider cache; historical date coverage is incomplete.",
+              "observation_cache": {"sport_clock_columns": {"elapsed_seconds": "sport_elapsed_seconds",
+                  "remaining_seconds": "sport_remaining_seconds"},
+                  "reconciliation": {"sport_clock_mismatch_rows": 0},
+                  "schema": "sport: string\ngame_key: string\ntimestamp: double\nsport_elapsed_seconds: double\nsport_remaining_seconds: double"},
               "coverage": [], "exclusions": [], "phase_counts": [], "scope_counts": [], "phase_rows": [], "profile_rows": [], "window_rows": []}
     for sport in report.SPORTS:
         sports["coverage"].append({"sport": sport, "games": 40, "markets": 40, "first_game_utc": "2025-01-01T00:00:00+00:00",
@@ -170,6 +174,19 @@ class ReportTests(unittest.TestCase):
         self.assertNotIn("Pre & D1 & 499 & 40 & +0.00", source)
         self.assertIn("(5) Original: unidentified clock", source)
 
+    def test_duration_notes_define_clock_orientation_without_game_progress_or_causal_claim(self):
+        data = synthetic_estimates()
+        for target in report.OUTCOMES:
+            source = report._model_table(data, target)
+            self.assertIn("Original duration is claim lifespan (constant within claim), not elapsed time or game progress", source)
+            self.assertIn("Larger remaining time means farther from the endpoint proxy", source)
+            self.assertIn("a positive remaining-time gap slope means the fitted gap decreases as remaining time runs down, conditional on controls", source)
+        source = report.render_source(data)
+        self.assertIn("endpoint-proxy final-day records retained", source)
+        self.assertIn("endpoint-proxy final-day records excluded", source)
+        self.assertIn(r"$\widetilde{Y-P}=-\widetilde P$", source)
+        self.assertIn("payoff coefficients diagnose price paths, not independent calibration or causal FLB", source)
+
     def test_fixture_mark_is_not_research_findings(self):
         value = synthetic_estimates()
         value["fixture_only"] = True
@@ -251,6 +268,48 @@ class ReportTests(unittest.TestCase):
             mutation(value)
             with self.assertRaises(report.ReportBlocked):
                 report.render_source(value)
+
+    def test_corrected_sports_clock_proof_is_required_and_old_cache_is_rejected(self):
+        mutations = (
+            lambda cache: cache.pop("sport_clock_columns"),
+            lambda cache: cache["sport_clock_columns"].update(remaining_seconds="R"),
+            lambda cache: cache["sport_clock_columns"].update(extra="timestamp"),
+            lambda cache: cache.pop("reconciliation"),
+            lambda cache: cache["reconciliation"].pop("sport_clock_mismatch_rows"),
+            lambda cache: cache["reconciliation"].update(sport_clock_mismatch_rows=1),
+            lambda cache: cache["reconciliation"].update(sport_clock_mismatch_rows=False),
+            lambda cache: cache.pop("schema"),
+            lambda cache: cache.update(schema=cache["schema"].replace("sport_remaining_seconds:", "R:")),
+            lambda cache: cache.update(schema=cache["schema"]+"\nu: double"),
+            lambda cache: cache.update(schema=cache["schema"]+"\nr: double"),
+            lambda cache: cache.update(schema=cache["schema"]+"\nR: double"),
+            lambda cache: cache.update(schema=cache["schema"]+"\nSPORT_REMAINING_SECONDS: double"),
+            lambda cache: cache.update(schema=cache["schema"].replace("sport_elapsed_seconds: double", "sport_elapsed_seconds: int64")),
+            lambda cache: cache.update(schema=cache["schema"].replace("sport_remaining_seconds: double", "sport_remaining_seconds: float")),
+        )
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=index):
+                data = synthetic_estimates()
+                mutation(data["sports"]["observation_cache"])
+                with self.assertRaises(report.ReportBlocked):
+                    report.validate_estimates(data)
+        data = synthetic_estimates()
+        del data["sports"]["observation_cache"]
+        with self.assertRaisesRegex(report.ReportBlocked, "corrected sports clock"):
+            report.validate_estimates(data)
+
+    def test_accepted_receipt_cannot_admit_legacy_sports_clock_or_create_report(self):
+        data = synthetic_estimates()
+        data["sports"]["observation_cache"] = {
+            "schema": "u: double\nr: double", "reconciliation": {"joined_rows": 100}}
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            save_stage(folder/"old_accepted", data)
+            with patch.object(report, "plot_profile") as plot:
+                with self.assertRaisesRegex(report.ReportBlocked, "corrected sports clock"):
+                    report.render(folder/"old_accepted", folder/"report")
+                plot.assert_not_called()
+            self.assertFalse((folder/"report").exists())
 
     def test_nonfinite_and_overflow_are_rejected_without_silent_zero(self):
         value = synthetic_estimates()

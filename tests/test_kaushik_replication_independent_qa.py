@@ -997,6 +997,62 @@ class IndependentDriverQA(unittest.TestCase):
         self.assertEqual(observed, expected)
         self.assertEqual(len(driver.WINDOWS), 14)
 
+    def test_realistic_duration_R_cannot_shadow_sports_final_hour_seconds(self):
+        """Canonical R is days; sports endpoints require an independent seconds clock."""
+        start, end = 100000, 110800
+        remaining_seconds = np.array([7200, 3601, 3600, 1801, 1800, 901, 900,
+                                      301, 300, 1, 0, -1, 10801, 3600])
+        original_days = [2., -1., None, 400., 0., 2., -2., 500., 1., 2.,
+                         2., 2., 2., 2.]
+        binding = self.normalized_sports_binding([{
+            "market_id": "0xa", "sport": "epl", "game_key": "epl:123",
+            "actual_start_seconds": float(start), "actual_end_seconds": float(end),
+            "timing_quality": "fixture", "provenance": "fixture"}])
+        driver.prepare_sports_map(self.con, binding)
+        self.con.register("analysis_base", pa.table({
+            "source_ordinal": np.arange(len(remaining_seconds)),
+            "source_month": ["2026-03"] * len(remaining_seconds),
+            "market_id": ["0xa"] * len(remaining_seconds),
+            "timestamp": end - remaining_seconds,
+            "R": pa.array(original_days, type=pa.float64()),
+            "is_maker": [False] * 13 + [True],
+            "event_cluster": ["event:original"] * len(remaining_seconds),
+            "P": [.05] * len(remaining_seconds), "Y": [1] * len(remaining_seconds),
+            "bin": [1] * len(remaining_seconds),
+            "payoff": [95.] * len(remaining_seconds),
+            "roi": [1900.] * len(remaining_seconds)}))
+        expected_final = {2: "final_60to30m", 3: "final_60to30m",
+                          4: "final_30to15m", 5: "final_30to15m",
+                          6: "final_15to5m", 7: "final_15to5m",
+                          8: "final_5to0m", 9: "final_5to0m", 10: "final_5to0m"}
+        for cached in (False, True):
+            with self.subTest(cached=cached):
+                stage = self.folder / "realistic_R_cache" if cached else None
+                if stage is not None:
+                    stage.mkdir()
+                cache = driver.create_sports_view(self.con, stage)
+                columns = [row[0] for row in self.con.execute("DESCRIBE sports_joined").fetchall()]
+                self.assertIn("sport_elapsed_seconds", columns)
+                self.assertIn("sport_remaining_seconds", columns)
+                clocks = self.con.execute("SELECT source_ordinal,sport_elapsed_seconds,"
+                    "sport_remaining_seconds FROM sports_joined ORDER BY source_ordinal").fetchall()
+                self.assertEqual(clocks, [(i, float(end - remaining_seconds[i] - start),
+                                          float(remaining_seconds[i])) for i in range(13)])
+                admitted = self.con.execute("SELECT source_ordinal,phase FROM sports_base "
+                                            "ORDER BY source_ordinal").fetchall()
+                self.assertEqual(admitted, [(i, "in_play") for i in range(11)] + [(12, "pregame")])
+                final = dict(self.con.execute("SELECT source_ordinal,clock_window FROM sports_windows "
+                                               "WHERE clock_panel='final_hour'").fetchall())
+                self.assertEqual(final, expected_final)
+                if cached:
+                    self.assertEqual(cache["rows"], 13)
+                    self.assertEqual(cache["reconciliation"], {"joined_rows": 13,
+                        "admitted_rows": 12, "after_end_rows": 1, "pregame_rows": 1,
+                        "in_play_rows": 11, "sport_clock_mismatch_rows": 0})
+                    self.assertIn("sport_remaining_seconds: double", cache["schema"])
+                for view in ("sports_windows", "sports_base", "sports_joined"):
+                    self.con.execute(f"DROP VIEW {view}")
+
     def test_sports_cache_retains_after_end_audit_rows_and_detaches_raw_base(self):
         start = 1772323200
         binding = self.normalized_sports_binding([{
@@ -1017,7 +1073,8 @@ class IndependentDriverQA(unittest.TestCase):
         self.assertTrue(cache["source_locator_retained"])
         self.assertTrue(cache["source_locator_unique"])
         self.assertEqual(cache["reconciliation"], {"joined_rows": 4, "admitted_rows": 3,
-            "after_end_rows": 1, "pregame_rows": 1, "in_play_rows": 2})
+            "after_end_rows": 1, "pregame_rows": 1, "in_play_rows": 2,
+            "sport_clock_mismatch_rows": 0})
         self.assertEqual(ledger.scans["sports_raw_join_count_and_locator_proof"]["charged_bytes"], 1000)
         self.assertEqual(ledger.scans["sports_observation_cache"]["charged_bytes"], 1000)
         self.assertEqual(ledger.scans["sports_cache_reconciliation"]["charged_bytes"], cache["bytes"])
@@ -1358,6 +1415,8 @@ class IndependentSavedScoreAuditQA(unittest.TestCase):
                     "sha256": build_inputs.sha256(cls.stage / "estimates.json")},
                 "reconciliation": {key: True for key in ("all_inputs_reopened", "all_outputs_reopened",
                     "common_duration_population", "buy_role_partition", "expected_grids_serialized")}}
+            manifest["outputs"]["sports_observations.parquet"] = build_inputs._output_info(
+                cls.stage / "sports_observations.parquet")
             build_inputs.write_json(cls.stage / "manifest.json", manifest)
             acceptance = {"schema_version": "kaushik_replication_estimate_acceptance_v1",
                 "status": "estimates_reopened_accepted", "source_head": "0" * 40,
@@ -1405,6 +1464,45 @@ class IndependentSavedScoreAuditQA(unittest.TestCase):
         self.assertLess(result["bounds"]["read_bytes"], 10_000_000)
         self.assertIn("no independent raw membership or coefficient estimation certified", result["limitations"])
         self.assertGreater(sum(r["checked_estimates_and_contrasts"] for r in result["score_artifacts"]), 700)
+
+    def test_auditor_requires_corrected_seconds_clock_proof_and_saved_footer_schema(self):
+        for damage in ("old", "missing_columns", "wrong_units", "missing_equations",
+                       "mismatched_equations", "boolean_equations", "legacy_R", "footer_drift", "wrong_type"):
+            with self.subTest(damage=damage), tempfile.TemporaryDirectory() as temporary:
+                folder = self.copy_fixture(temporary)
+                data = json.loads((folder / "estimates.json").read_text())
+                manifest = json.loads((folder / "manifest.json").read_text())
+                cache = data["sports"]["observation_cache"]
+                if damage in ("old", "missing_columns"):
+                    del cache["sport_clock_columns"]
+                    if damage == "old":
+                        del cache["reconciliation"]["sport_clock_mismatch_rows"]
+                        cache["schema"] = cache["schema"].replace("sport_elapsed_seconds:", "u:").replace(
+                            "sport_remaining_seconds:", "R:")
+                        manifest["outputs"]["sports_observations.parquet"]["schema"] = cache["schema"]
+                elif damage == "wrong_units":
+                    cache["sport_clock_columns"]["remaining_seconds"] = "R"
+                elif damage == "missing_equations":
+                    del cache["reconciliation"]["sport_clock_mismatch_rows"]
+                elif damage == "mismatched_equations":
+                    cache["reconciliation"]["sport_clock_mismatch_rows"] = 1
+                elif damage == "boolean_equations":
+                    cache["reconciliation"]["sport_clock_mismatch_rows"] = False
+                elif damage == "legacy_R":
+                    cache["schema"] = cache["schema"].replace("sport_remaining_seconds:", "R:")
+                    manifest["outputs"]["sports_observations.parquet"]["schema"] = cache["schema"]
+                elif damage == "footer_drift":
+                    manifest["outputs"]["sports_observations.parquet"]["schema"] = cache["schema"].replace(
+                        "sport_remaining_seconds:", "r:")
+                else:
+                    cache["schema"] = cache["schema"].replace("sport_remaining_seconds: double",
+                                                            "sport_remaining_seconds: float")
+                    manifest["outputs"]["sports_observations.parquet"]["schema"] = cache["schema"]
+                self.bind_fixture(folder, data, manifest)
+                with patch.object(saved_score_audit.pq, "ParquetFile") as scores_opened:
+                    with self.assertRaisesRegex(ValueError, "sports.*clock|sports cache|sports seconds fields"):
+                        self.run_audit(folder)
+                    scores_opened.assert_not_called()
 
     def test_rebound_bad_covariance_and_se_are_independently_rejected(self):
         for damage in ("covariance", "CR0", "cluster_count_adjusted"):

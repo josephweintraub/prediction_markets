@@ -240,6 +240,26 @@ def validate_estimates(data: Mapping[str, Any]) -> None:
         for row in _index(convention.get("gap_rows"), ("outcome",), [(target,) for target in OUTCOMES]).values():
             _validate_estimate(row)
     sports = data.get("sports", {})
+    cache = sports.get("observation_cache")
+    require(isinstance(cache, dict) and cache.get("sport_clock_columns") == {
+        "elapsed_seconds": "sport_elapsed_seconds", "remaining_seconds": "sport_remaining_seconds"},
+        "corrected sports clock column proof required")
+    reconciliation = cache.get("reconciliation")
+    require(isinstance(reconciliation, dict), "sports clock reconciliation missing")
+    _integer(reconciliation.get("sport_clock_mismatch_rows"), "sports clock mismatch rows")
+    require(reconciliation["sport_clock_mismatch_rows"] == 0, "sports clock mismatch rows must be zero")
+    schema = cache.get("schema")
+    require(isinstance(schema, str) and bool(schema.strip()), "sports clock cache schema missing")
+    fields = [line.strip().partition(": ") for line in schema.splitlines() if line.strip()]
+    require(all(name and separator and dtype for name, separator, dtype in fields),
+            "invalid flat sports clock cache schema")
+    names = [name.casefold() for name, _, _ in fields]
+    require(len(names) == len(set(names)) and not set(names).intersection({"u", "r"}),
+            "sports clock cache schema has colliding or legacy column names")
+    field_types = {name: dtype for name, _, dtype in fields}
+    require(all(field_types.get(name) == "double" for name in (
+        "sport_elapsed_seconds", "sport_remaining_seconds")),
+        "distinct double sports seconds fields required")
     require(isinstance(sports.get("coverage_qualification"), str) and sports["coverage_qualification"],
             "provider coverage qualification absent")
     _index(sports.get("coverage"), ("sport",), [(sport,) for sport in SPORTS])
@@ -416,6 +436,9 @@ def _model_table(data, target):
                  ["Clock / controls", "(1) Original", "(2) Category", "(3) Remaining", "(4) Category", "(5) Both full"], rows,
                  r"Tail-specific OLS; entries are D10 minus D1 clock slopes per unit of $\log_2(1+\mathrm{days})$. "
                  r"Opening is native \texttt{created\_at}; endpoint is \texttt{end\_date}, a maturity proxy. "
+                 r"Original duration is claim lifespan (constant within claim), not elapsed time or game progress. "
+                 r"Larger remaining time means farther from the endpoint proxy; a positive remaining-time gap slope means "
+                 r"the fitted gap decreases as remaining time runs down, conditional on controls. "
                  r"All columns share eligible tails, positive lifespan, nonnegative remaining time and trade at/after opening. "
                  r"Fixed effects (FE) vary by tail; exact normalized binary64 price levels are unrounded. No claim FE. "
                  r"Separate-tail and stacked $R^2$ include controls; stacked TSS uses the overall outcome mean. " + VARIANCE_NOTE +
@@ -555,8 +578,8 @@ def render_source(data):
                        withholding_note([(f"D{row['bin']} {outcome_label(row['outcome'])}", row) for row in profile.values()] +
                                         [(f"D10-D1 {outcome_label(row['outcome'])}", row) for row in baseline_gaps.values()])))
     parts += [r"\clearpage", _model_table(data, OUTCOMES[0]), _model_table(data, OUTCOMES[1]), r"\clearpage"]
-    for panel, heading in (("L_gt1", "A. Original lifespan >1 day; final-day records retained"),
-                           ("R_gt1", "B. Remaining time >1 day; final-day records excluded")):
+    for panel, heading in (("L_gt1", "A. Original lifespan >1 day; endpoint-proxy final-day records retained"),
+                           ("R_gt1", "B. Remaining time >1 day; endpoint-proxy final-day records excluded")):
         models = sorted(data["table3"][panel], key=lambda row: row["spec"]["column"])
         rows = []
         for target, label in zip(OUTCOMES, ("Payoff gap slope (cents)", "Return gap slope (pp)")):

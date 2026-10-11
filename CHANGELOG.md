@@ -26,6 +26,11 @@
 - Preserved an incomplete slow fit and validated bounded, immutable grouped-mean
   projection caching without changing samples, exact prices, convergence gates,
   final moments, event scores or uncertainty; added independent saved-score QA.
+- Completed reopened estimation acceptance and clarified lifespan, remaining-time
+  direction and endpoint-proxy notes in the saved-artifact LaTeX renderer.
+- Withheld final-hour sports outputs after independent release QA found a
+  case-insensitive day/second clock collision; preserved the unshared draft and
+  required realistic clock-boundary fixtures and a fresh full corrected run.
 
 ## 2026-10-10 - Complete current nine-sport wallet-filter adoption
 

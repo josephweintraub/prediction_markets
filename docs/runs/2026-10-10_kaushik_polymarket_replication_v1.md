@@ -1,6 +1,6 @@
 # September 28 FLB writeup: Polymarket-only replication
 
-Status: inputs and sports metadata accepted; validated projection-cache retry pending.
+Status: input and provider gates accepted; v4 final-hour sports windows invalidated during independent release QA. Corrected full estimation and final reporting remain pending.
 
 ## Contract and authority
 
@@ -153,3 +153,56 @@ verified shutdown remain pending.
 
 Fresh source-bound sports metadata, estimation v4, saved-score QA, final report,
 publication and verified shutdown remain pending.
+
+## Accepted fourth estimation run
+
+- Source: `586c5b0bd258c1d6e853077a34ec0de32c8ca6c6`.
+- Fresh sports metadata v4 reopened and passed; its provider coverage, exclusion
+  census and output fingerprints exactly match all preceding metadata versions.
+- Estimates: `/mnt/data/runs/2026-10-10_kaushik_polymarket_estimates_v4`.
+  Execution: 2026-10-10 23:02:11 to 2026-10-11 00:06:34 UTC; exit 0.
+  Wall time: 1:04:23; peak RSS 174,205,364 KiB; no swaps or stderr output.
+- All 12 duration/claim-FE models passed convergence and numerical gates.
+  All five Table 2 specifications retain 140,293,451 records and 201,288
+  clusters. Table 3 retains 116,949,679 records for lifespan greater than one
+  day and 70,436,234 records for more than one day remaining, reconciled to
+  source and lossless grouped-cache counts.
+- The published stage contains 47 saved joint-score files and 984,372,682
+  bytes of bound outputs. All inputs and outputs reopened; common duration
+  population, BUY-role partition and complete-grid gates passed.
+- Manifest SHA-256:
+  `d115e5cb40dbcff4bd3a9889691346260c03a19f98b144cdeb737cae1cc76518`.
+  Acceptance SHA-256:
+  `fd0ead9f6efb90d1866c8ae488d337b96b81cedcd6b1b38ff1cb5a4c9c4fa461`.
+  Estimates SHA-256:
+  `373840920f4d372f008bd9fd41956596fb6253bf97f3a399e0c22f3b659c1153`.
+- Final consolidated local fixture QA passed 107 tests in 29.602 seconds;
+  before/after hashes of all twelve checked task files were unchanged.
+- Renderer notes distinguish cross-claim lifespan from game progress and
+  explicitly reverse the forward-time interpretation of remaining-time slopes.
+  Claim-FE payoff interactions remain labeled mechanical price-path diagnostics.
+
+Independent saved-score QA, final-page verification, finished shared artifacts,
+source publication and verified instance shutdown are still required.
+
+### Release blocker: final-hour clock collision
+
+Independent source and summary review identified a case-insensitive DuckDB column
+collision: the base already contains `R` (market remaining time in days), while
+the sports view aliased actual game remaining seconds as `r`. The cache selected
+the inherited days field. This incorrectly assigned final-hour window membership;
+the first three pooled final-hour windows were empty, and the purported final
+five minutes captured a much broader in-play population.
+
+The v4 producer acceptance is preserved as execution/reopen evidence, not release
+approval. Its final-hour figures/tables and the unshared `report_v1` draft are
+invalid for the specified analysis. Duration models, archive convention estimates,
+phase classifications and pregame/since-start windows do not use this colliding
+field, but will be recomputed and compared in the fresh full correction.
+
+The correction uses distinctly named sports-second clocks and a post-cache
+equation gate, with realistic inherited-`R` boundary fixtures. The existing full
+guarded estimator will run again in a new immutable directory after fresh
+source-bound metadata/preflight admission. No partial-source reuse, new sample
+rule or relaxed numerical/resource gate is authorized. No v4 report was opened
+or uploaded to Dropbox.

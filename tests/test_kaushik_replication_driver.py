@@ -143,9 +143,60 @@ class EndToEndFixtureTests(unittest.TestCase):
                 self.assertEqual(info["reconciliation"]["after_end_rows"], 1)
                 self.assertEqual(info["raw_source_count"], expected + 1)
                 self.assertEqual(ledger.scans["sports_observation_cache"]["charged_bytes"], 10)
-                self.assertEqual(con.execute("SELECT count(*) FROM sports_base WHERE r<0").fetchone()[0], 0)
+                self.assertEqual(con.execute("SELECT count(*) FROM sports_base WHERE sport_remaining_seconds<0").fetchone()[0], 0)
+                self.assertEqual(info["reconciliation"]["sport_clock_mismatch_rows"], 0)
             finally:
                 con.close()
+
+    def test_sports_seconds_windows_with_native_R_days_and_exact_edges(self):
+        start, end = 8000, 20000
+        remaining = [3601,3600,1801,1800,901,900,301,300,1,0,-1]
+        timestamps = [end - value for value in remaining] + [start-1,start,start+900,start+1800,start+3600,start+7200]
+        records = [{"source_month":"2025-01", "source_ordinal":index,
+                    "market_id":"m", "event_cluster":"event:m", "timestamp":timestamp,
+                    "P":.03, "Y":0, "bin":1, "payoff":-3., "roi":-100.,
+                    "is_maker":False, "R":2.0}
+                   for index, timestamp in enumerate(timestamps)]
+        expected_final = {1:"final_60to30m",2:"final_60to30m",
+                          3:"final_30to15m",4:"final_30to15m",
+                          5:"final_15to5m",6:"final_15to5m",
+                          7:"final_5to0m",8:"final_5to0m",9:"final_5to0m"}
+        expected_since = {12:"live_0to15m",13:"live_15to30m",14:"live_30to60m",
+                          15:"live_1to2h",16:"live_2hplus"}
+        with tempfile.TemporaryDirectory() as temporary:
+            for cached in (False,True):
+                with self.subTest(cached=cached):
+                    con = duckdb.connect()
+                    try:
+                        con.register("tiny_records",pa.Table.from_pylist(records))
+                        con.execute("CREATE TEMP VIEW analysis_base AS SELECT * FROM tiny_records")
+                        con.execute(f"""CREATE TEMP TABLE sports_market_map AS SELECT 'm' market_id,'mlb' sport,'mlb:g' game_key,
+                            {float(start)} actual_start_seconds,{float(end)} actual_end_seconds,
+                            'fixture' timing_quality,'fixture' provenance""")
+                        stage = Path(temporary) / "cache" if cached else None
+                        if stage is not None:
+                            stage.mkdir()
+                        info = driver.create_sports_view(con,stage,driver.ReadLedger(),10)
+                        actual_final = dict(con.execute("SELECT source_ordinal,clock_window FROM sports_windows WHERE clock_panel='final_hour'").fetchall())
+                        self.assertEqual(actual_final,expected_final)
+                        actual_since = dict(con.execute("SELECT source_ordinal,clock_window FROM sports_windows WHERE clock_panel='since_start' AND source_ordinal>=12").fetchall())
+                        self.assertEqual(actual_since,expected_since)
+                        self.assertEqual(con.execute("SELECT phase FROM sports_base WHERE source_ordinal=11").fetchone()[0],"pregame")
+                        self.assertEqual(con.execute("SELECT count(*) FROM sports_base WHERE source_ordinal=10").fetchone()[0],0)
+                        self.assertEqual(con.execute("SELECT sport_remaining_seconds FROM sports_base WHERE source_ordinal=1").fetchone()[0],3600.)
+                        self.assertEqual(con.execute("SELECT sport_elapsed_seconds FROM sports_base WHERE source_ordinal=12").fetchone()[0],0.)
+                        names = [row[0] for row in con.execute("DESCRIBE sports_joined").fetchall()]
+                        self.assertEqual(sum(name.casefold()=="sport_remaining_seconds" for name in names),1)
+                        self.assertNotIn("r_1",[name.casefold() for name in names])
+                        if cached:
+                            self.assertNotIn("r",[name.casefold() for name in names])
+                            self.assertEqual(info["reconciliation"]["sport_clock_mismatch_rows"],0)
+                            self.assertEqual(info["raw_source_count"],len(records))
+                            self.assertEqual(info["sport_clock_columns"],{"elapsed_seconds":"sport_elapsed_seconds","remaining_seconds":"sport_remaining_seconds"})
+                        else:
+                            self.assertEqual(con.execute('SELECT "R" FROM sports_joined WHERE source_ordinal=1').fetchone()[0],2.)
+                    finally:
+                        con.close()
 
 
 class LeanProjectionFixtureTests(unittest.TestCase):
