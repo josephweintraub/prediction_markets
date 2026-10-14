@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-14 - Exchange-wallet exclusion audit
+
+- Added a count-first, source-bound audit of either-wallet exchange-address
+  matches against the accepted Kaushik full-date and cutoff populations.
+- Preserved physical source locators, original eligibility exclusions and
+  accepted runs; added exact mask and multiset partition reconciliation.
+- Added independent fixture checks for address semantics, role/duration counts,
+  unsupported eligible-address blocking and immutable publication reopening.
+- Kept the audit separate from input rewrites and coefficient estimation;
+  production resource and source admission remain required.
+
 ## 2026-10-11 - Full-sample replication acceptance
 
 - Completed immutable full-date input and estimation acceptance while preserving
