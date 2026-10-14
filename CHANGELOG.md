@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-14 - Guarded full-payload partition comparison
+
+- Replaced window-heavy nonempty-mask multiset comparisons with an executed
+  full-payload join after exact schema and unique source-locator guards.
+- Added independent synthetic equivalence and duplicate-counterexample tests;
+  recorded proof method separately from literal `EXCEPT ALL` execution.
+- Kept cohort rules, capacity ceilings and immutable input reopening unchanged;
+  fresh fixture validation and committed-source production admission are required.
+
 ## 2026-10-14 - Exchange-audit memory-only capacity retry
 
 - Preserved the nonempty-mask spill failure without publishing partial counts.

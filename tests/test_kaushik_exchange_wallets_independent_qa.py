@@ -446,13 +446,30 @@ class IndependentExchangeFixture(unittest.TestCase):
         with self.assertRaisesRegex(inputs.InputBlocked, "fanout"):
             self.observed_month(mask)
 
-    def test_nonempty_mask_uses_literal_comparisons_even_if_only_noneligible_matches(self):
+    def test_nonempty_mask_uses_full_payload_join_even_if_only_noneligible_matches(self):
         ordinary_mask = self.mask()
         ordinary, queries = self.observed_month(ordinary_mask)
-        self.assertEqual(ordinary["partition_proof_method"], "bidirectional_except_all")
-        self.assertIs(ordinary["EXCEPT_ALL_queries_executed"], True)
-        self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in queries), 2)
+        self.assertEqual(ordinary["partition_proof_method"], "unique_locator_full_payload_join")
+        self.assertIs(ordinary["EXCEPT_ALL_queries_executed"], False)
+        self.assertFalse(any("EXCEPT ALL" in query.upper() for query in queries))
+        payload = [query for query in queries if "FULL OUTER JOIN candidate_union" in query]
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0].count("IS DISTINCT FROM"), 12)
+        original_guard = next(i for i, query in enumerate(queries)
+                              if "FROM prior_base" in query and "count(DISTINCT source_ordinal)" in query)
+        candidate_guard = next(i for i, query in enumerate(queries)
+                               if "FROM candidate_union" in query and
+                               "count(DISTINCT (source_month,source_ordinal))" in query)
+        payload_index = queries.index(payload[0])
+        self.assertLess(original_guard, candidate_guard)
+        self.assertLess(candidate_guard, payload_index)
         self.assertEqual(ordinary["EXCEPT_ALL_differences"], [0, 0])
+        fields = ",".join(inputs.ident(field) for field in BASE_FIELDS)
+        original_sql = f"SELECT {fields} FROM prior_base"
+        candidate_sql = f"SELECT {fields} FROM candidate_union"
+        actual_oracle = [self.con.execute(f"SELECT count(*) FROM (({left}) EXCEPT ALL ({right}))").fetchone()[0]
+                         for left, right in ((original_sql, candidate_sql), (candidate_sql, original_sql))]
+        self.assertEqual(actual_oracle, ordinary["EXCEPT_ALL_differences"])
         self.empty_source_mask()
         self.rows[14]["proxyWallet"] = FROZEN_EXCHANGES[0]
         self.raw = self.folder / "noneligible_only_source.parquet"
@@ -460,9 +477,12 @@ class IndependentExchangeFixture(unittest.TestCase):
         noneligible_mask = self.mask()
         self.assertEqual(pq.ParquetFile(noneligible_mask).metadata.num_rows, 1)
         noneligible, queries = self.observed_month(noneligible_mask)
-        self.assertEqual(noneligible["partition_proof_method"], "bidirectional_except_all")
-        self.assertIs(noneligible["EXCEPT_ALL_queries_executed"], True)
-        self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in queries), 2)
+        self.assertEqual(noneligible["partition_proof_method"], "unique_locator_full_payload_join")
+        self.assertIs(noneligible["EXCEPT_ALL_queries_executed"], False)
+        self.assertFalse(any("EXCEPT ALL" in query.upper() for query in queries))
+        payload = [query for query in queries if "FULL OUTER JOIN candidate_union" in query]
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0].count("IS DISTINCT FROM"), 12)
         self.assertEqual(noneligible["EXCEPT_ALL_differences"], [0, 0])
         for scope in ("full", "cutoff"):
             self.assertEqual(noneligible["counts"][scope]["baseline"]["removed"], 0)

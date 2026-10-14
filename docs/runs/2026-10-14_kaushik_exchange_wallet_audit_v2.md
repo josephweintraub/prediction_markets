@@ -1,6 +1,6 @@
 # Exchange-wallet audit, 14 October 2026
 
-Status: v2 failed its body's spill ceiling; v3 retry pending. Neither an accepted
+Status: v3 failed before final reopening/publication; v4 retry pending. Neither an accepted
 sample-wide count result nor revised coefficient estimates are claimed here.
 
 The [scientific specification](../analysis_specs/kaushik_exchange_wallet_exclusion_v1.md)
@@ -91,3 +91,35 @@ Use fresh committed source and immutable
 `/mnt/data/runs/2026-10-14_kaushik_exchange_wallet_audit_preflight_v3` and
 `/mnt/data/runs/2026-10-14_kaushik_exchange_wallet_audit_v3` paths. Fresh runtime
 fixture QA, metadata/resource admission and final body acceptance are required.
+
+## V3 connection failure and v4 exact comparison
+
+V3 source HEAD `f1289efced03c554af1072c9ac8a5114522f3971` passed 183
+production-runtime fixture tests in 43.359 seconds. Its reviewed preflight
+SHA256 was `2ca918919cb291a9a075aa048d53661b735f19e435ab122a4f802d7113ec7398`.
+All 44 month computations finished, including the three nonempty masks and
+their literal zero-difference comparisons. The stdout connection then failed
+with `BrokenPipeError` before final source-content reopening and publication.
+No count or coefficient result is accepted from that stage.
+
+Preserve `/mnt/data/runs/.2026-10-14_kaushik_exchange_wallet_audit_v3.staging-0mkbz5be`.
+Its 274,029-byte failure JSON SHA256 is
+`d6a602e0e2a76ca0d56fe70060233e1867e475b1368f4656f8d0631d6d99f755`;
+the recorded read charge is 404,778,884,775 bytes. Root found PID 18698 absent
+before attempting interruption, so no signal was delivered. Only system Python
+daemons remained. An apparently running client session was not evidence that
+the remote audit was still executing.
+
+V4 retains the exact scientific and resource contract. The nonempty validation
+now guards both exact typed schemas and source-locator uniqueness/range, then
+executes one full outer locator join comparing all twelve payload fields. The
+two resulting multiset difference counts are mathematically identical to
+`EXCEPT ALL` under those guards. An independent seven-test oracle includes a
+bare-join duplicate counterexample. The nonempty proof charges 5 base passes,
+4 mask passes and 4 claims passes, below the prior 6/4/4 reservation. The empty
+identity path, other gates and content reopening are unchanged.
+
+Use new immutable v4 preflight/run directories and a new, non-overwritten
+remote log with detached execution. Redirect all standard streams so a client
+connection cannot invalidate a completed month. Root still supervises the
+owned process and requires final acceptance before delivery or shutdown.

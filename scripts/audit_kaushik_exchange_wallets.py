@@ -50,6 +50,7 @@ MASK_SCHEMA = pa.schema([(name, kind) for name, kind in zip(MASK_FIELDS,
     (pa.string(), pa.int64(), pa.string(), pa.string(), pa.bool_(), pa.bool_(), pa.bool_(), pa.bool_()))])
 SOURCE_FILES = ("scripts/audit_kaushik_exchange_wallets.py", "tests/test_kaushik_exchange_wallets.py",
                 "tests/test_kaushik_exchange_wallets_independent_qa.py",
+                "tests/test_exchange_partition_payload_equivalence.py",
                 "scripts/audit_kaushik_full_sample_subset.py",
                 "analysis/kaushik_polymarket_replication/build_inputs.py", "production_guard.py",
                 "docs/methods_reference.md")
@@ -240,6 +241,42 @@ def raw_match_counts(con, month, *, ledger=None, raw_bytes=0):
         GROUP BY ALL ORDER BY side,is_maker,matched_proxy_address,matched_counterparty_address""")
 
 
+def partition_payload_differences(con, month, source_rows, prior_rows, *, ledger=None,
+                                 base_bytes=0, mask_bytes=0, claims_bytes=0):
+    """Exact multiset differences after audit_month has validated prior locators."""
+    expected = tuple(zip(FIELDS, ("BIGINT", "VARCHAR", "INTEGER", "INTEGER", "BIGINT", "DOUBLE",
+                                  "DOUBLE", "TINYINT", "DOUBLE", "VARCHAR", "BOOLEAN", "BOOLEAN")))
+    for relation in ("prior_base", "candidate_union"):
+        schema = con.execute(f"DESCRIBE SELECT * FROM {relation}").fetchall()
+        require(tuple((row[0], row[1]) for row in schema) == expected,
+                relation + " exact 12-column names/types differ")
+    # Each UNION arm scans partitioned once. The original locator/analytical
+    # scan already passed in audit_month; do not repeat that original scan.
+    if ledger: ledger.charge(2 * base_bytes + 2 * mask_bytes + 2 * claims_bytes,
+                             "candidate_partition_locator_validity")
+    n, unique, bad = con.execute(f"""SELECT count(*),count(DISTINCT (source_month,source_ordinal)),
+        count(*) FILTER(WHERE source_month IS DISTINCT FROM {inputs.literal(month)}
+            OR source_ordinal IS NULL OR source_ordinal<0 OR source_ordinal>={source_rows})
+        FROM candidate_union""").fetchone()
+    require(n == unique and bad == 0, "candidate partition locator contract differs")
+    require(n == prior_rows, "candidate partition count differs from validated reference")
+    mismatch = " OR ".join(f"o.{inputs.ident(field)} IS DISTINCT FROM c.{inputs.ident(field)}"
+                           for field in FIELDS)
+    if ledger: ledger.charge(3 * base_bytes + 2 * mask_bytes + 2 * claims_bytes,
+                             "reference_exact_partition")
+    # With unique nonnull locators on both sides, a missing key contributes one
+    # only to its present side; a changed payload contributes one to each side.
+    # These are precisely the two full-twelve-field EXCEPT ALL cardinalities.
+    return list(con.execute(f"""SELECT
+        count(*) FILTER(WHERE old_present AND (NOT new_present OR payload_diff)),
+        count(*) FILTER(WHERE new_present AND (NOT old_present OR payload_diff))
+        FROM (SELECT o.source_ordinal IS NOT NULL old_present,
+                     c.source_ordinal IS NOT NULL new_present,
+                     ({mismatch}) payload_diff
+              FROM prior_base o FULL OUTER JOIN candidate_union c
+              ON o.source_month=c.source_month AND o.source_ordinal=c.source_ordinal) compared""").fetchone())
+
+
 def audit_month(con, base_path, mask_path, month, source_rows, *, ledger=None, base_bytes=0, mask_bytes=0,
                 claims_bytes=0, fail_on_unsupported=True):
     """Reference-base partition; fixtures provide a claims relation and mask file."""
@@ -292,11 +329,10 @@ def audit_month(con, base_path, mask_path, month, source_rows, *, ledger=None, b
         differences = [0, 0]
         partition_proof_method = "empty_mask_exact_identity"
     else:
-        differences = []
-        for left, right in ((f"SELECT {fields} FROM prior_base", union), (union, f"SELECT {fields} FROM prior_base")):
-            if ledger: ledger.charge(3 * base_bytes + 2 * mask_bytes + 2 * claims_bytes, "reference_exact_partition")
-            differences.append(con.execute(f"SELECT count(*) FROM ({left} EXCEPT ALL ({right}))").fetchone()[0])
-        partition_proof_method = "bidirectional_except_all"
+        con.execute("CREATE OR REPLACE TEMP VIEW candidate_union AS " + union)
+        differences = partition_payload_differences(con, month, source_rows, n, ledger=ledger,
+            base_bytes=base_bytes, mask_bytes=mask_bytes, claims_bytes=claims_bytes)
+        partition_proof_method = "unique_locator_full_payload_join"
     require(differences == [0, 0], "reference baseline retained/removed multiset partition differs")
     totals = {scope: {metric: {part: sum(r[f"{scope}_{metric}"] for r in groups if
         part == "original" or (part == "removed") == r["removed"]) for part in ("original", "retained", "removed")}
@@ -309,7 +345,7 @@ def audit_month(con, base_path, mask_path, month, source_rows, *, ledger=None, b
     return {"month": month, "mask_rows": mask_n, "eligible_groups": groups, "counts": totals,
             "unsupported_eligible_rows": unsupported, "EXCEPT_ALL_differences": differences,
             "partition_proof_method": partition_proof_method,
-            "EXCEPT_ALL_queries_executed": partition_proof_method == "bidirectional_except_all"}
+            "EXCEPT_ALL_queries_executed": False}
 
 
 def address_field_counts(groups, prefix):

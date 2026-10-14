@@ -316,7 +316,7 @@ class ExchangeWalletFixtures(unittest.TestCase):
         self.assertEqual(self.con.execute(f"SELECT {fields} FROM partitioned WHERE NOT removed ORDER BY source_ordinal").fetchall(),
                          self.con.execute(original + " ORDER BY source_ordinal").fetchall())
 
-    def test_nonempty_masks_always_execute_original_bidirectional_except_all(self):
+    def test_nonempty_masks_always_execute_guarded_full_payload_join(self):
         for removed in (True, False):
             with self.subTest(removed=removed), tempfile.TemporaryDirectory() as temp:
                 con = duckdb.connect()
@@ -325,13 +325,111 @@ class ExchangeWalletFixtures(unittest.TestCase):
                     _, base, mask = save_fixture(temp, con, records, admitted=[0, 1] if removed else [1])
                     trace, ledger = TraceConnection(con), audit.ReadLedger()
                     result = audit.audit_month(trace, base, mask, MONTH, 2, ledger=ledger)
-                    self.assertEqual(result["partition_proof_method"], "bidirectional_except_all")
-                    self.assertTrue(result["EXCEPT_ALL_queries_executed"])
-                    self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in trace.queries), 2)
+                    self.assertEqual(result["partition_proof_method"], "unique_locator_full_payload_join")
+                    self.assertFalse(result["EXCEPT_ALL_queries_executed"])
+                    self.assertFalse(any("EXCEPT ALL" in query.upper() for query in trace.queries))
+                    payload = [query for query in trace.queries if "FULL OUTER JOIN candidate_union" in query]
+                    self.assertEqual(len(payload), 1)
+                    self.assertEqual(payload[0].count("IS DISTINCT FROM"), 12)
+                    guard = [query for query in trace.queries if "FROM candidate_union" in query and "count(DISTINCT" in query]
+                    self.assertEqual(len(guard), 1)
+                    self.assertLess(trace.queries.index(guard[0]), trace.queries.index(payload[0]))
+                    self.assertIn("candidate_partition_locator_validity", ledger.scans)
                     self.assertIn("reference_exact_partition", ledger.scans)
                     self.assertEqual(result["counts"]["full"]["baseline"]["removed"], int(removed))
                 finally:
                     con.close()
+
+    def partition_fixture(self):
+        records = [raw_record(), raw_record(), raw_record(is_maker=True)]
+        original = [base_record(index, row) for index, row in enumerate(records)]
+        self.con.register("original_payload", pa.Table.from_pylist(original, schema=BASE_SCHEMA))
+        self.con.execute("CREATE OR REPLACE TEMP VIEW prior_base AS SELECT * FROM original_payload")
+        self.install_candidate(original)
+        return original
+
+    def install_candidate(self, rows):
+        self.con.register("candidate_payload", pa.Table.from_pylist(rows, schema=BASE_SCHEMA))
+        self.con.execute("CREATE OR REPLACE TEMP VIEW candidate_union AS SELECT * FROM candidate_payload")
+
+    def partition_oracle(self):
+        fields = ",".join(audit.inputs.ident(field) for field in audit.FIELDS)
+        return [self.con.execute(f"SELECT count(*) FROM (SELECT {fields} FROM {left} "
+                                f"EXCEPT ALL SELECT {fields} FROM {right})").fetchone()[0]
+                for left, right in (("prior_base", "candidate_union"), ("candidate_union", "prior_base"))]
+
+    def test_all_twelve_candidate_payload_mutations_detected_with_exact_oracle_counts(self):
+        original = self.partition_fixture()
+        changes = dict(zip(audit.FIELDS, (7, "2026-04", 3, 4, STAMP + 1,
+            .05000000000000001, .05000000000000001, 0, 3.0000000000000004, "SELL", True, False)))
+        for field, value in changes.items():
+            candidate = deepcopy(original)
+            candidate[1][field] = value
+            self.install_candidate(candidate)
+            trace = TraceConnection(self.con)
+            with self.subTest(field=field):
+                self.assertEqual(self.partition_oracle(), [1, 1])
+                if field == "source_month":
+                    with self.assertRaisesRegex(audit.inputs.InputBlocked, "candidate partition locator"):
+                        audit.partition_payload_differences(trace, MONTH, 10, len(original))
+                    self.assertFalse(any("FULL OUTER JOIN" in query for query in trace.queries))
+                else:
+                    self.assertEqual(audit.partition_payload_differences(trace, MONTH, 10, len(original)), [1, 1])
+
+    def test_candidate_duplicate_missing_extra_and_invalid_locators_reject_before_join(self):
+        original = self.partition_fixture()
+        variants = [original + [original[0]], original[:-1], original + [{**original[0], "source_ordinal": 7}],
+                    original[:-1] + [original[0]]]
+        for changes in ({"source_ordinal": None}, {"source_ordinal": -1}, {"source_ordinal": 10},
+                        {"source_month": None}, {"source_month": "2026-04"}):
+            candidate = deepcopy(original)
+            candidate[1].update(changes)
+            variants.append(candidate)
+        for index, candidate in enumerate(variants):
+            self.install_candidate(candidate)
+            trace = TraceConnection(self.con)
+            with self.subTest(index=index), self.assertRaises(audit.inputs.InputBlocked):
+                audit.partition_payload_differences(trace, MONTH, 10, len(original))
+            self.assertFalse(any("FULL OUTER JOIN" in query for query in trace.queries))
+
+    def test_both_relation_names_types_and_order_guard_before_join(self):
+        self.partition_fixture()
+        fields = ",".join(audit.inputs.ident(field) for field in audit.FIELDS)
+        variants = ("SELECT * EXCLUDE(Y) FROM {source}",
+                    "SELECT * EXCLUDE(Y),Y::INTEGER Y FROM {source}",
+                    "SELECT * REPLACE(claim_code::BIGINT AS claim_code) FROM {source}",
+                    "SELECT * EXCLUDE(Y),Y renamed_Y FROM {source}")
+        for relation, source in (("prior_base", "original_payload"), ("candidate_union", "candidate_payload")):
+            for query in variants:
+                self.con.execute(f"CREATE OR REPLACE TEMP VIEW {relation} AS " + query.format(source=source))
+                trace = TraceConnection(self.con)
+                with self.subTest(relation=relation, query=query), \
+                     self.assertRaisesRegex(audit.inputs.InputBlocked, "12-column names/types"):
+                    audit.partition_payload_differences(trace, MONTH, 10, 3)
+                self.assertFalse(any("FULL OUTER JOIN" in entry for entry in trace.queries))
+                self.con.execute(f"CREATE OR REPLACE TEMP VIEW {relation} AS SELECT {fields} FROM {source}")
+
+    def test_nonempty_reference_type_drift_blocks_despite_unchanged_field_names(self):
+        _, base, mask = save_fixture(self.folder, self.con, [raw_record(proxyWallet=audit.EXCHANGES[0]), raw_record()])
+        changed = pq.read_table(base).cast(pa.schema([(field.name, pa.int64() if field.name == "claim_code" else field.type)
+                                                    for field in BASE_SCHEMA]))
+        path = self.folder / "wrong-types.parquet"
+        pq.write_table(changed, path)
+        trace = TraceConnection(self.con)
+        with self.assertRaisesRegex(audit.inputs.InputBlocked, "prior_base exact 12-column names/types"):
+            audit.audit_month(trace, path, mask, MONTH, 2)
+        self.assertFalse(any("FULL OUTER JOIN candidate_union" in query for query in trace.queries))
+
+    def test_nonempty_join_ledger_remains_within_original_partition_scan_bound(self):
+        self.partition_fixture()
+        ledger = audit.ReadLedger()
+        self.assertEqual(audit.partition_payload_differences(self.con, MONTH, 10, 3,
+                         ledger=ledger, base_bytes=11, mask_bytes=7, claims_bytes=5), [0, 0])
+        self.assertEqual(ledger.scans, {"candidate_partition_locator_validity": 46,
+                                        "reference_exact_partition": 57})
+        self.assertEqual(ledger.bytes, 5 * 11 + 4 * 7 + 4 * 5)
+        self.assertLessEqual(ledger.bytes, 6 * 11 + 4 * 7 + 4 * 5)
+        self.assertIn("tests/test_exchange_partition_payload_equivalence.py", audit.SOURCE_FILES)
 
     def test_empty_mask_still_rejects_bad_reference_missing_claims_and_fanout(self):
         _, base, mask = save_fixture(self.folder, self.con, [raw_record(), raw_record()])

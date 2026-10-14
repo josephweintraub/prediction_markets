@@ -56,8 +56,14 @@ For every one of the 44 monthly source partitions:
 - Save only source locators, matched public exchange addresses and match flags.
 - Reopen masks and prove exact source-locator/address-field equality.
 - Partition the accepted 12-field base into retained and removed multisets.
-  For a nonempty wallet mask, require literal bidirectional `EXCEPT ALL`
-  differences of zero. For an exactly empty source-validated mask, prove the
+  For a nonempty wallet mask, validate identical 12-field schemas and unique,
+  non-null, in-range source locators in both relations, then compare every
+  field in an executed full outer join on `(source_month, source_ordinal)`.
+  Require both exact multiset difference counts to be zero. Under those key
+  guards these counts equal bidirectional `EXCEPT ALL` counts; small oracle
+  fixtures compare both algorithms and demonstrate why duplicates must block.
+  The saved record distinguishes this method from literal `EXCEPT ALL`
+  execution. For an exactly empty source-validated mask, prove the
   same zero differences by exact identity: the unique claims join and direct
   original 12-field projection preserve every reference record, group counts
   equal the base count, all match fields are null and no removal flag is true.
