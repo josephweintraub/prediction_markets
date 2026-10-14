@@ -179,6 +179,8 @@ def render_source(audit, acceptance, audit_sha256):
         "The exclusion changes eligible archive membership. Affected estimates require refitting; "
         "this count audit is not a regression rerun."
     )
+    if not audit["exact_no_change"]["full"] and audit["exact_no_change"]["cutoff"]:
+        result_note += " The cutoff sample retains every eligible record."
     rows = []
     for scope, label in (("full", "All available dates"), ("cutoff", "Before 25 March 2026 UTC")):
         rows.append(r"\multicolumn{4}{l}{\textit{" + label + r"}} \\")
@@ -202,7 +204,7 @@ def render_source(audit, acceptance, audit_sha256):
 \setlength{\parskip}{5pt}
 \begin{document}
 {\Large Exchange-wallet exclusion: sample comparison}\par
-Repaired CLEAN archive records, November 2022--June 2026; the cutoff scope uses $t<25$ March 2026, 00:00 UTC.
+Repaired CLEAN archive records, November 2022--June 2026; dates and the cutoff use the existing approximate archive timestamps, with $t<25$ March 2026, 00:00 UTC in the cutoff scope.
 
 Exclude a record when either source wallet, \texttt{proxyWallet} or \texttt{counterparty}, exactly matches one of four reviewed legacy/V2 exchange addresses after lowercasing. No emitting-contract or additional filter applies. Kaushik's exact address list was not supplied. Counts preserve archive multiplicity; they are not unique native fills.
 

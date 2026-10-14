@@ -1,7 +1,7 @@
 # Exchange-wallet exclusion in the Kaushik Polymarket replication
 
-Status: count and locator-mask audit specified, 14 October 2026. No revised
-coefficient estimates have been admitted. Preserve both accepted original runs.
+Status: count and locator-mask audit accepted, 14 October 2026. No revised
+coefficient estimates have been fitted or admitted. Preserve both accepted original runs.
 
 ## Question and sole sample change
 
@@ -85,3 +85,36 @@ fresh admitted filtered-input and estimation stage is required; old results must
 not be relabeled as filtered. Storage admission is assessed before any full-copy
 rebuild. This audit does not resolve replay multiplicity, archive-inferred action
 direction or resolution censoring.
+
+## Accepted count result and next boundary
+
+The accepted v4 audit removes 110,520,928 primary-taker archive records from
+1,000,970,616, retaining 890,449,688. The primary common-duration tail sample
+falls from 252,319,669 to 226,809,232. All eligible removals occur in recorded
+April--June 2026 partitions. The before-25-March cutoff population has zero
+removals in every role/metric, so the exclusion cannot change its earlier
+estimates with the accepted source, model and provider bindings held fixed.
+The previously accepted exact cutoff-subset comparison binds the same full
+input generation and all twelve fields.
+
+Raw matched source records total 230,985,982. Of these, 9,944,126 were already
+ineligible and reconcile to original exclusions; 221,041,856 eligible all-role
+records are removed. Each archive record is counted once, not once per matching
+wallet field. These are record-grain counts, not a native unique-fill census.
+
+Source-code evidence explains the observed timing: the upstream canonical
+filter excludes native `taker` values at the two old addresses, but not the
+later V2 addresses. See `scripts/audit_polymarket_lineage.py:536`. The wallet
+repair preserves membership under an either-wallet test. This exclusion is
+scoped to the replication; no original raw source or general trade-table
+writer was changed.
+
+The original physical input stage occupies 19,525,404,268 bytes. A second
+physical base would leave insufficient space for the estimator's unchanged
+60 GB reservation. A versioned parent-base-plus-mask read-only layer has been
+requested, not silently adopted. Full-date coefficient refitting remains
+pending that storage/architecture choice. No affected earlier estimate may be
+relabeled as exchange-filtered before a fresh accepted fit.
+
+Accepted artifacts and execution/QA bindings are recorded in
+[`2026-10-14_kaushik_exchange_wallet_audit_v2.md`](../runs/2026-10-14_kaushik_exchange_wallet_audit_v2.md).

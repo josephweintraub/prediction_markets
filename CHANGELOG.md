@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-14 - Accepted exchange-wallet count audit
+
+- Completed immutable count/mask acceptance and original-input reopening after
+  all monthly payload and role/exclusion reconciliation gates passed.
+- Produced a portable count-only LaTeX comparison with explicit archive-clock
+  and observation-grain labels; compiled and visually checked its single page.
+- Preserved original studies and separated count acceptance from pending
+  filtered-input architecture and coefficient refitting.
+
 ## 2026-10-14 - Guarded full-payload partition comparison
 
 - Replaced window-heavy nonempty-mask multiset comparisons with an executed

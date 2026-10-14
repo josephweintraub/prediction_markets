@@ -9,7 +9,7 @@ import unittest
 from scripts import report_kaushik_exchange_wallet_audit as report
 
 
-def fixtures(removed=False):
+def fixtures(removed=False, cutoff_unchanged=False):
     groups = []
     for maker, side in ((False, "BUY"), (False, "SELL"), (True, "BUY"), (True, "SELL")):
         for match in ((False, True) if removed else (False,)):
@@ -17,7 +17,8 @@ def fixtures(removed=False):
                      "matched_proxy_address": report.EXCHANGES[0] if match else None,
                      "matched_counterparty_address": report.EXCHANGES[0] if match else None}
             for scope, values in (("full", (1200, 800, 600, 400, 200)), ("cutoff", (900, 500, 300, 100, 50))):
-                group.update({scope + "_" + metric: value for metric, value in zip(report.METRICS, values)})
+                group.update({scope + "_" + metric: 0 if scope == "cutoff" and match and cutoff_unchanged else value
+                              for metric, value in zip(report.METRICS, values)})
             groups.append(group)
     def totals(items):
         return {scope: {metric: {part: sum(g[scope + "_" + metric] for g in items if
@@ -59,7 +60,7 @@ def fixtures(removed=False):
              "scientific_admission": True, "policy": deepcopy(report.POLICY), "source": {"head": "a" * 40},
              "checks": dict.fromkeys(report.CHECKS, True), "months": months,
              "totals": totals(groups), "role_totals": roles(groups),
-             "exact_no_change": dict.fromkeys(report.SCOPES, not removed)}
+             "exact_no_change": {"full": not removed, "cutoff": not removed or cutoff_unchanged}}
     acceptance = {"schema_version": "kaushik_exchange_wallet_acceptance_v1",
                   "status": "exchange_wallet_masks_reopened_accepted", "scientific_admission": True,
                   "all_masks_reopened": True, "policy": deepcopy(report.POLICY),
@@ -80,6 +81,7 @@ class ReportTests(unittest.TestCase):
         self.assertIn("no new estimates were fitted", source)
         self.assertIn("Kaushik's exact address list was not supplied", source)
         self.assertIn("not unique native fills", source)
+        self.assertIn("dates and the cutoff use the existing approximate archive timestamps", source)
         self.assertIn(r"\usepackage{booktabs}", source)
         self.assertNotIn("http", source)
         self.assertNotIn("sha256", source)
@@ -96,6 +98,13 @@ class ReportTests(unittest.TestCase):
         self.assertIn("Affected estimates require refitting", source)
         self.assertIn("not a regression rerun", source)
         self.assertNotIn("earlier estimates unchanged", source)
+        self.assertNotIn("The cutoff sample retains every eligible record.", source)
+        audit, acceptance = fixtures(removed=True, cutoff_unchanged=True)
+        source = report.render_source(audit, acceptance, "b" * 64)
+        self.assertIn("The cutoff sample retains every eligible record.", source)
+        self.assertIn("Affected estimates require refitting", source)
+        self.assertNotIn("earlier estimates unchanged", source)
+        self.assertNotIn("new estimates were fitted", source)
 
     def test_unsupported_statuses_admission_and_digest_fail(self):
         changes = [("audit", "status", "exchange_wallet_audit_incomplete"),
