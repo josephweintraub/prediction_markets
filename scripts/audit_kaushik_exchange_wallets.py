@@ -280,10 +280,23 @@ def audit_month(con, base_path, mask_path, month, source_rows, *, ledger=None, b
     require(sum(r["full_baseline"] for r in groups) == n, "claims/mask join fanout or loss")
     fields = ",".join(inputs.ident(f) for f in FIELDS)
     union = f"SELECT {fields} FROM partitioned WHERE NOT removed UNION ALL SELECT {fields} FROM partitioned WHERE removed"
-    differences = []
-    for left, right in ((f"SELECT {fields} FROM prior_base", union), (union, f"SELECT {fields} FROM prior_base")):
-        if ledger: ledger.charge(3 * base_bytes + 2 * mask_bytes + 2 * claims_bytes, "reference_exact_partition")
-        differences.append(con.execute(f"SELECT count(*) FROM ({left} EXCEPT ALL ({right}))").fetchone()[0])
+    if mask_n == 0:
+        require(all(r["matched_proxy_address"] is None and r["matched_counterparty_address"] is None
+                    and r["removed"] is False and r["unsupported"] is False for r in groups) and
+                sum(r["full_baseline"] for r in groups if r["removed"]) == 0,
+                "empty mask observed match/removal flags differ")
+        # b.* preserves the original twelve fields. The validated empty LEFT
+        # JOIN supplies no matches; count=n above rules out claims fanout. Thus
+        # retained is the exact original multiset and removed is empty, without
+        # executing the redundant full-row EXCEPT ALL comparisons.
+        differences = [0, 0]
+        partition_proof_method = "empty_mask_exact_identity"
+    else:
+        differences = []
+        for left, right in ((f"SELECT {fields} FROM prior_base", union), (union, f"SELECT {fields} FROM prior_base")):
+            if ledger: ledger.charge(3 * base_bytes + 2 * mask_bytes + 2 * claims_bytes, "reference_exact_partition")
+            differences.append(con.execute(f"SELECT count(*) FROM ({left} EXCEPT ALL ({right}))").fetchone()[0])
+        partition_proof_method = "bidirectional_except_all"
     require(differences == [0, 0], "reference baseline retained/removed multiset partition differs")
     totals = {scope: {metric: {part: sum(r[f"{scope}_{metric}"] for r in groups if
         part == "original" or (part == "removed") == r["removed"]) for part in ("original", "retained", "removed")}
@@ -294,7 +307,9 @@ def audit_month(con, base_path, mask_path, month, source_rows, *, ledger=None, b
     if fail_on_unsupported:
         require(unsupported == 0, "diagnostic-only V3 address has eligible reference matches: " + str(unsupported))
     return {"month": month, "mask_rows": mask_n, "eligible_groups": groups, "counts": totals,
-            "unsupported_eligible_rows": unsupported, "EXCEPT_ALL_differences": differences}
+            "unsupported_eligible_rows": unsupported, "EXCEPT_ALL_differences": differences,
+            "partition_proof_method": partition_proof_method,
+            "EXCEPT_ALL_queries_executed": partition_proof_method == "bidirectional_except_all"}
 
 
 def address_field_counts(groups, prefix):

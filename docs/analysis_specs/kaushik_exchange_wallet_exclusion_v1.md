@@ -55,8 +55,14 @@ For every one of the 44 monthly source partitions:
 - Preserve the original zero-based physical Parquet row number before filtering.
 - Save only source locators, matched public exchange addresses and match flags.
 - Reopen masks and prove exact source-locator/address-field equality.
-- Partition the accepted 12-field base into retained and removed multisets;
-  require bidirectional `EXCEPT ALL` differences of zero.
+- Partition the accepted 12-field base into retained and removed multisets.
+  For a nonempty wallet mask, require literal bidirectional `EXCEPT ALL`
+  differences of zero. For an exactly empty source-validated mask, prove the
+  same zero differences by exact identity: the unique claims join and direct
+  original 12-field projection preserve every reference record, group counts
+  equal the base count, all match fields are null and no removal flag is true.
+  Record which proof was used. Keep reference/source content reopening and all
+  original validity and coverage checks in both paths.
 - Reconcile raw matches absent from the base to its original first-failure
   exclusion records, rather than treating them as missing valid observations.
 - Report original, retained and removed counts for all-role and primary-taker

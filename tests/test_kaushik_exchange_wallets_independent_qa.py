@@ -173,6 +173,28 @@ class IndependentExchangeFixture(unittest.TestCase):
                          "(FORMAT PARQUET)")
         return path
 
+    def empty_source_mask(self):
+        self.rows = [dict(row, proxyWallet="qa-person", counterparty="qa-other")
+                     for row in self.rows]
+        self.raw = self.folder / "empty_mask_source.parquet"
+        pq.write_table(pa.Table.from_pylist(self.rows, schema=RAW_SCHEMA), self.raw)
+        mask = self.mask()
+        self.assertEqual(pq.ParquetFile(mask).metadata.num_rows, 0)
+        audit.compare_source_mask(self.con, mask, MONTH)
+        return mask
+
+    def observed_month(self, mask, base=None):
+        queries = []
+
+        class ObservedConnection:
+            def execute(_, query, *args):
+                queries.append(query)
+                return self.con.execute(query, *args)
+
+        result = audit.audit_month(ObservedConnection(), base or self.base, mask,
+                                   MONTH, len(self.rows))
+        return result, queries
+
     def expected_counts(self, rows, scope, part, primary=False):
         result = Counter({name: 0 for name in audit.METRICS})
         for row in rows:
@@ -368,6 +390,82 @@ class IndependentExchangeFixture(unittest.TestCase):
         pq.write_table(pa.Table.from_pylist(changed, schema=BASE_SCHEMA), mutated_base)
         with self.assertRaisesRegex(inputs.InputBlocked, "reference locator"):
             audit.audit_month(self.con, mutated_base, mask, MONTH, len(self.rows))
+
+    def test_empty_mask_identity_matches_actual_bidirectional_twelve_field_oracle(self):
+        mask = self.empty_source_mask()
+        result, queries = self.observed_month(mask)
+        self.assertEqual(result["mask_rows"], 0)
+        self.assertEqual(result["partition_proof_method"], "empty_mask_exact_identity")
+        self.assertIs(result["EXCEPT_ALL_queries_executed"], False)
+        self.assertFalse(any("EXCEPT ALL" in query.upper() for query in queries))
+        self.assertEqual(result["EXCEPT_ALL_differences"], [0, 0])
+        fields = ",".join(inputs.ident(field) for field in BASE_FIELDS)
+        original = f"SELECT {fields} FROM prior_base"
+        partition = (f"SELECT {fields} FROM partitioned WHERE NOT removed UNION ALL "
+                     f"SELECT {fields} FROM partitioned WHERE removed")
+        independent_differences = [self.con.execute(
+            f"SELECT count(*) FROM (({left}) EXCEPT ALL ({right}))"
+        ).fetchone()[0] for left, right in ((original, partition), (partition, original))]
+        self.assertEqual(independent_differences, result["EXCEPT_ALL_differences"])
+        self.assertEqual(independent_differences, [0, 0])
+        # Repeated economic values remain separate because physical ordinals are
+        # part of the independently selected original twelve-field payload.
+        self.assertEqual(self.con.execute("SELECT count(*),count(DISTINCT source_ordinal) "
+                                         "FROM partitioned").fetchone(), (16, 16))
+        for scope in ("full", "cutoff"):
+            for metric in audit.METRICS:
+                values = result["counts"][scope][metric]
+                self.assertEqual(values["removed"], 0)
+                self.assertEqual(values["original"], values["retained"])
+
+    def test_empty_mask_still_rejects_invalid_reference_fields_and_duration(self):
+        mask = self.empty_source_mask()
+        mutations = (
+            lambda rows: rows.append(dict(rows[0])),
+            lambda rows: rows[0].update(source_ordinal=len(self.rows)),
+            lambda rows: rows[0].update(P=.4),
+            lambda rows: rows[0].update(duration_eligible=False),
+        )
+        for number, mutation in enumerate(mutations):
+            changed = [dict(row) for row in self.base_rows]
+            mutation(changed)
+            base = self.folder / f"empty_bad_base_{number}.parquet"
+            pq.write_table(pa.Table.from_pylist(changed, schema=BASE_SCHEMA), base)
+            with self.subTest(mutation=number), self.assertRaises(inputs.InputBlocked):
+                self.observed_month(mask, base)
+
+    def test_empty_mask_still_rejects_missing_claim_mapping_and_claim_fanout(self):
+        mask = self.empty_source_mask()
+        self.con.execute("ALTER TABLE claims RENAME TO frozen_fixture_claims")
+        self.con.execute("CREATE OR REPLACE TEMP VIEW claims AS SELECT * FROM frozen_fixture_claims "
+                         "WHERE claim_code<>0")
+        with self.assertRaisesRegex(inputs.InputBlocked, "claims/duration"):
+            self.observed_month(mask)
+        self.con.execute("CREATE OR REPLACE TEMP VIEW claims AS SELECT * FROM frozen_fixture_claims "
+                         "UNION ALL SELECT * FROM frozen_fixture_claims WHERE claim_code=0")
+        with self.assertRaisesRegex(inputs.InputBlocked, "fanout"):
+            self.observed_month(mask)
+
+    def test_nonempty_mask_uses_literal_comparisons_even_if_only_noneligible_matches(self):
+        ordinary_mask = self.mask()
+        ordinary, queries = self.observed_month(ordinary_mask)
+        self.assertEqual(ordinary["partition_proof_method"], "bidirectional_except_all")
+        self.assertIs(ordinary["EXCEPT_ALL_queries_executed"], True)
+        self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in queries), 2)
+        self.assertEqual(ordinary["EXCEPT_ALL_differences"], [0, 0])
+        self.empty_source_mask()
+        self.rows[14]["proxyWallet"] = FROZEN_EXCHANGES[0]
+        self.raw = self.folder / "noneligible_only_source.parquet"
+        pq.write_table(pa.Table.from_pylist(self.rows, schema=RAW_SCHEMA), self.raw)
+        noneligible_mask = self.mask()
+        self.assertEqual(pq.ParquetFile(noneligible_mask).metadata.num_rows, 1)
+        noneligible, queries = self.observed_month(noneligible_mask)
+        self.assertEqual(noneligible["partition_proof_method"], "bidirectional_except_all")
+        self.assertIs(noneligible["EXCEPT_ALL_queries_executed"], True)
+        self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in queries), 2)
+        self.assertEqual(noneligible["EXCEPT_ALL_differences"], [0, 0])
+        for scope in ("full", "cutoff"):
+            self.assertEqual(noneligible["counts"][scope]["baseline"]["removed"], 0)
 
 
 if __name__ == "__main__":

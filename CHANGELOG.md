@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-14 - Empty-mask reconciliation fast path
+
+- Preserved the deliberately interrupted initial exchange-wallet audit and its
+  unaccepted staging evidence; no accepted input or previous result was changed.
+- Specified exact reference identity for source-validated empty wallet masks,
+  retaining literal bidirectional multiset comparisons for nonempty masks.
+- Kept scientific rules, resource ceilings, validity/coverage checks and content
+  reopening unchanged; a fresh committed-source preflight and run are required.
+
 ## 2026-10-14 - Exchange-wallet exclusion audit
 
 - Added a count-first, source-bound audit of either-wallet exchange-address

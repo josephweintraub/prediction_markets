@@ -117,6 +117,16 @@ def accepted_fixture(folder, con, *, eligible_v3=False):
     return reference, (contract, raw_files, binding)
 
 
+class TraceConnection:
+    def __init__(self, con):
+        self.con = con
+        self.queries = []
+
+    def execute(self, query, *args, **kwargs):
+        self.queries.append(query)
+        return self.con.execute(query, *args, **kwargs)
+
+
 class ExchangeWalletFixtures(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="kaushik-exchange-fixture-")
@@ -271,6 +281,73 @@ class ExchangeWalletFixtures(unittest.TestCase):
             disk.return_value = SimpleNamespace(free=43_999_999_999)
             with self.assertRaisesRegex(audit.inputs.InputBlocked, "reservation"):
                 audit._reserve(self.folder)
+
+    def test_empty_mask_exact_identity_matches_independent_twelve_field_except_all(self):
+        records = [raw_record(), raw_record(), raw_record(side="SELL", price=.9000000000000001, is_maker=True),
+                   raw_record(timestamp=audit.inputs.CUTOFF_SECONDS), raw_record(timestamp=audit.inputs.CUTOFF_SECONDS + 1)]
+        _, base, mask = save_fixture(self.folder, self.con, records)
+        trace, ledger = TraceConnection(self.con), audit.ReadLedger()
+        result = audit.audit_month(trace, base, mask, MONTH, len(records), ledger=ledger)
+        self.assertEqual(result["mask_rows"], 0)
+        self.assertEqual(result["partition_proof_method"], "empty_mask_exact_identity")
+        self.assertFalse(result["EXCEPT_ALL_queries_executed"])
+        self.assertFalse(any("EXCEPT ALL" in query.upper() for query in trace.queries))
+        self.assertNotIn("reference_exact_partition", ledger.scans)
+        self.assertEqual(result["counts"]["full"]["baseline"], {"original": 5, "retained": 5, "removed": 0})
+        self.assertEqual(result["counts"]["cutoff"]["baseline"], {"original": 3, "retained": 3, "removed": 0})
+        fields = ",".join(audit.inputs.ident(f) for f in audit.FIELDS)
+        original = f"SELECT {fields} FROM read_parquet({audit.inputs.literal(base)},hive_partitioning=false)"
+        retained = f"SELECT {fields} FROM partitioned WHERE NOT removed"
+        # These fixture-only oracle queries are deliberately independent of the
+        # fast path and preserve identical economic rows at distinct locators.
+        differences = [self.con.execute(f"SELECT count(*) FROM ({left} EXCEPT ALL ({right}))").fetchone()[0]
+                       for left, right in ((original, retained), (retained, original))]
+        self.assertEqual(differences, result["EXCEPT_ALL_differences"])
+        self.assertEqual(self.con.execute(f"SELECT {fields} FROM partitioned WHERE NOT removed ORDER BY source_ordinal").fetchall(),
+                         self.con.execute(original + " ORDER BY source_ordinal").fetchall())
+
+    def test_nonempty_masks_always_execute_original_bidirectional_except_all(self):
+        for removed in (True, False):
+            with self.subTest(removed=removed), tempfile.TemporaryDirectory() as temp:
+                con = duckdb.connect()
+                try:
+                    records = [raw_record(proxyWallet=audit.EXCHANGES[0], price=.05 if removed else 0.), raw_record()]
+                    _, base, mask = save_fixture(temp, con, records, admitted=[0, 1] if removed else [1])
+                    trace, ledger = TraceConnection(con), audit.ReadLedger()
+                    result = audit.audit_month(trace, base, mask, MONTH, 2, ledger=ledger)
+                    self.assertEqual(result["partition_proof_method"], "bidirectional_except_all")
+                    self.assertTrue(result["EXCEPT_ALL_queries_executed"])
+                    self.assertEqual(sum("EXCEPT ALL" in query.upper() for query in trace.queries), 2)
+                    self.assertIn("reference_exact_partition", ledger.scans)
+                    self.assertEqual(result["counts"]["full"]["baseline"]["removed"], int(removed))
+                finally:
+                    con.close()
+
+    def test_empty_mask_still_rejects_bad_reference_missing_claims_and_fanout(self):
+        _, base, mask = save_fixture(self.folder, self.con, [raw_record(), raw_record()])
+        rows = pq.read_table(base).to_pylist()
+        invalid = self.folder / "empty-mask-invalid-base.parquet"
+        pq.write_table(pa.Table.from_pylist([{**rows[0], "P": 0.}], schema=BASE_SCHEMA), invalid)
+        with self.assertRaisesRegex(audit.inputs.InputBlocked, "reference locator/analytical"):
+            audit.audit_month(self.con, invalid, mask, MONTH, 2)
+        self.con.execute("CREATE OR REPLACE TEMP VIEW claims AS SELECT * FROM fixture_claims WHERE claim_code<>0")
+        with self.assertRaisesRegex(audit.inputs.InputBlocked, "claims/duration"):
+            audit.audit_month(self.con, base, mask, MONTH, 2)
+        self.con.execute("CREATE OR REPLACE TEMP VIEW claims AS SELECT * FROM fixture_claims UNION ALL SELECT * FROM fixture_claims WHERE claim_code=0")
+        with self.assertRaisesRegex(audit.inputs.InputBlocked, "fanout"):
+            audit.audit_month(self.con, base, mask, MONTH, 2)
+
+    def test_empty_mask_observed_flags_are_explicitly_validated(self):
+        _, base, mask = save_fixture(self.folder, self.con, [raw_record()])
+        real_rows = audit._rows
+        def damaged_groups(con, query):
+            groups = real_rows(con, query)
+            if "FROM partitioned GROUP BY ALL" in query:
+                groups[0]["removed"] = True
+            return groups
+        with patch.object(audit, "_rows", side_effect=damaged_groups), \
+             self.assertRaisesRegex(audit.inputs.InputBlocked, "empty mask observed"):
+            audit.audit_month(self.con, base, mask, MONTH, 1)
 
     def preflight_fixture(self, *, eligible_v3=False):
         reference, loaded = accepted_fixture(self.folder, self.con, eligible_v3=eligible_v3)
