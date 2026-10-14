@@ -282,6 +282,16 @@ class ExchangeWalletFixtures(unittest.TestCase):
             with self.assertRaisesRegex(audit.inputs.InputBlocked, "reservation"):
                 audit._reserve(self.folder)
 
+    def test_resource_only_retry_changes_exactly_two_memory_admission_caps(self):
+        previous = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
+            "minimum_available_ram_bytes": 70_000_000_000, "minimum_free_bytes": 20_000_000_000,
+            "maximum_output_bytes": 8_000_000_000, "maximum_mask_file_bytes": 1_000_000_000,
+            "maximum_read_bytes": 1_000_000_000_000, "maximum_json_bytes": 16_000_000}
+        self.assertEqual(set(audit.CAPS), set(previous))
+        changes = {key: (previous[key], value) for key, value in audit.CAPS.items() if value != previous[key]}
+        self.assertEqual(changes, {"memory_limit": ("64GB", "192GB"),
+                                  "minimum_available_ram_bytes": (70_000_000_000, 240_000_000_000)})
+
     def test_empty_mask_exact_identity_matches_independent_twelve_field_except_all(self):
         records = [raw_record(), raw_record(), raw_record(side="SELL", price=.9000000000000001, is_maker=True),
                    raw_record(timestamp=audit.inputs.CUTOFF_SECONDS), raw_record(timestamp=audit.inputs.CUTOFF_SECONDS + 1)]
@@ -356,7 +366,7 @@ class ExchangeWalletFixtures(unittest.TestCase):
              patch.object(audit.inputs, "load_contract", return_value=loaded), \
              patch.object(audit.inputs, "validate_destination"), \
              patch.object(audit.os, "cpu_count", return_value=4), \
-             patch.object(Path, "read_text", return_value="MemAvailable: 68359375 kB\n"), \
+             patch.object(Path, "read_text", return_value=f"MemAvailable: {audit.CAPS['minimum_available_ram_bytes'] // 1024} kB\n"), \
              patch.object(audit.shutil, "disk_usage", return_value=SimpleNamespace(free=44_000_000_000)):
             fresh = audit.preflight(reference, audit.inputs.sha256(reference / "manifest.json"),
                 audit.inputs.sha256(reference / "acceptance.json"), self.folder / "published-audit", source)
@@ -371,7 +381,7 @@ class ExchangeWalletFixtures(unittest.TestCase):
         with patch.object(audit, "SOURCE_MONTHS", (MONTH,)), \
              patch.object(audit.inputs, "load_contract", return_value=loaded) as load, \
              patch.object(audit.inputs, "validate_destination"), patch.object(audit.os, "cpu_count", return_value=4) as cpu, \
-             patch.object(Path, "read_text", return_value="MemAvailable: 68359375 kB\n") as ram, \
+             patch.object(Path, "read_text", return_value=f"MemAvailable: {audit.CAPS['minimum_available_ram_bytes'] // 1024} kB\n") as ram, \
              patch.object(audit.shutil, "disk_usage", return_value=SimpleNamespace(free=44_000_000_000)) as disk:
             def check():
                 return audit.preflight(reference["directory"], reference["bindings"]["manifest"]["sha256"],
@@ -379,9 +389,9 @@ class ExchangeWalletFixtures(unittest.TestCase):
             disk.return_value = SimpleNamespace(free=43_999_999_999)
             with self.assertRaisesRegex(audit.inputs.InputBlocked, "reservation"): check()
             disk.return_value = SimpleNamespace(free=44_000_000_000)
-            ram.return_value = "MemAvailable: 68359374 kB\n"
+            ram.return_value = f"MemAvailable: {audit.CAPS['minimum_available_ram_bytes'] // 1024 - 1} kB\n"
             with self.assertRaisesRegex(audit.inputs.InputBlocked, "RAM"): check()
-            ram.return_value = "MemAvailable: 68359375 kB\n"; cpu.return_value = 3
+            ram.return_value = f"MemAvailable: {audit.CAPS['minimum_available_ram_bytes'] // 1024} kB\n"; cpu.return_value = 3
             with self.assertRaisesRegex(audit.inputs.InputBlocked, "four-thread"): check()
             cpu.return_value = 4
             altered = deepcopy(loaded); altered[1][0]["sha256"] = "f" * 64

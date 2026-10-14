@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-14 - Exchange-audit memory-only capacity retry
+
+- Preserved the nonempty-mask spill failure without publishing partial counts.
+- Increased only DuckDB memory and the required available-RAM admission floor
+  on the existing host; kept disk/output/read ceilings and scientific rules.
+- Retained the empty-only identity path and nonempty literal multiset checks,
+  with focused boundary fixtures and independent full-suite validation.
+
 ## 2026-10-14 - Empty-mask reconciliation fast path
 
 - Preserved the deliberately interrupted initial exchange-wallet audit and its

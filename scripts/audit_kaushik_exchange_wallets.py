@@ -38,8 +38,8 @@ POLICY = {"policy": "exclude_source_exchange_wallets", "addresses": list(EXCHANG
           "diagnostic_only_addresses": list(DIAGNOSTIC_EXCHANGES),
           "unsupported_eligible_match_blocks_admission": True,
           "emitting_contract_filter": False, "other_filters_added": False}
-CAPS = {"memory_limit": "64GB", "threads": 4, "spill_bytes": 16_000_000_000,
-        "minimum_available_ram_bytes": 70_000_000_000, "minimum_free_bytes": 20_000_000_000,
+CAPS = {"memory_limit": "192GB", "threads": 4, "spill_bytes": 16_000_000_000,
+        "minimum_available_ram_bytes": 240_000_000_000, "minimum_free_bytes": 20_000_000_000,
         "maximum_output_bytes": 8_000_000_000, "maximum_mask_file_bytes": 1_000_000_000,
         "maximum_read_bytes": 1_000_000_000_000, "maximum_json_bytes": 16_000_000}
 FIELDS = subset.FIELDS
@@ -153,7 +153,7 @@ def preflight(reference_dir, manifest_sha, acceptance_sha, target, source):
     available = re.search(r"^MemAvailable:\s+(\d+) kB$", Path("/proc/meminfo").read_text(), re.MULTILINE)
     ram = int(available.group(1)) * 1024 if available else 0
     require(ram >= CAPS["minimum_available_ram_bytes"] and (os.cpu_count() or 0) >= CAPS["threads"],
-            "70GB available RAM/four-thread admission fails")
+            "240GB available RAM/four-thread admission fails for 192GB DuckDB limit")
     planned = (8 * sum(i["stat"]["bytes"] for i in raw) +
                16 * sum(i["info"]["bytes"] for i in reference["files"].values()) +
                6 * len(raw) * reference["files"]["claims.parquet"]["info"]["bytes"] +

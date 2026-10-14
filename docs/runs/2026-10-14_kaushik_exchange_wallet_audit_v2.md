@@ -1,6 +1,6 @@
 # Exchange-wallet audit, 14 October 2026
 
-Status: fresh v2 source/fixture admission pending. Neither an accepted
+Status: v2 failed its body's spill ceiling; v3 retry pending. Neither an accepted
 sample-wide count result nor revised coefficient estimates are claimed here.
 
 The [scientific specification](../analysis_specs/kaushik_exchange_wallet_exclusion_v1.md)
@@ -62,3 +62,32 @@ The report-only renderer validates accepted audit/receipt bindings and
 recomputes all monthly/global role counts before writing native LaTeX tables.
 It does not fit coefficients or read trading-data bodies. Prior cutoff and
 full-date reports remain immutable.
+
+## Preserved v2 capacity failure and v3 memory-only retry
+
+V2 source HEAD `dcfd39f6d0d6affceeb6a9ddab0bf347b3acfabd` passed independent
+182-test QA (38.228 seconds) and production-runtime QA (41.547 seconds).
+Fresh v2 preflight SHA256:
+`54b57a63afef9f7231ca69f70d0f7e651d79fba2526e0b4ce9995a768d122f0d`.
+Its reference, raw/native metadata, binding, policy, caps, optimizer and read
+plan exactly matched v1; independent review passed. Source/target/resources
+were the only changed top-level keys.
+
+V2 exited 1 at the original nonempty-mask comparison in April 2026 after the
+unchanged 16 GB spill ceiling was exhausted. This is a capacity failure, not
+accepted April count evidence. Forty-one prior months had completed. Keep
+`/mnt/data/runs/.2026-10-14_kaushik_exchange_wallet_audit_v2.staging-jt3rv5o9`
+unaccepted; its failure JSON SHA256 is
+`a756d0b5bc1492ec9a118543341ecb41d51dc32cb6e83bb6bf0692b0634183bd`.
+No retry changed the source files or old completed analysis outputs.
+
+V3 changes only DuckDB memory from 64 to 192 GB and its available-RAM admission
+floor from 70 to 240 GB, plus the corresponding error text. Reversing those
+changes exactly reproduces the prior complete script hash. The same measured
+instance has 267,392,999,424 total RAM bytes and 264,772,878,336 available bytes
+after v2 exit, with no overlapping research job. All other caps, science and
+proof paths remain unchanged. Independent 183-test QA passed in 31.313 seconds.
+Use fresh committed source and immutable
+`/mnt/data/runs/2026-10-14_kaushik_exchange_wallet_audit_preflight_v3` and
+`/mnt/data/runs/2026-10-14_kaushik_exchange_wallet_audit_v3` paths. Fresh runtime
+fixture QA, metadata/resource admission and final body acceptance are required.
