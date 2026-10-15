@@ -1,7 +1,8 @@
 # Exchange-filtered full-date Kaushik Polymarket rerun
 
-Status: implementation, independent review and production-runtime fixture QA
-passed; canonical source commit and fresh production admission pending.
+Status: production inputs, complete estimates, both independent release audits
+and report QA accepted. Finished-package publication and root-owned shutdown
+are separate final handling steps, not claimed complete in this commit.
 Date: 14 October 2026, America/New_York. Execution timestamps use UTC.
 
 ## Authorization and scope
@@ -37,7 +38,7 @@ eligible removals and is not refitted.
 - Provider inputs remain the original full-date sports binding; a fresh
   metadata stage and reviewed binding will reference the logical input.
 
-## Expected reconciliation
+## Accepted reconciliation
 
 | Primary taker population | Original | Eligible exchange removed | Retained |
 | --- | ---: | ---: | ---: |
@@ -60,8 +61,8 @@ reviews source and small fixtures. The root freezes contracts, integrates and
 reviews changes, manages canonical commits, production admission, artifacts,
 and lifecycle. Agents may not manage the instance or storage.
 
-The instance was verified stopped before implementation. It will remain stopped
-until reviewed source and focused tests are ready. Every production stage is
+The instance was verified stopped before implementation and started only after
+reviewed source and focused tests were ready. Every production stage is
 serial and immutable, uses committed source, fixed capacity checks, detached
 execution with an exclusive saved log, and exact input/output reopening.
 After all required jobs and transfers finish, the root must confirm no process
@@ -80,7 +81,8 @@ failure and interruption all require this lifecycle check.
 6. Reviewed canonical source push, verified finished Dropbox package, and
    recorded stopped-state receipt.
 
-No new coefficient result has yet been computed or accepted.
+The original pre-execution gates above were all met. Accepted execution and
+result evidence are recorded below.
 
 ## Local implementation and independent review
 
@@ -129,3 +131,120 @@ fixture suite ran with `/home/ubuntu/venv/bin/python -B -m unittest` and passed
 This is synthetic-fixture validation on the production runtime, not execution
 of the real-data pipeline. Root-owned lifecycle and all production gates remain
 required.
+
+## Accepted production execution
+
+The scientific source was committed and pushed on
+`codex/kaushik-exchange-contract-exclusion` at
+`b1c9816cf69ae6d2609ed5a8effc4865c67ff9ee` before real-data execution. The
+original `build_inputs.py` and numerical `estimators.py` remain byte-identical.
+Subsequent documentation-only release commits do not replace this producer
+watermark. Every long stage used the saved detached execution envelope and an
+explicitly reviewed request; no source, science, tolerance or resource ceiling
+changed while a body was running.
+
+All following directories are under `/mnt/data/runs/`:
+
+| Stage | Accepted directory | Manifest/audit SHA256 | Acceptance SHA256 |
+| --- | --- | --- | --- |
+| Logical inputs | `2026-10-14_kaushik_exchange_filtered_inputs_v1` | `61e99d04169b34e1872abb88e78ab30033a0f2cc2559f9ce061bafe7e53f4465` | `353ec7bb234f3b9347b7d34fe70bfe016ceeb32bafb05371e99b4611a5cedc46` |
+| Sports metadata | `2026-10-14_kaushik_exchange_filtered_sports_metadata_v1` | `40a43954cc15f40afcdf82692fd91e6d58c1ef98753e29d9a13ca9934d61c315` | `6a63a6f4150086ccec45ded0ec80d4706b6fd33361d69510887264ca9cbd882b` |
+| Estimates | `2026-10-14_kaushik_exchange_filtered_estimates_v1` | `cd6397a1f906e89ea070ade24b4ff8491014bd58c71f552c3de658848cb685d7` | `32012aaf016cfb61fa3ebccfa05c904cabe4d41491b8782e60cfe9230021abb6` |
+| Saved-score audit | `2026-10-14_kaushik_exchange_filtered_saved_score_audit_v1` | `38cb5786ca0f99a83bb31e3570a4d0acbaa3a80aab8659eacbc9128f310af149` | Audit itself is the receipt |
+| Raw release audit | `2026-10-14_kaushik_exchange_filtered_release_audit_v1` | `0ed3dd7519af0c3ee9bb431583a9650145343142708c5ca4ff83c350578c410c` | Audit itself is the receipt |
+
+The estimate-summary SHA256 is
+`a90870bbfd1091cbbf241a2580cc94807380592d58a49b3f0b7df5eb1c900caa`.
+All five estimate reconciliation gates and output reopening passed. All twelve
+regression models completed without numerical withholding. All 47 score files
+and the complete profile/window/support grids are saved, including suppressed
+cells with null estimates rather than fabricated zeros.
+
+Execution evidence:
+
+- Logical input body: exit zero, 1,119.761 seconds, completed
+  `2026-10-15T01:40:43.652775Z`; all five input gates passed. The layer has no
+  copied base/claim outputs and references 133 immutable source files/masks.
+- Sports metadata body: exit zero, 4.838 seconds. The original 13,909 games,
+  14,383 markets, nine sports, provider hashes and coverage are unchanged.
+- Estimate body: `2026-10-15T01:54:33.453337Z` to
+  `2026-10-15T03:30:17.410960Z`, exit zero, 5,743.957 seconds. Actual charged
+  reads were 593,532,391,811 bytes, below the reviewed 6,962,865,559,932-byte
+  plan and unchanged 8 TB ceiling. Accepted Parquet outputs total
+  1,728,634,683 bytes; the score subset is 588,915,988 bytes.
+- Saved-score audit: `2026-10-15T05:16:10.286030Z` to
+  `2026-10-15T05:16:37.942941Z`, exit zero, 27.657 seconds; all seven checks
+  passed. Its 1,780,613,792 charged read bytes are below 25 GB. It independently
+  reconciles CR0 covariance, contrasts/SEs/intervals, influence, support and
+  the supplementary covariance factor from all 47 saved score files.
+- Raw release body: completed `2026-10-15T06:26:38.153918Z`, exit zero,
+  270.781 seconds, all seven checks passed. Charged reads were 79,795,673,442
+  bytes against the reviewed 179,559,241,430-byte plan and 1 TB ceiling. It
+  independently calculates Table 1/A2 bin means and gaps and duration-panel
+  counts; verifies all twelve numerical models and full-grid withholding;
+  binds saved-score acceptance; and reopens physical inputs unchanged.
+
+The final raw audit is not another coefficient refit or an independent raw
+provider-timing reconstruction. Neither audit certifies native-action or
+unique-fill completeness. All execution requests reopened unchanged and every
+stage retains its original versioned evidence.
+
+## Report and interpretation checks
+
+The local report and accepted summaries are under
+`output/kaushik_exchange_filtered_2026-10-14_v1/`. The primary artifact is
+`report_v1/source.tex`, generated only from accepted new and original JSON
+summaries with the committed renderer exported at the scientific source HEAD.
+It includes 21 vector figures and 38 native tables, including the original full
+grid and two descriptive original-versus-excluded comparisons. The portable
+source uses relative figures and contains no reader-facing fingerprint appendix
+or generic closing interpretation page.
+
+The report compiled twice in an isolated temporary directory with pdfTeX
+1.40.27 / TeX Live 2025. All 32 pages were rendered at 150 dpi and independently
+visually checked, pages 1-16 and 17-32 by separate agents. Root reviewed selected
+pages and checked page-4 footer separation. No clipping, overlap, overfull box,
+missing asset, undefined reference or remaining rerun warning was found. Two
+underfull paragraph messages on page 7 are cosmetic; the text is contained and
+readable. All figure PDFs were checked for vector content and every source/asset
+hash reconciled. Final compilation, page checks, numerical-audit bindings and
+the complete 24-file report inventory are in `report_v1_qa.json`.
+
+The committed comparison reports the payoff D10-minus-D1 gap moving from
+0.508864 to 0.615428 cents and the average individual-return gap from 24.243773
+to 29.796090 percentage points. The change is driven by a more negative D1,
+not stronger D10 returns. No standard error or test of the old-new difference
+was computed. All four full-model duration-gap slope intervals include zero;
+the influence qualifications remain. A separate read-only reviewer rebuilt
+these contrasts and intervals from saved joint covariance, with maximum
+discrepancy 7.11e-15.
+
+The science is unchanged apart from the four-address either-source-wallet
+exclusion. In particular: equal primary taker-record weights, complemented
+SELL positions, signed C/Q outcomes, fixed probability bins, native categories,
+exact recorded normalized price effects and UTC month effects; no added bot,
+price-cent, calendar-cutoff, lifecycle or matched-Kalshi filter. Duration uses
+`created_at`/`end_date` proxies and `log2(1+days)` clocks, not normalized game
+time. Source executions end 21 June 2026 with the original July resolution
+vintage and its censoring qualification. All eligible exchange removals are
+in April-June 2026; the March 25 cutoff study is unchanged and not refitted.
+
+## Publication and lifecycle handoff
+
+The scientific source capsule contains 35 exact tracked files exported from
+the scientific commit, with no invented namespace markers. Its source manifest
+SHA256 is `6f2233566835efd65232b06895dedbc4f7d62d06be039ca2c2e591604b9027fe`.
+The finished bundle requires separate root admission, a fresh isolated
+219-test candidate run, summary/import/credential/inventory checks and atomic
+non-replacing publication before Dropbox copying. Raw trades, provider/cache/
+score/mask bodies, credentials and scratch files are not sharing payloads.
+The finished package contains portable report source/assets, accepted summary
+evidence, frozen code/fixtures and reproduction documentation; repeating real
+data estimation still requires the private canonical inputs.
+
+The serial production operator released its instance dependency after a
+`2026-10-15T06:27:59Z` check found no production or transfer processes. Root
+still requires the instance for reviewed documentation integration and the
+verified Dropbox transfer. At this documentation commit these final handling
+steps and shutdown remain pending. The local task/release receipts record
+their actual completion; do not interpret this as a stopped-state receipt.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-15 - Accepted exchange-filtered full-date replication
+
+- Completed the immutable logical-input, provider-binding and full model-grid
+  rerun from committed source while preserving both original studies.
+- Passed independent saved-score covariance/contrast/support checks and raw
+  bin-average, duration-count, numerical and content-reopening release gates.
+- Produced and compiled the portable LaTeX comparison, all 21 vector figures
+  and 38 native tables; independently inspected all 32 preview pages.
+- Recorded exact stage bindings, unchanged scientific conventions, validation
+  evidence and remaining publication/lifecycle handling in the run record.
+
 ## 2026-10-14 - Exchange-filtered full-date rerun approval
 
 - Recorded approval for a versioned read-only parent-base-plus-mask input layer
