@@ -1,6 +1,9 @@
 # Exchange-wallet exclusion in the Kaushik Polymarket replication
 
-Status: count and locator-mask audit accepted, 14 October 2026. No revised
+Status: count and locator-mask audit accepted, 14 October 2026. The user approved
+the read-only filtered-input architecture and full-date coefficient rerun on
+14 October 2026. Implementation and local fixture QA passed; fresh production
+admission is pending. No revised
 coefficient estimates have been fitted or admitted. Preserve both accepted original runs.
 
 ## Question and sole sample change
@@ -111,10 +114,44 @@ writer was changed.
 
 The original physical input stage occupies 19,525,404,268 bytes. A second
 physical base would leave insufficient space for the estimator's unchanged
-60 GB reservation. A versioned parent-base-plus-mask read-only layer has been
-requested, not silently adopted. Full-date coefficient refitting remains
-pending that storage/architecture choice. No affected earlier estimate may be
-relabeled as exchange-filtered before a fresh accepted fit.
+60 GB reservation. On 14 October 2026 the user approved a versioned
+parent-base-plus-mask read-only layer and full-date rerun. No affected earlier
+estimate may be relabeled as exchange-filtered before a fresh accepted fit.
+
+## Approved logical-input and estimation contract
+
+The new input generation references the accepted original parent Parquets,
+claim map and all 44 accepted locator masks. It writes no replacement trade
+body. Form the original derived analysis view using the unchanged input
+builder, then anti-join only mask records with `known_exchange_match` on the
+exact `(source_month, source_ordinal)` key. Preserve all other fields and
+calculations. Null, duplicate, wrong-month or out-of-range locators, unsupported
+eligible-address matches, failed audit receipts or binding drift block admission.
+
+Publish a new `kaushik_replication_filtered_inputs_v1` manifest and
+`kaushik_replication_filtered_input_acceptance_v1` receipt. Bind the exact wallet
+policy, representation `parent_base_plus_mask`, paired parent and mask-audit
+manifest/receipt paths and hashes, and original input provenance. Recompute
+effective support from the filtered view. The original source count remains
+2,036,128,538; effective all-role eligibility is 1,780,899,376 and effective
+primary eligibility is 890,449,688. Preserve original first-failure exclusions
+and add only the 221,041,856 previously eligible all-role exchange records.
+The 9,944,126 already-ineligible matches are diagnostic, not a second exclusion.
+
+Use fresh source-bound sports metadata and estimation stages. Filtered estimate
+summary, stage and acceptance schemas advance together to their `v2` versions;
+saved-score audit advances to `v2`. Every layer must bind the same policy,
+logical-input generation and parent/audit provenance. Legacy `v1` inputs and
+estimates remain readable as unfiltered only. Keep all numerical estimators,
+model and figure grids, provider clocks, inference rules, resource reservations
+and output suppression thresholds unchanged. Reopen dependencies and outputs
+before atomic publication. Independently reconcile saved scores, counts,
+covariances, contrasts and nominal intervals before report release.
+
+The cutoff study needs no refit because its accepted mask removes zero eligible
+records. Report the full-date original and filtered studies as separate
+populations. Old-versus-new coefficient comparisons are descriptive unless a
+separately approved joint inference procedure is implemented.
 
 Accepted artifacts and execution/QA bindings are recorded in
 [`2026-10-14_kaushik_exchange_wallet_audit_v2.md`](../runs/2026-10-14_kaushik_exchange_wallet_audit_v2.md).

@@ -1454,6 +1454,116 @@ class IndependentSavedScoreAuditQA(unittest.TestCase):
         return saved_score_audit.audit_scores(folder, build_inputs.sha256(folder / "manifest.json"),
                                              build_inputs.sha256(folder / "acceptance.json"))
 
+    def filtered_fixture(self, temporary):
+        """Fit retained tiny records, then bind their new immutable input contract."""
+        from tests.test_kaushik_replication_driver import fixture
+        from tests.test_kaushik_replication_report import (binding_identities, fixture_binding,
+                                                        fixture_wallet_filter)
+        con = duckdb.connect()
+        try:
+            records, base, binding = fixture(con, temporary)
+            for row in records:
+                if row["cluster_source"] == "market_fallback":
+                    row["event_cluster"] = "market:"+row["market_id"]
+            con.execute("UPDATE analysis_base SET event_cluster='market:'||market_id WHERE cluster_source='market_fallback'")
+            def support(selected):
+                return [{"is_maker": maker, "side": side, "category": category, "bin": bin_,
+                         "rows": sum(r["is_maker"] is maker and r["side"] == side and
+                                     r["category"] == category and r["bin"] == bin_ for r in selected),
+                         "duration_tail_rows": sum(r["is_maker"] is maker and r["side"] == side and
+                                     r["category"] == category and r["bin"] == bin_ and
+                                     r["duration_eligible"] and r["bin"] in (1, 10) for r in selected)}
+                        for maker in (False, True) for side in ("BUY", "SELL")
+                        for category in report.CATEGORIES for bin_ in range(1, 11)]
+            original_support = support(records)
+            retained = [row for row in records if row["market_id"] != "m0"]
+            removed = [row for row in records if row["market_id"] == "m0"]
+            con.execute("DELETE FROM analysis_base WHERE market_id='m0'")
+            base.update(sample_scope="all_available_dates", definitions=build_inputs.sample_definitions("all_available_dates"),
+                        support=support(retained))
+            base["rows"].update(baseline_all_roles=len(retained), excluded=len(removed),
+                                primary_taker=sum(not row["is_maker"] for row in retained))
+            base["exclusions"] = {"2025-02": [{"reason": reason, "is_maker": maker, "side": side,
+                    "rows": n, "scope_rows": n}
+                for reason, rows in (("eligible", retained), ("exchange_wallet", removed))
+                for (maker, side), n in Counter((r["is_maker"], r["side"]) for r in rows).items()]}
+            folder = Path(temporary)/"filtered_accepted"
+            with patch.object(driver, "reserve_output"), contextlib.redirect_stdout(io.StringIO()):
+                data = driver.estimate_all(con, folder, base, binding)
+            wallet_filter = fixture_wallet_filter()
+            wrapper_binding = fixture_binding("/mnt/data/runs/fixture_filtered")
+            identities = binding_identities(wrapper_binding)
+            data.update(schema_version="kaushik_replication_estimates_v2", wallet_filter=wallet_filter,
+                        filtered_input_binding=wrapper_binding)
+            data["definitions"]["wallet_filter"] = deepcopy(wallet_filter)
+            base.update(schema_version=report.filters.FILTERED_INPUT_SCHEMA, wallet_filter=wallet_filter)
+            build_inputs.write_json(folder/"estimates.json", data)
+            manifest = {"schema_version": "kaushik_replication_estimate_stage_v2", "status": "estimates_complete",
+                "sample_scope": "all_available_dates", "source": {"head": "0"*40},
+                "wallet_filter": wallet_filter, "filtered_input_binding": wrapper_binding,
+                "base_binding": identities, "preflight": {"base_manifest": base, "base_binding": identities},
+                "outputs": {a["path"]: build_inputs._output_info(folder/a["path"])
+                            for a in data["score_artifacts"].values()},
+                "estimates_json": {"bytes": (folder/"estimates.json").stat().st_size,
+                                   "sha256": build_inputs.sha256(folder/"estimates.json")},
+                "reconciliation": {key: True for key in ("all_inputs_reopened", "all_outputs_reopened",
+                    "common_duration_population", "buy_role_partition", "expected_grids_serialized")}}
+            # The unaltered original date contract remains in the input wrapper.
+            base["input_preflight"] = {"contract": {"sample_scope": "all_available_dates"}}
+            manifest["outputs"]["sports_observations.parquet"] = build_inputs._output_info(folder/"sports_observations.parquet")
+            build_inputs.write_json(folder/"manifest.json", manifest)
+            build_inputs.write_json(folder/"acceptance.json", {
+                "schema_version": "kaushik_replication_estimate_acceptance_v2", "status": "estimates_reopened_accepted",
+                "source_head": "0"*40, "all_outputs_reopened": True, "sample_scope": "all_available_dates",
+                "wallet_filter": wallet_filter, "filtered_input_binding": wrapper_binding,
+                "manifest_sha256": build_inputs.sha256(folder/"manifest.json"),
+                "estimates_sha256": manifest["estimates_json"]["sha256"]})
+            return folder, original_support
+        finally:
+            con.close()
+
+    def test_filtered_v2_reconciles_retained_scores_and_propagates_lineage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder, original_support = self.filtered_fixture(temporary)
+            result = self.run_audit(folder)
+            self.assertEqual(result["schema_version"], "kaushik_replication_saved_score_audit_v2")
+            self.assertEqual(len(result["score_artifacts"]), 47)
+            self.assertTrue(all(result["checks"].values()))
+            self.assertEqual(result["input"]["sample_scope"], "all_available_dates")
+            self.assertEqual(result["input"]["wallet_filter"], report.summary_wallet_filter(
+                json.loads((folder/"estimates.json").read_text())))
+            manifest = json.loads((folder/"manifest.json").read_text())
+            manifest["preflight"]["base_manifest"]["support"] = original_support
+            self.bind_fixture(folder, manifest=manifest)
+            with patch.object(saved_score_audit.pq, "ParquetFile") as opened:
+                with self.assertRaisesRegex(ValueError, "accepted category support|accepted bin support|accepted duration support"):
+                    self.run_audit(folder)
+                opened.assert_not_called()
+
+    def test_filtered_lineage_mutations_block_before_any_score_body_read(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder, _ = self.filtered_fixture(temporary)
+            data = json.loads((folder/"estimates.json").read_text())
+            manifest = json.loads((folder/"manifest.json").read_text())
+            receipt = json.loads((folder/"acceptance.json").read_text())
+            for damage in ("legacy_schema", "missing_policy", "policy_bool_type", "wrapper", "base", "old_exclusions", "failure"):
+                d, m, a = deepcopy((data, manifest, receipt))
+                if damage == "legacy_schema": m["schema_version"] = "kaushik_replication_estimate_stage_v1"
+                elif damage == "missing_policy": del a["wallet_filter"]
+                elif damage == "policy_bool_type": d["definitions"]["wallet_filter"]["wallet_policy"]["null_blank_match"] = 0
+                elif damage == "wrapper": a["filtered_input_binding"]["acceptance_sha256"] = "f"*64
+                elif damage == "base": m["preflight"]["base_manifest"]["schema_version"] = "kaushik_replication_inputs_v1"
+                elif damage == "old_exclusions":
+                    m["preflight"]["base_manifest"]["exclusions"]["2025-02"] = [
+                        row for row in m["preflight"]["base_manifest"]["exclusions"]["2025-02"] if row["reason"] != "exchange_wallet"]
+                (folder/"acceptance.json").write_text(json.dumps(a, allow_nan=False))
+                self.bind_fixture(folder, d, m)
+                if damage == "failure": build_inputs.write_json(folder/"failure.json", {})
+                with self.subTest(damage=damage), patch.object(saved_score_audit.pq, "ParquetFile") as opened:
+                    with self.assertRaises(ValueError):
+                        self.run_audit(folder)
+                    opened.assert_not_called()
+
     def test_complete_producer_fixture_covariance_contrasts_and_bounded_batches(self):
         with patch.object(saved_score_audit, "BATCH_ROWS", 3):
             result = self.run_audit(self.stage)

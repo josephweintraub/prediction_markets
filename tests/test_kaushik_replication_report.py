@@ -114,7 +114,51 @@ def synthetic_full_date_estimates():
     return data
 
 
-def save_stage(folder, data):
+def fixture_binding(directory, *, audit=False):
+    first = "audit" if audit else "manifest"
+    return {"directory": directory, first+"_path": directory+"/"+first+".json",
+            first+"_sha256": "1"*64, "acceptance_path": directory+"/acceptance.json",
+            "acceptance_sha256": "2"*64}
+
+
+def fixture_wallet_filter():
+    return {"wallet_policy": deepcopy(report.filters.POLICY), "input_representation": "parent_base_plus_mask",
+            "parent_binding": fixture_binding("/mnt/data/runs/fixture_parent"),
+            "mask_audit_binding": fixture_binding("/mnt/data/runs/fixture_mask", audit=True)}
+
+
+def binding_identities(binding):
+    return {name: {"path": binding[name+"_path"], "sha256": binding[name+"_sha256"]}
+            for name in ("manifest", "acceptance")}
+
+
+def synthetic_filtered_estimates():
+    data = synthetic_full_date_estimates()
+    data.update(schema_version="kaushik_replication_estimates_v2", wallet_filter=fixture_wallet_filter(),
+                filtered_input_binding=fixture_binding("/mnt/data/runs/fixture_filtered"))
+    data["definitions"]["wallet_filter"] = deepcopy(data["wallet_filter"])
+    data["sample"]["rows"] -= 100
+    data["sample"]["source_row_counts"].update(baseline_all_roles=179800, excluded=210, primary_taker=89900)
+    monthly = data["sample"]["archive_exclusions"]["2025-02"]
+    for row in monthly[:2]:
+        row["rows"] -= 100
+        row["scope_rows"] -= 100
+        monthly.append({"reason": "exchange_wallet", "side": "BUY", "is_maker": row["is_maker"],
+                        "rows": 100, "scope_rows": 100})
+    next(row for row in data["categories"] if row["category"] == "Sports")["n_observations"] -= 100
+    for row in data["table1"]["profile_rows"]:
+        if row["bin"] == 5:
+            row["n_observations"] -= 100
+    for convention in data["appendix_a2"]:
+        reduction = 50 if convention["convention"] in ("maker_buy", "taker_buy") else 100
+        convention["counts"]["rows"] -= reduction
+        for row in convention["profile_rows"]:
+            if row["bin"] == 5:
+                row["n_observations"] -= reduction
+    return data
+
+
+def save_stage(folder, data, *, base_binding=None, sports_binding=None):
     folder.mkdir()
     def save(path, value):
         raw = (json.dumps(value, sort_keys=True, allow_nan=False)+"\n").encode()
@@ -130,12 +174,30 @@ def save_stage(folder, data):
             "sample_scope": "all_available_dates", "definitions": {key: data["definitions"][key]
                 for key in ("sample_scope", "cutoff_utc", "cutoff_seconds")},
             "input_preflight": {"contract": {"sample_scope": "all_available_dates"}}}})
+    filtered = data.get("schema_version") == "kaushik_replication_estimates_v2"
+    if filtered:
+        base_binding = binding_identities(data["filtered_input_binding"])
+        manifest.update(schema_version="kaushik_replication_estimate_stage_v2",
+                        wallet_filter=deepcopy(data["wallet_filter"]),
+                        filtered_input_binding=deepcopy(data["filtered_input_binding"]), base_binding=base_binding)
+        manifest["preflight"].update(base_binding=base_binding)
+        manifest["preflight"]["base_manifest"].update(schema_version=report.filters.FILTERED_INPUT_SCHEMA,
+                                                     wallet_filter=deepcopy(data["wallet_filter"]))
+    elif base_binding is not None:
+        manifest["base_binding"] = base_binding
+        manifest["preflight"]["base_binding"] = base_binding
+    if sports_binding is not None:
+        manifest["preflight"]["sports_binding"] = sports_binding
     manifest_digest = save(folder/"manifest.json", manifest)
     acceptance = {"schema_version": "kaushik_replication_estimate_acceptance_v1",
          "status": "estimates_reopened_accepted", "manifest_sha256": manifest_digest, "estimates_sha256": digest,
          "source_head": "a"*40, "all_outputs_reopened": True}
     if data.get("sample_scope") == "all_available_dates":
         acceptance["sample_scope"] = "all_available_dates"
+    if filtered:
+        acceptance.update(schema_version="kaushik_replication_estimate_acceptance_v2",
+                          wallet_filter=deepcopy(data["wallet_filter"]),
+                          filtered_input_binding=deepcopy(data["filtered_input_binding"]))
     save(folder/"acceptance.json", acceptance)
 
 
@@ -163,6 +225,142 @@ def fixture_review_report(report_dir):
 
 
 class ReportTests(unittest.TestCase):
+    def test_filtered_v2_source_retains_grid_and_truthful_effective_waterfall(self):
+        data = synthetic_filtered_estimates()
+        source = report.render_source(data)
+        for label in ("exchange-wallet exclusion", "source-record exclusion", "four reviewed exchange addresses",
+                      "Original eligible all-role records & 180,000", "Exchange-wallet records removed & 200",
+                      "Retained eligible all-role records & 179,800", "Retained primary taker records & 89,900",
+                      "Originally ineligible records & 10", "All-date eligibility and exchange-wallet waterfall",
+                      "exchange wallet & Taker & BUY & 100"):
+            self.assertIn(label, source)
+        self.assertEqual(source.count(r"\includegraphics"), 21)
+        for label in ("Table 1.", "Table 2A.", "Table 2B.", "Table 3.", "Table 4.", "Table 5.",
+                      "Appendix A1.", "Appendix A2."):
+            self.assertIn(label, source)
+        self.assertNotIn("March 25", source)
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)/"filtered"
+            save_stage(stage, data)
+            _, binding = report.load_accepted_estimates(stage)
+            self.assertEqual(binding["wallet_filter"], data["wallet_filter"])
+
+    def test_filter_and_version_mutations_block_at_every_accepted_layer(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            stage = Path(temporary)/"filtered"
+            save_stage(stage, synthetic_filtered_estimates())
+            data = json.loads((stage/"estimates.json").read_text())
+            manifest = json.loads((stage/"manifest.json").read_text())
+            acceptance = json.loads((stage/"acceptance.json").read_text())
+            report.validate_estimate_filter_binding(data, manifest, acceptance)
+            for layer in ("summary", "definitions", "stage", "receipt", "base"):
+                for damage in ("missing", "policy", "representation", "parent", "mask", "bool_type"):
+                    values = deepcopy((data, manifest, acceptance))
+                    d, m, a = values
+                    target = {"summary": d, "definitions": d["definitions"], "stage": m,
+                              "receipt": a, "base": m["preflight"]["base_manifest"]}[layer]
+                    if damage == "missing": target.pop("wallet_filter")
+                    elif damage == "policy": target["wallet_filter"]["wallet_policy"]["addresses"].pop()
+                    elif damage == "representation": target["wallet_filter"]["input_representation"] = "physical_copy"
+                    elif damage == "parent": target["wallet_filter"]["parent_binding"]["manifest_sha256"] = "f"*64
+                    elif damage == "mask": target["wallet_filter"]["mask_audit_binding"]["audit_path"] = "relative.json"
+                    else: target["wallet_filter"]["wallet_policy"]["null_blank_match"] = 0
+                    with self.subTest(layer=layer, damage=damage), self.assertRaises(ValueError):
+                        report.validate_estimate_filter_binding(*values)
+            for layer in range(3):
+                values = deepcopy((data, manifest, acceptance))
+                values[layer]["schema_version"] = values[layer]["schema_version"].replace("v2", "v1")
+                with self.subTest(schema=layer), self.assertRaises(ValueError):
+                    report.validate_estimate_filter_binding(*values)
+            for layer in range(3):
+                values = deepcopy((data, manifest, acceptance))
+                values[layer]["filtered_input_binding"]["acceptance_sha256"] = "f"*64
+                with self.subTest(binding=layer), self.assertRaises(ValueError):
+                    report.validate_estimate_filter_binding(*values)
+
+    def test_legacy_summary_cannot_be_relabelled_as_filtered(self):
+        for layer in ("summary", "definitions"):
+            for field, value in (("wallet_policy", {}), ("wallet_filter", fixture_wallet_filter()),
+                                 ("filtered_input_binding", fixture_binding("/mnt/data/runs/fixture_filtered")),
+                                 ("input_representation", "parent_base_plus_mask")):
+                data = synthetic_full_date_estimates()
+                (data if layer == "summary" else data["definitions"])[field] = value
+                with self.subTest(layer=layer, field=field), self.assertRaises(report.ReportBlocked):
+                    report.render_source(data)
+        data = synthetic_full_date_estimates()
+        data["sample"]["archive_exclusions"]["2025-02"][2]["reason"] = "exchange_wallet"
+        with self.assertRaisesRegex(report.ReportBlocked, "legacy estimates"):
+            report.render_source(data)
+        for layer in ("summary", "definitions"):
+            for field in ("wallet_policy", "input_representation"):
+                data = synthetic_filtered_estimates()
+                (data if layer == "summary" else data["definitions"])[field] = "conflicting alias"
+                with self.subTest(filtered_layer=layer, field=field), self.assertRaises(report.ReportBlocked):
+                    report.render_source(data)
+
+    def test_descriptive_comparison_uses_saved_levels_and_no_difference_inference(self):
+        original, filtered = synthetic_full_date_estimates(), synthetic_filtered_estimates()
+        filtered["table1"]["profile_rows"][0]["CR0"].update(estimate=1.5)
+        source = report.render_source(filtered, original)
+        self.assertIn("Comparison. Original and exchange-filtered support", source)
+        self.assertIn("Primary taker records & 90,000 & 89,900", source)
+        self.assertIn("Payoff: D1 & +1.25 & +1.50 & +0.25", source)
+        self.assertIn("no standard error or hypothesis test is calculated for that difference", source)
+        self.assertEqual(source.count(r"\includegraphics"), 21)
+
+    def test_filtered_report_assets_and_comparison_are_bound_to_original_parent_and_providers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            original, filtered = synthetic_full_date_estimates(), synthetic_filtered_estimates()
+            sports_binding = {"sports": list(report.SPORTS), "inputs": [
+                {"role": "fixture_provider", "path": "/mnt/data/fixture_provider.parquet", "sha256": "3"*64}]}
+            save_stage(folder/"original", original,
+                       base_binding=binding_identities(filtered["wallet_filter"]["parent_binding"]),
+                       sports_binding=sports_binding)
+            save_stage(folder/"filtered", filtered, sports_binding=sports_binding)
+            manifest = report.render(folder/"filtered", folder/"report", folder/"original")
+            self.assertEqual(manifest["schema_version"], "kaushik_replication_report_v2")
+            self.assertEqual(manifest["wallet_filter"], filtered["wallet_filter"])
+            self.assertEqual(len(manifest["outputs"]), 22)
+            self.assertIn("comparison_inputs", manifest)
+            self.assertEqual((folder/"report"/"source.tex").read_text().count(r"\includegraphics"), 21)
+            for name in report.figure_names():
+                self.assertTrue((folder/"report"/"figures"/name).read_bytes().startswith(b"%PDF-"))
+            for damage in ("failure", "parent", "providers", "definitions", "models"):
+                with self.subTest(damage=damage):
+                    candidate = folder/("original_"+damage)
+                    bad_data = deepcopy(original)
+                    parent = binding_identities(filtered["wallet_filter"]["parent_binding"])
+                    providers = deepcopy(sports_binding)
+                    if damage == "parent": parent["manifest"]["sha256"] = "f"*64
+                    elif damage == "providers": providers["inputs"][0]["sha256"] = "f"*64
+                    elif damage == "definitions": bad_data["definitions"]["record_weights"] = "different"
+                    elif damage == "models": bad_data["table2"][0]["spec"]["label"] = "different"
+                    save_stage(candidate, bad_data, base_binding=parent, sports_binding=providers)
+                    if damage == "failure": (candidate/"failure.json").write_text("{}")
+                    with patch.object(report, "plot_profile") as plot:
+                        with self.assertRaises(report.ReportBlocked):
+                            report.render(folder/"filtered", folder/("blocked_"+damage), candidate)
+                        plot.assert_not_called()
+                    self.assertFalse((folder/("blocked_"+damage)).exists())
+
+    def test_filtered_admission_mutation_precedes_plotting_and_failure_stage_is_blocked(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            save_stage(folder/"filtered", synthetic_filtered_estimates())
+            receipt_path = folder/"filtered"/"acceptance.json"
+            receipt = json.loads(receipt_path.read_text())
+            receipt["wallet_filter"]["input_representation"] = "physical_copy"
+            receipt_path.write_text(json.dumps(receipt))
+            with patch.object(report, "plot_profile") as plot:
+                with self.assertRaises(report.ReportBlocked):
+                    report.render(folder/"filtered", folder/"blocked")
+                plot.assert_not_called()
+            self.assertFalse((folder/"blocked").exists())
+            (folder/"filtered"/"failure.json").write_text("{}")
+            with self.assertRaisesRegex(report.ReportBlocked, "failed estimate stage"):
+                report.load_accepted_estimates(folder/"filtered")
+
     def test_full_date_source_labels_all_dates_and_preserves_all_outputs(self):
         data = synthetic_full_date_estimates()
         source = report.render_source(data)

@@ -31,6 +31,7 @@ import pyarrow.parquet as pq
 
 from . import build_inputs as inputs
 from . import estimators as engine
+from . import exchange_filter_contract as filter_contract
 
 REPO = Path(__file__).resolve().parents[2]
 SPORTS = ("mlb", "nfl", "nba", "nhl", "cbb", "atp", "epl", "cfb", "wnba")
@@ -47,10 +48,17 @@ CAPS = {"memory_limit": "192GB", "threads": 4, "spill_bytes": 16_000_000_000,
 SOURCE_FILES = ("analysis/kaushik_polymarket_replication/run_estimates.py",
                 "analysis/kaushik_polymarket_replication/estimators.py",
                 "analysis/kaushik_polymarket_replication/build_inputs.py",
+                "analysis/kaushik_polymarket_replication/filtered_inputs.py",
+                "analysis/kaushik_polymarket_replication/exchange_filter_contract.py",
                 "scripts/estimate_kaushik_polymarket_replication.py",
+                "scripts/audit_kaushik_exchange_wallets.py",
+                "scripts/audit_kaushik_full_sample_subset.py", "production_guard.py",
                 "tests/test_kaushik_replication_driver.py",
+                "tests/test_kaushik_exchange_filtered_inputs.py",
+                "tests/test_kaushik_exchange_filtered_independent.py",
                 "docs/analysis_specs/kaushik_polymarket_replication_v1.md",
-                "docs/analysis_specs/kaushik_polymarket_full_sample_v1.md")
+                "docs/analysis_specs/kaushik_polymarket_full_sample_v1.md",
+                "docs/analysis_specs/kaushik_exchange_wallet_exclusion_v1.md")
 WINDOWS = (
     ("pregame", "pre_lt24h", "<−24h", "sport_elapsed_seconds < -86400"),
     ("pregame", "pre_24to6h", "−24 to −6h", "sport_elapsed_seconds >= -86400 AND sport_elapsed_seconds < -21600"),
@@ -148,10 +156,17 @@ def validate_input_sample_scope(manifest, acceptance=None, *, require_contract=F
 def load_base(stage, manifest_sha256, acceptance_sha256):
     stage = Path(stage).resolve()
     manifest, identity = inputs.read_json(stage / "manifest.json", manifest_sha256)
+    if manifest.get("schema_version") == filter_contract.FILTERED_INPUT_SCHEMA:
+        from . import filtered_inputs
+        return filtered_inputs.load_stage(stage, manifest_sha256, acceptance_sha256)
     acceptance, receipt = inputs.read_json(stage / "acceptance.json", acceptance_sha256)
+    filter_contract.reject_filter_fields(manifest)
+    filter_contract.reject_filter_fields(acceptance)
+    require(not (stage / "failure.json").exists(), "accepted input has a failure marker")
     require(manifest.get("schema_version") == "kaushik_replication_inputs_v1" and
             manifest.get("status") == "inputs_complete", "accepted input manifest required")
-    require(acceptance.get("status") == "inputs_reopened_accepted" and
+    require(acceptance.get("schema_version") == "kaushik_replication_input_acceptance_v1" and
+            acceptance.get("status") == "inputs_reopened_accepted" and
             acceptance.get("manifest_sha256") == identity["sha256"] and
             acceptance.get("output_schema_hash_count_support_reopened") is True,
             "independent reopened-input acceptance receipt required")
@@ -173,6 +188,26 @@ def load_base(stage, manifest_sha256, acceptance_sha256):
     require(monthly and set(monthly) == {str(path.resolve()) for path in stage.glob("year_month=*/base.parquet")},
             "monthly Parquet body inventory differs from accepted manifest")
     return manifest, {"manifest": identity, "acceptance": receipt}, inventory, monthly
+
+
+def base_access(base_dir, manifest, files, monthly):
+    """Resolve physical paths without redirecting or copying accepted inputs."""
+    if manifest.get("schema_version") == filter_contract.FILTERED_INPUT_SCHEMA:
+        wallet_filter = filter_contract.validate_wallet_filter(manifest.get("wallet_filter"))
+        parent = wallet_filter["parent_binding"]["directory"]
+        return {"parent_dir": parent, "claims_path": str(Path(parent) / "claims.parquet"),
+                "monthly_paths": monthly, "mask_paths": manifest["mask_paths"],
+                "reference_bindings": list(manifest["reference_bindings"].values())}
+    return {"parent_dir": str(Path(base_dir).resolve()), "claims_path": str(Path(base_dir).resolve() / "claims.parquet"),
+            "monthly_paths": monthly, "mask_paths": [], "reference_bindings": []}
+
+
+def create_base_view(con, access):
+    if access["mask_paths"]:
+        from . import filtered_inputs
+        filtered_inputs.create_analysis_view(con, access["parent_dir"], access["monthly_paths"], access["mask_paths"])
+    else:
+        inputs.create_analysis_view(con, access["parent_dir"], explicit_month_paths=access["monthly_paths"])
 
 
 def sports_input_inventory(binding):
@@ -235,6 +270,11 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
     require(Path(sys.executable) == Path("/home/ubuntu/venv/bin/python"), "production Python differs")
     source = source_snapshot(expected_head)
     manifest, base_binding, base_files, monthly = load_base(base_dir, base_manifest_sha256, base_acceptance_sha256)
+    access = base_access(base_dir, manifest, base_files, monthly)
+    if manifest.get("schema_version") == filter_contract.FILTERED_INPUT_SCHEMA:
+        from . import filtered_inputs
+        require(manifest["wallet_filter"] == filtered_inputs.EXPECTED_WALLET_FILTER,
+                "filtered production generation differs from frozen accepted inputs")
     sports, sports_id = inputs.read_json(sports_binding_path, sports_binding_sha256)
     sports_files = sports_input_inventory(sports)
     require({"six_candidates", "six_timing", "six_proof", "six_tokens", "nfl_moneylines", "nba_moneylines", "mlb_phase"} <= {item["role"] for item in sports_files},
@@ -244,7 +284,9 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
         sports_review, reviewed_files = reviewed_sports_metadata(sports, base_binding)
         require(sports_review["source"]["files"] == source["files"], "sports metadata source files differ from estimator source")
         sports_files += reviewed_files
-    inputs.validate_destination(target, [base_dir, sports_binding_path, *[item["path"] for item in sports_files]])
+    inputs.validate_destination(target, [base_dir, access["parent_dir"], sports_binding_path,
+        *[item["path"] for item in base_files], *[item["path"] for item in access["reference_bindings"]],
+        *[item["path"] for item in sports_files]])
     free = shutil.disk_usage(Path(target).parent).free
     reserve = (CAPS["maximum_output_bytes"] + CAPS["maximum_transient_file_bytes"]
                + CAPS["spill_bytes"] + CAPS["minimum_free_bytes"])
@@ -267,7 +309,7 @@ def preflight(base_dir, base_manifest_sha256, base_acceptance_sha256,
     return {"schema_version": "kaushik_replication_estimate_preflight_v1", "status": "preflight_complete",
             "target": str(Path(target).resolve()), "source": source, "base_dir": str(Path(base_dir).resolve()),
             "base_binding": base_binding, "base_manifest": manifest, "base_files": base_files,
-            "monthly_paths": monthly, "sports_binding": sports, "sports_binding_identity": sports_id,
+            "monthly_paths": monthly, "base_access": access, "sports_binding": sports, "sports_binding_identity": sports_id,
             "mode": "sports_metadata_only" if sports_metadata_only else "estimates", "sports_metadata_review": sports_review,
             "sports_files": sports_files, "caps": CAPS, "required_free_bytes": reserve,
             "join_planning_policy": planning_policy,
@@ -958,11 +1000,19 @@ def describe_sample(con, base_manifest, ledger, base_bytes):
     return sample, categories
 
 
-def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base_bytes=0):
+def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base_bytes=0,
+                 filtered_input_binding=None):
     """Fixture-accessible estimator; production admission lives in run_stage."""
     stage = Path(stage)
     stage.mkdir(exist_ok=True)
     ledger = ledger or ReadLedger()
+    wallet_filter = None
+    if base_manifest.get("schema_version") == filter_contract.FILTERED_INPUT_SCHEMA:
+        wallet_filter = filter_contract.validate_wallet_filter(base_manifest.get("wallet_filter"))
+        filter_contract.validate_filtered_input_binding(filtered_input_binding)
+    else:
+        filter_contract.reject_filter_fields(base_manifest)
+        require(filtered_input_binding is None, "unfiltered estimator carries a filtered binding")
     if "definitions" in base_manifest:
         sample_policy = validate_input_sample_scope(base_manifest)
     else:
@@ -1104,7 +1154,7 @@ def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base
     require(all(model["n_observations"] == sample["duration_tail_rows"] for model in table2) and
             all(model["n_observations"] == source_counts["lifespan_gt1_rows" if panel=="L_gt1" else "remaining_gt1_rows"]
                 for panel, models in table3.items() for model in models), "duration column/source populations differ")
-    return {"schema_version": "kaushik_replication_estimates_v1", "status": "estimates_complete", "sample_scope": sample_policy, "definitions": {
+    result = {"schema_version": "kaushik_replication_estimates_v1", "status": "estimates_complete", "sample_scope": sample_policy, "definitions": {
         "observation": "archive-recorded row preserving multiplicity; primary taker BUY plus complemented taker SELL",
         "weight": "one per admitted archive record", **inputs.sample_definitions(sample_policy),
         "price": "exact normalized binary64; fixed ten-cent bins; 0<P<1",
@@ -1116,6 +1166,11 @@ def estimate_all(con, stage, base_manifest, sports_binding, *, ledger=None, base
         "a1": "claim-FE diagnostic; payoff within claim mechanically reduces to -P; no independent calibration claim"},
         "sample": sample, "categories": categories, "table1": table1, "table2": table2, "table3": table3,
         "appendix_a1": a1, "appendix_a2": a2, "sports": sports, "score_artifacts": artifacts}
+    if wallet_filter is not None:
+        result.update(schema_version=filter_contract.ESTIMATE_SCHEMAS[2][0], wallet_filter=wallet_filter,
+                      filtered_input_binding=filtered_input_binding)
+        result["definitions"]["wallet_filter"] = wallet_filter
+    return result
 
 
 def run_stage(reviewed, fresh, command, reviewed_identity=None):
@@ -1129,9 +1184,13 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
     for field in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
                   "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[field] == fresh[field], "reviewed estimator preflight drift: " + field)
+    require(reviewed.get("base_access") == fresh.get("base_access"), "reviewed estimator physical input drift")
     require(fresh["mode"] == "estimates" and fresh["sports_metadata_review"] is not None, "estimate stage lacks independently reviewed sports metadata")
     target = Path(fresh["target"])
-    inputs.validate_destination(target, [fresh["base_dir"], *[item["path"] for item in fresh["sports_files"]]])
+    access = fresh.get("base_access") or base_access(fresh["base_dir"], fresh["base_manifest"], fresh["base_files"], fresh["monthly_paths"])
+    inputs.validate_destination(target, [fresh["base_dir"], access["parent_dir"],
+        *[item["path"] for item in fresh["base_files"]], *[item["path"] for item in access["reference_bindings"]],
+        *[item["path"] for item in fresh["sports_files"]]])
     stage = Path(tempfile.mkdtemp(prefix="." + target.name + ".staging-", dir=target.parent))
     ledger, con = ReadLedger(), None
     published = False
@@ -1139,7 +1198,7 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
     frozen = [*fresh["base_files"], *fresh["sports_files"]]
     json_bindings = [fresh["base_binding"]["manifest"], fresh["base_binding"]["acceptance"],
                      fresh["sports_binding_identity"], fresh["sports_metadata_review"]["manifest"],
-                     fresh["sports_metadata_review"]["acceptance"], reviewed_identity]
+                     fresh["sports_metadata_review"]["acceptance"], reviewed_identity, *access["reference_bindings"]]
     try:
         for item in json_bindings:
             ledger.charge(item["stat"]["bytes"], "binding_reopen_before:" + item["path"])
@@ -1151,10 +1210,13 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
         con = duckdb.connect()
         runtime_policy = configure(con, stage / "spill")
         require(runtime_policy == fresh["join_planning_policy"], "runtime estimator join planning policy differs from preflight")
-        inputs.create_analysis_view(con, fresh["base_dir"], explicit_month_paths=fresh["monthly_paths"])
-        con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(Path(fresh['base_dir'])/'claims.parquet')})")
+        create_base_view(con, access)
+        con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(access['claims_path'])})")
         body_bytes = sum(item["stat"]["bytes"] for item in fresh["base_files"])
-        output = estimate_all(con, stage, fresh["base_manifest"], fresh["sports_binding"], ledger=ledger, base_bytes=body_bytes)
+        filtered_binding = (filter_contract.binding_from_identities(fresh["base_binding"]["manifest"], fresh["base_binding"]["acceptance"])
+                            if fresh["base_manifest"].get("schema_version") == filter_contract.FILTERED_INPUT_SCHEMA else None)
+        output = estimate_all(con, stage, fresh["base_manifest"], fresh["sports_binding"], ledger=ledger,
+                              base_bytes=body_bytes, filtered_input_binding=filtered_binding)
         require(output["sports"]["observation_cache"]["source_locator_retained"] is True and
                 output["sports"]["observation_cache"]["source_locator_unique"] is True,
                 "production sports cache lacks unique archive record locators")
@@ -1185,6 +1247,9 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
             "reconciliation": {"all_inputs_reopened": True, "all_outputs_reopened": True,
                 "common_duration_population": True, "buy_role_partition": True, "expected_grids_serialized": True},
             "environment": {"python": sys.version, "duckdb": duckdb.__version__, "numpy": np.__version__}}
+        if filtered_binding is not None:
+            manifest.update(schema_version=filter_contract.ESTIMATE_SCHEMAS[2][1],
+                            wallet_filter=output["wallet_filter"], filtered_input_binding=filtered_binding)
         reserve_output(stage, CAPS["maximum_json_bytes"])
         inputs.write_json(stage / "manifest.json", manifest)
         reserve_output(stage, CAPS["maximum_json_bytes"])
@@ -1199,11 +1264,16 @@ def run_stage(reviewed, fresh, command, reviewed_identity=None):
         require(saved_estimates == output, "published estimates differ")
         for relative, expected in outputs.items():
             require(inputs._output_info(target / relative) == expected, "published estimator artifact hash/schema/count drift")
-        inputs.write_json(target / "acceptance.json", {"schema_version": "kaushik_replication_estimate_acceptance_v1",
+        acceptance = {"schema_version": "kaushik_replication_estimate_acceptance_v1",
             "status": "estimates_reopened_accepted", "manifest_sha256": saved_identity["sha256"],
             "sample_scope": output["sample_scope"],
             "estimates_sha256": result_id["sha256"],
-            "source_head": fresh["source"]["head"], "all_outputs_reopened": True})
+            "source_head": fresh["source"]["head"], "all_outputs_reopened": True}
+        if filtered_binding is not None:
+            acceptance.update(schema_version=filter_contract.ESTIMATE_SCHEMAS[2][2],
+                              wallet_filter=output["wallet_filter"], filtered_input_binding=filtered_binding)
+        filter_contract.validate_estimate_filter_binding(output, manifest, acceptance)
+        inputs.write_json(target / "acceptance.json", acceptance)
         reserve_output(target, 0)
         return manifest
     except BaseException as error:
@@ -1229,15 +1299,19 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
     for name in ("schema_version", "status", "target", "source", "base_dir", "base_binding", "base_manifest",
                  "base_files", "monthly_paths", "sports_binding", "sports_binding_identity", "sports_files", "caps", "required_free_bytes", "write_limit_policy", "memory_budget_policy", "mode", "sports_metadata_review"):
         require(reviewed[name] == fresh[name], "reviewed sports metadata preflight drift: " + name)
+    require(reviewed.get("base_access") == fresh.get("base_access"), "reviewed sports metadata physical input drift")
     require(fresh["mode"] == "sports_metadata_only" and fresh["sports_metadata_review"] is None and
             not fresh["sports_binding"].get("reviewed_metadata_stage"), "sports metadata-only mode must build original provider proofs")
     target = Path(fresh["target"])
-    inputs.validate_destination(target, [fresh["base_dir"], *[item["path"] for item in fresh["sports_files"]]])
+    access = fresh.get("base_access") or base_access(fresh["base_dir"], fresh["base_manifest"], fresh["base_files"], fresh["monthly_paths"])
+    inputs.validate_destination(target, [fresh["base_dir"], access["parent_dir"],
+        *[item["path"] for item in fresh["base_files"]], *[item["path"] for item in access["reference_bindings"]],
+        *[item["path"] for item in fresh["sports_files"]]])
     stage = Path(tempfile.mkdtemp(prefix="." + target.name + ".staging-", dir=target.parent))
     selected = [item for item in fresh["base_files"] if item["relative_path"] == "claims.parquet"] + fresh["sports_files"]
     ledger, con, published = ReadLedger(), None, False
     json_bindings = [fresh["base_binding"]["manifest"], fresh["base_binding"]["acceptance"],
-                     fresh["sports_binding_identity"], reviewed_identity]
+                     fresh["sports_binding_identity"], reviewed_identity, *access["reference_bindings"]]
     try:
         for item in json_bindings:
             ledger.charge(item["stat"]["bytes"], "sports_metadata_binding_before:" + item["path"])
@@ -1248,7 +1322,7 @@ def run_sports_metadata_stage(reviewed, fresh, command, reviewed_identity=None):
         con = duckdb.connect()
         runtime_policy = configure(con, stage / "spill")
         require(runtime_policy == fresh["join_planning_policy"], "runtime sports metadata join planning policy differs from preflight")
-        con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(Path(fresh['base_dir'])/'claims.parquet')})")
+        con.execute(f"CREATE TEMP VIEW claims AS SELECT * FROM read_parquet({inputs.literal(access['claims_path'])})")
         ledger.charge(4 * sum(item["stat"]["bytes"] for item in selected), "sports_metadata_proof_and_coverage_queries")
         coverage = prepare_sports_map(con, fresh["sports_binding"], stage, ledger=ledger)
         exclusions = rows(con, "SELECT sport,reason,count(*) markets FROM sports_metadata_exclusions GROUP BY 1,2 ORDER BY 1,2")

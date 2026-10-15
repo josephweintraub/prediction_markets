@@ -25,6 +25,7 @@ from analysis.kaushik_polymarket_replication import render_report as grids
 SOURCE_FILES = ("scripts/audit_kaushik_replication_saved_scores.py",
                 "tests/test_kaushik_replication_independent_qa.py",
                 "analysis/kaushik_polymarket_replication/render_report.py",
+                "analysis/kaushik_polymarket_replication/exchange_filter_contract.py",
                 "analysis/kaushik_polymarket_replication/build_inputs.py",
                 "production_guard.py")
 MAX_JSON = 16_000_000
@@ -407,10 +408,10 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
     reads = Reads()
     manifest = reads.json(folder / "manifest.json", manifest_sha256)
     acceptance = reads.json(folder / "acceptance.json", acceptance_sha256)
-    require(manifest.get("schema_version") == "kaushik_replication_estimate_stage_v1" and manifest.get("status") == "estimates_complete", "complete producer manifest")
+    require(manifest.get("schema_version") in grids.STAGE_SCHEMAS and manifest.get("status") == "estimates_complete", "complete producer manifest")
     require(re.fullmatch(r"[0-9a-f]{40}", manifest["source"]["head"] or "") and
             not (folder / "failure.json").exists(), "producer source HEAD/failure status")
-    require(acceptance.get("schema_version") == "kaushik_replication_estimate_acceptance_v1" and
+    require(acceptance.get("schema_version") in grids.ACCEPTANCE_SCHEMAS and
             acceptance.get("status") == "estimates_reopened_accepted" and acceptance.get("all_outputs_reopened") is True and
             acceptance.get("manifest_sha256") == manifest_sha256 and acceptance.get("source_head") == manifest["source"]["head"], "producer acceptance/source")
     require(all(manifest["reconciliation"].get(k) is True for k in
@@ -420,6 +421,7 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
     require(identity(folder / "estimates.json")[2] == manifest["estimates_json"]["bytes"], "estimates bytes")
     grids.validate_estimates(data)  # Reuse the frozen complete-grid/suppression validator.
     grids.validate_sample_scope_binding(data, manifest, acceptance)
+    wallet_filter = grids.validate_estimate_filter_binding(data, manifest, acceptance)
     count_checks(data, manifest)
     records = list(joints(data))
     artifacts = data["score_artifacts"]
@@ -435,7 +437,7 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
     require(reads.json(folder / "manifest.json", manifest_sha256) == manifest and
             reads.json(folder / "acceptance.json", acceptance_sha256) == acceptance and
             reads.json(folder / "estimates.json", acceptance["estimates_sha256"]) == data, "accepted JSON drift after score stream")
-    return {"schema_version": "kaushik_replication_saved_score_audit_v1", "status": "saved_scores_reconciled",
+    result = {"schema_version": "kaushik_replication_saved_score_audit_v2" if wallet_filter is not None else "kaushik_replication_saved_score_audit_v1", "status": "saved_scores_reconciled",
         "input": {"directory": str(folder), "manifest_sha256": manifest_sha256, "acceptance_sha256": acceptance_sha256,
                   "estimates_sha256": acceptance["estimates_sha256"], "producer_source_head": acceptance["source_head"]},
         "score_artifacts": results, "checks": {"CR0_score_outer_products": True, "named_contrasts_SE_CI": True,
@@ -449,6 +451,10 @@ def audit_scores(folder, manifest_sha256, acceptance_sha256):
             "Support N/cell G reconcile saved joint/input metadata, not raw participation. Union G is independently score-row count. "
             "Contrast point estimates are reconstructed from saved coefficient estimates; covariance and influence diagnostics from saved scores. "
             "Sports clock equations and distinct seconds fields reconcile saved metadata/footer descriptions, not an independent timing reconstruction."}
+    if wallet_filter is not None:
+        result["input"].update(sample_scope=data["sample_scope"], wallet_filter=wallet_filter,
+                               filtered_input_binding=data["filtered_input_binding"])
+    return result
 
 
 def source_snapshot(expected_head):

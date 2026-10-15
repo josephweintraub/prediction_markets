@@ -222,3 +222,28 @@ enough disk for the unchanged 60 GB estimator/metadata reservation. The
 requested versioned read-only filtering layer has not been implemented without
 the user's storage/architecture choice. No trade-source deletion, new input
 base, sports metadata or coefficient estimation was performed by this task.
+
+## Publication and verified shutdown
+
+Canonical release commit `f201a4806e4adb4cf826a1173560b9a057b100b2` was pushed
+to `origin/codex/kaushik-exchange-contract-exclusion`; `git ls-remote` confirmed
+the exact remote commit and the canonical checkout was clean. The updated
+report fixture suite passed nine tests in 0.052 seconds on the production
+runtime. No trading bodies, generated report files or credentials were committed.
+
+Six finished files were copied into the new Dropbox folder
+`Polymarket Data and Code/Kaushik Exchange Wallet Count Audit 2026-10-14 v1`:
+the LaTeX source, PDF preview, initial report manifest, final QA receipt and
+accepted audit/acceptance JSONs. `rclone check --one-way --download` completed
+with six matching files and zero differences at 2026-10-14 13:22:03 UTC.
+The existing Dropbox folders and all original datasets/results were preserved.
+
+Root confirmed every agent released its infrastructure dependency and no
+research job or transfer remained. Root stopped `i-0f5b31a268af53938` and
+verified `stopped` in `us-east-1` at **2026-10-14 13:26:11 UTC**. The definitive
+receipt is saved in the local task-state JSON. These post-shutdown lines are
+a local run-record supplement pending the next normal canonical synchronization;
+the instance was not restarted solely to amend documentation.
+
+Remaining boundary: permission for the versioned read-only filtered-input
+architecture. No affected full-date coefficient was fitted or relabeled.

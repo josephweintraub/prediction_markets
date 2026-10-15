@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-14 - Exchange-filtered full-date rerun approval
+
+- Recorded approval for a versioned read-only parent-base-plus-mask input layer
+  and a fresh full-date estimation run, without copying or changing source data.
+- Kept the original studies, numerical specifications and resource reservations
+  fixed; require fresh effective support, lineage and saved-score acceptance.
+- Implemented strict logical-input and v2 estimate/consumer admission, with
+  independent raw-mean release QA and descriptive accepted-run comparisons.
+- Left the unchanged cutoff study untouched. Local fixture QA and all 219
+  relevant production-runtime fixture tests passed; production acceptance
+  remains pending.
+
 ## 2026-10-14 - Accepted exchange-wallet count audit
 
 - Completed immutable count/mask acceptance and original-input reopening after

@@ -16,6 +16,8 @@ import shutil
 import tempfile
 from typing import Any, Mapping
 
+from analysis.kaushik_polymarket_replication import exchange_filter_contract as filters
+
 SPORTS = ("mlb", "nfl", "nba", "nhl", "cbb", "atp", "epl", "cfb", "wnba")
 SCOPES = ("pooled", *SPORTS)
 OUTCOMES = ("payoff_cents", "roi_percent")
@@ -36,6 +38,10 @@ WINDOWS = (
 )
 MAX_JSON_BYTES = 16_000_000
 SAMPLE_SCOPES = ("paper_cutoff", "all_available_dates")
+ESTIMATE_SCHEMAS = {"kaushik_replication_estimates_v1": 1, "kaushik_replication_estimates_v2": 2}
+STAGE_SCHEMAS = {"kaushik_replication_estimate_stage_v1": 1, "kaushik_replication_estimate_stage_v2": 2}
+ACCEPTANCE_SCHEMAS = {"kaushik_replication_estimate_acceptance_v1": 1,
+                      "kaushik_replication_estimate_acceptance_v2": 2}
 
 
 class ReportBlocked(ValueError):
@@ -87,6 +93,42 @@ def validate_sample_scope_binding(data, manifest, acceptance):
     return scope
 
 
+def summary_wallet_filter(data):
+    """A filtered label requires the new summary contract and exact policy."""
+    schema = data.get("schema_version")
+    require(type(schema) is str, "complete estimates summary required")
+    version = ESTIMATE_SCHEMAS.get(schema)
+    require(version is not None, "complete estimates summary required")
+    definitions = data.get("definitions", {})
+    if version == 1:
+        try:
+            filters.reject_filter_fields(data)
+        except ValueError as error:
+            raise ReportBlocked(str(error)) from error
+        return None
+    require(_sample_scope(data) == _definition_scope(definitions) == "all_available_dates",
+            "exchange-filtered estimates require all available dates")
+    require(not any(key in data for key in ("wallet_policy", "input_representation")) and
+            not any(key in definitions for key in ("wallet_policy", "input_representation", "filtered_input_binding")),
+            "filtered summary carries a conflicting filter alias")
+    wallet_filter = data.get("wallet_filter")
+    try:
+        filters.validate_wallet_filter(wallet_filter)
+        filters.validate_wallet_filter(definitions.get("wallet_filter"))
+        filters.validate_filtered_input_binding(data.get("filtered_input_binding"))
+    except ValueError as error:
+        raise ReportBlocked(str(error)) from error
+    require(definitions.get("wallet_filter") == wallet_filter, "summary wallet filter definitions differ")
+    return wallet_filter
+
+
+def validate_estimate_filter_binding(data, manifest, acceptance):
+    try:
+        return filters.validate_estimate_filter_binding(data, manifest, acceptance)
+    except ValueError as error:
+        raise ReportBlocked(str(error)) from error
+
+
 def _unique_object(pairs):
     result = {}
     for key, value in pairs:
@@ -109,11 +151,12 @@ def _read_json(path: Path):
 
 def load_accepted_estimates(folder: str | Path):
     folder = Path(folder).resolve()
+    require(not (folder / "failure.json").exists(), "failed estimate stage cannot be reported")
     manifest, manifest_hash = _read_json(folder / "manifest.json")
     acceptance, acceptance_hash = _read_json(folder / "acceptance.json")
-    require(manifest.get("schema_version") == "kaushik_replication_estimate_stage_v1" and
+    require(manifest.get("schema_version") in STAGE_SCHEMAS and
             manifest.get("status") == "estimates_complete", "complete estimate stage required")
-    require(acceptance.get("schema_version") == "kaushik_replication_estimate_acceptance_v1" and
+    require(acceptance.get("schema_version") in ACCEPTANCE_SCHEMAS and
             acceptance.get("status") == "estimates_reopened_accepted" and
             acceptance.get("all_outputs_reopened") is True, "accepted estimate receipt required")
     require(acceptance.get("manifest_sha256") == manifest_hash and
@@ -128,9 +171,13 @@ def load_accepted_estimates(folder: str | Path):
             acceptance.get("estimates_sha256"), "accepted estimates fingerprint differs")
     validate_estimates(data)
     scope = validate_sample_scope_binding(data, manifest, acceptance)
-    return data, {"estimate_dir": str(folder), "manifest_sha256": manifest_hash,
+    wallet_filter = validate_estimate_filter_binding(data, manifest, acceptance)
+    binding = {"estimate_dir": str(folder), "manifest_sha256": manifest_hash,
                   "acceptance_sha256": acceptance_hash, "estimates_sha256": digest,
                   "source_head": acceptance["source_head"], "sample_scope": scope}
+    if wallet_filter is not None:
+        binding.update(wallet_filter=wallet_filter, filtered_input_binding=data["filtered_input_binding"])
+    return data, binding
 
 
 def _index(rows, fields, expected=None):
@@ -226,8 +273,9 @@ def _exclusion_rows(sample, sample_scope="paper_cutoff"):
 
 
 def validate_estimates(data: Mapping[str, Any]) -> None:
-    require(data.get("schema_version") == "kaushik_replication_estimates_v1" and
+    require(data.get("schema_version") in ESTIMATE_SCHEMAS and
             data.get("status") == "estimates_complete", "complete estimates summary required")
+    wallet_filter = summary_wallet_filter(data)
     scope = _definition_scope(data.get("definitions", {}))
     require(_sample_scope(data) == scope, "estimate sample scope differs from definitions")
     uncertainty = data["definitions"].get("uncertainty", {})
@@ -258,6 +306,8 @@ def validate_estimates(data: Mapping[str, Any]) -> None:
                 sum(row["rows"] for row in exclusion_rows if row["reason"] == "eligible") == totals["baseline_all_roles"] and
                 sum(row["rows"] for row in exclusion_rows if row["reason"] == "eligible" and row["is_maker"] is False) == sample["rows"],
                 "full-date eligibility waterfall does not exhaust source/admitted records")
+    require(wallet_filter is not None or all(row["reason"] != "exchange_wallet" for row in exclusion_rows),
+            "legacy estimates cannot include exchange-wallet exclusions")
     categories = _index(data.get("categories"), ("category",), [(name,) for name in CATEGORIES])
     for row in categories.values():
         _integer(row.get("n_observations"), "category N")
@@ -569,9 +619,58 @@ def figure_names():
                  [f"figure2_{scope}.pdf" for scope in SCOPES] + ["appendix_a2_buy_profiles.pdf"])
 
 
-def render_source(data):
+def _comparison_tables(data, original):
+    """Descriptive comparisons of accepted summaries; no difference inference."""
+    validate_estimates(original)
+    require(summary_wallet_filter(data) is not None and summary_wallet_filter(original) is None and
+            _sample_scope(original) == "all_available_dates", "comparison requires original unfiltered full-date estimates")
+    require(data["sample"]["source_row_counts"]["source"] == original["sample"]["source_row_counts"]["source"],
+            "comparison source population differs")
+    definitions = {key: value for key, value in data["definitions"].items() if key != "wallet_filter"}
+    require(json.dumps(definitions, sort_keys=True, allow_nan=False) ==
+            json.dumps(original["definitions"], sort_keys=True, allow_nan=False),
+            "comparison scientific definitions differ")
+    for models, original_models in ((data["table2"], original["table2"]),
+                                    (data["table3"]["L_gt1"], original["table3"]["L_gt1"]),
+                                    (data["table3"]["R_gt1"], original["table3"]["R_gt1"]),
+                                    ([data["appendix_a1"]], [original["appendix_a1"]])):
+        require([model["spec"] for model in models] == [model["spec"] for model in original_models],
+                "comparison model specifications differ")
+    support = [[label, count(original["sample"][key]), count(data["sample"][key])] for key, label in (
+        ("rows", "Primary taker records"), ("tail_rows", "D1 + D10 records"),
+        ("duration_tail_rows", "Common duration tail records"), ("clusters", "Event/market clusters"))]
+    rows = []
+    for target in OUTCOMES:
+        new_profile = _index(data["table1"]["profile_rows"], ("outcome", "bin"))
+        old_profile = _index(original["table1"]["profile_rows"], ("outcome", "bin"))
+        pairs = [("D1", old_profile[(target, 1)], new_profile[(target, 1)]),
+                 ("D10", old_profile[(target, 10)], new_profile[(target, 10)]),
+                 ("D10-D1", next(row for row in original["table1"]["gap_rows"] if row["outcome"] == target),
+                  next(row for row in data["table1"]["gap_rows"] if row["outcome"] == target))]
+        old_full = next(model for model in original["table2"] if model["spec"]["column"] == 5)
+        new_full = next(model for model in data["table2"] if model["spec"]["column"] == 5)
+        for clock in ("xL", "xR"):
+            pairs.append(("Full model: " + clock_label(clock).lower(),
+                next(row for row in old_full["slopes"] if row["outcome"] == target and row["clock"] == clock),
+                next(row for row in new_full["slopes"] if row["outcome"] == target and row["clock"] == clock)))
+        for label, old, new in pairs:
+            change = ("withheld" if old["suppressed"] or new["suppressed"] else
+                      number(new["CR0"]["estimate"]-old["CR0"]["estimate"], signed=True))
+            rows.append([tex(outcome_label(target) + ": " + label), cell(old), cell(new), change])
+            rows.append(["", se(old), se(new), ""])
+    return [table("Comparison. Original and exchange-filtered support", ["Population", "Original", "Filtered"], support,
+                  r"Both columns use accepted full available-date summaries. Original means the preserved unfiltered run."),
+            table("Comparison. Descriptive changes in selected estimates", ["Quantity", "Original", "Filtered", "Change"], rows,
+                  r"Change is filtered minus original; no standard error or hypothesis test is calculated for that difference. "
+                  r"Payoff levels/gaps are cents; return levels are percent and return gaps are pp. Full-model duration entries are "
+                  r"D10-minus-D1 slopes per unit of $\log_2(1+\mathrm{days})$, in cents or pp. " + VARIANCE_NOTE)]
+
+
+def render_source(data, comparison_data=None):
     validate_estimates(data)
     sample = data["sample"]
+    wallet_filter = summary_wallet_filter(data)
+    filtered = wallet_filter is not None
     scope = _definition_scope(data["definitions"])
     full_dates = scope == "all_available_dates"
     date_note = (r"all available execution dates in the admitted source files; no execution-date cutoff. " if full_dates else
@@ -582,7 +681,8 @@ def render_source(data):
              r"\makeatletter\setlength{\@fptop}{0pt}\makeatother",
              r"\captionsetup{font=small}\begin{document}",
              r"{\Large Favorite--longshot bias: Polymarket replication}\par",
-             (r"September 28 specifications with a full available-date sample; existing native categories and available provider-covered sports cohort.\par"
+             (r"September 28 specifications with a full available-date sample and exchange-wallet exclusion; existing native categories and available provider-covered sports cohort.\par"
+              if filtered else r"September 28 specifications with a full available-date sample; existing native categories and available provider-covered sports cohort.\par"
               if full_dates else r"September 28 specifications; existing native categories and available provider-covered sports cohort.\par"),
              r"Archive-recorded taker BUY retains its claim; taker SELL uses its verified binary complement. "
              r"Roles/actions are archive conventions, not independently certified native own-order actions or unique fills. "
@@ -593,6 +693,10 @@ def render_source(data):
              r"FE means fixed effects; pp means percentage points. Raw columns are unadjusted, with the same logarithmic clocks.\par",
              r"Computed by \texttt{run\_estimates.py}; saved \texttt{estimates.json}. "
              r"The renderer reads accepted saved outputs and performs no estimation.\par"]
+    if filtered:
+        parts.append(r"Exclude archive records when either source wallet, lowercased without trimming, equals one of the four reviewed exchange addresses. "
+                     r"Null or blank wallets do not match. This is a source-record exclusion, not a bot filter or certification of unique native fills. "
+                     r"The original eligibility rules, record weights, provider clocks and model definitions are retained.\par")
     if data.get("fixture_only") is True:
         parts.insert(3, r"\usepackage{fancyhdr}")
         header = (r"\fancyhf{}\fancyhead[L]{\footnotesize SYNTHETIC FIXTURE --- NOT RESEARCH FINDINGS}"
@@ -614,7 +718,22 @@ def render_source(data):
                         r"Eventual payouts/endpoints may follow the cutoff. ") +
                        r"The resolved-source build can omit unresolved long-horizon claims; this is not an exchange census or a recency trend."))
     totals = sample["source_row_counts"]
-    waterfall = [[tex("Excluded by eligibility" if full_dates and key == "excluded" else key.replace("_", " ")), count(value)] for key, value in sorted(totals.items())]
+    if filtered:
+        removed = sum(row["rows"] for row in _exclusion_rows(sample, scope) if row["reason"] == "exchange_wallet")
+        removed_taker = sum(row["rows"] for row in _exclusion_rows(sample, scope)
+                            if row["reason"] == "exchange_wallet" and row["is_maker"] is False)
+        require(removed <= totals["excluded"], "exchange removals exceed exclusions")
+        waterfall = [[label, count(n)] for label, n in (
+            ("Source records", totals["source"]),
+            ("Originally ineligible records", totals["excluded"]-removed),
+            ("Original eligible all-role records", totals["baseline_all_roles"]+removed),
+            ("Exchange-wallet records removed", removed),
+            ("Retained eligible all-role records", totals["baseline_all_roles"]),
+            ("Original primary taker records", totals["primary_taker"]+removed_taker),
+            ("Exchange-wallet primary taker records removed", removed_taker),
+            ("Retained primary taker records", totals["primary_taker"]))]
+    else:
+        waterfall = [[tex("Excluded by eligibility" if full_dates and key == "excluded" else key.replace("_", " ")), count(value)] for key, value in sorted(totals.items())]
     excluded = defaultdict(int)
     count_field = "scope_rows" if full_dates else "precut_rows"
     for row in _exclusion_rows(sample, scope):
@@ -623,11 +742,15 @@ def render_source(data):
     parts.append(table("Sample. Source accounting", ["Population", "Records"], waterfall,
                        (r"Source totals and the next eligibility table span all records in the admitted source files. " if full_dates else
                         r"Source totals span the admitted source files; the next table restricts counts to records before the cutoff. ") +
+                       (r"The exchange-wallet exclusion is applied to originally eligible records; raw wallet matches already ineligible are counted only under their original reason. " if filtered else "") +
                        r"Eligible maker records enter Appendix A2 only. The primary uses eligible taker records."))
-    parts.append(table("Sample. " + ("All-date" if full_dates else "Pre-cutoff") + " eligibility waterfall", ["First eligibility reason", "Role", "Action", "N"],
+    parts.append(table("Sample. " + ("All-date" if full_dates else "Pre-cutoff") +
+                       (" eligibility and exchange-wallet waterfall" if filtered else " eligibility waterfall"), ["First eligibility reason", "Role", "Action", "N"],
                        [[tex(reason.replace("_", " ")), tex(role), tex(side), count(n)] for (reason, role, side), n in sorted(excluded.items())],
                        r"Reasons are disjoint first-failure assignments, including the eligible category; archive multiplicity is preserved.",
                        widths="p{9cm}llr", multipage=len(excluded)>25))
+    if comparison_data is not None:
+        parts += [r"\clearpage", *_comparison_tables(data, comparison_data)]
     parts.append(r"\clearpage")
     parts.append(table("Categories. Native mutually exclusive partition", ["Category", "N", r"Share (\%)"],
                        [[tex(row["category"]), count(row["n_observations"]), number(100*row["share"]) if row["share"] is not None else "withheld"] for row in data["categories"]],
@@ -732,7 +855,8 @@ def render_source(data):
         rows += [[CONVENTION_LABELS[convention], count(saved["counts"]["rows"]), count(saved["counts"]["clusters"]), *(cell(row) for row in selected)],
                  ["", "", "", *(se(row) for row in selected)]]
     parts.append(table("Appendix A2. Archive observation-convention comparisons", ["Convention", "All-band N", "Clusters", "Payoff gap", "Return gap"], rows,
-                       r"Same archive, " + ("available-date scope" if full_dates else "cutoff") + r" and binary-token eligibility; no duration filter or controls. BUY rows retain the recorded claim, " +
+                       r"Same archive, " + ("available-date scope" if full_dates else "cutoff") +
+                       (r", exchange-wallet exclusion" if filtered else "") + r" and binary-token eligibility; no duration filter or controls. BUY rows retain the recorded claim, " +
                        r"and all BUY partitions into maker and taker BUY. Equal counts do not imply identical prices or observations. "
                        r"Complemented SELL exposure is not realized seller investment return; role differences reflect selection/composition. " + VARIANCE_NOTE +
                        withholding_note((f"{CONVENTION_LABELS[name]} {outcome_label(row['outcome'])}", row) for (name,), saved in a2.items() for row in saved["gap_rows"])))
@@ -873,8 +997,28 @@ def plot_buy_profiles(data, path):
         plt.close(fig)
 
 
-def render(estimate_dir, run_dir):
+def render(estimate_dir, run_dir, comparison_estimate_dir=None):
     data, binding = load_accepted_estimates(estimate_dir)
+    comparison_data, comparison_binding = None, None
+    if comparison_estimate_dir is not None:
+        require("wallet_filter" in binding, "comparison requires exchange-filtered estimates")
+        comparison_data, comparison_binding = load_accepted_estimates(comparison_estimate_dir)
+        require("wallet_filter" not in comparison_binding and comparison_binding["sample_scope"] == "all_available_dates",
+                "comparison must use accepted original full-date estimates")
+        original_manifest, _ = _read_json(Path(comparison_estimate_dir).resolve() / "manifest.json")
+        filtered_manifest, _ = _read_json(Path(estimate_dir).resolve() / "manifest.json")
+        original_base = original_manifest.get("preflight", {}).get("base_binding", {})
+        try:
+            original_parent = filters.binding_from_identities(original_base["manifest"], original_base["acceptance"])
+        except (KeyError, ValueError) as error:
+            raise ReportBlocked("comparison parent input binding missing or invalid") from error
+        require(original_parent == binding["wallet_filter"]["parent_binding"], "comparison parent input binding differs")
+        original_sports = original_manifest.get("preflight", {}).get("sports_binding", {})
+        filtered_sports = filtered_manifest.get("preflight", {}).get("sports_binding", {})
+        require(isinstance(original_sports.get("inputs"), list) and bool(original_sports["inputs"]) and
+                original_sports.get("sports") == filtered_sports.get("sports") == list(SPORTS) and
+                original_sports["inputs"] == filtered_sports.get("inputs"), "comparison provider inventory differs")
+        _comparison_tables(data, comparison_data)  # Before output creation or plotting.
     destination = Path(run_dir).resolve()
     require(not destination.exists(), "report target exists; immutable publication required")
     require(destination.parent.is_dir(), "report parent must exist")
@@ -883,17 +1027,20 @@ def render(estimate_dir, run_dir):
     staging = Path(tempfile.mkdtemp(prefix="."+destination.name+".staging-", dir=destination.parent))
     try:
         (staging / "figures").mkdir()
-        (staging / "source.tex").write_text(render_source(data), encoding="utf-8")
+        (staging / "source.tex").write_text(render_source(data, comparison_data), encoding="utf-8")
         for scope in SCOPES:
             plot_profile(data, scope, staging / "figures" / f"figure1_{scope}.pdf")
             plot_windows(data, scope, staging / "figures" / f"figure2_{scope}.pdf")
         plot_buy_profiles(data, staging / "figures" / "appendix_a2_buy_profiles.pdf")
         _, fresh = load_accepted_estimates(estimate_dir)
         require(fresh == binding, "accepted estimate inputs changed during rendering")
+        if comparison_estimate_dir is not None:
+            _, fresh_comparison = load_accepted_estimates(comparison_estimate_dir)
+            require(fresh_comparison == comparison_binding, "accepted comparison inputs changed during rendering")
         outputs = {str(path.relative_to(staging)): {"bytes": path.stat().st_size,
                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                    for path in sorted(staging.rglob("*")) if path.is_file()}
-        manifest = {"schema_version": "kaushik_replication_report_v1", "status": "source_and_figures_complete",
+        manifest = {"schema_version": "kaushik_replication_report_v2" if "wallet_filter" in binding else "kaushik_replication_report_v1", "status": "source_and_figures_complete",
                     "sample_scope": binding["sample_scope"],
                     "inputs": binding, "outputs": outputs, "primary_deliverable": "source.tex",
                     "renderer_source": {"path": "analysis/kaushik_polymarket_replication/render_report.py",
@@ -901,6 +1048,11 @@ def render(estimate_dir, run_dir):
                     "compilation_status": "pending", "visual_qa_status": "pending", "renderer_estimates": False,
                     "fixture_only": data.get("fixture_only") is True,
                     "discrete_figures": "isolated points; saved CR0 intervals; suppressed estimates omitted"}
+        if "wallet_filter" in binding:
+            manifest.update(wallet_filter=binding["wallet_filter"], filtered_input_binding=binding["filtered_input_binding"])
+        if comparison_binding is not None:
+            manifest["comparison_inputs"] = comparison_binding
+            manifest["comparison_method"] = "saved point estimates and descriptive differences; no difference inference"
         (staging / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True, allow_nan=False)+"\n", encoding="utf-8")
         require(not destination.exists(), "report target appeared before publication")
         staging.rename(destination)
@@ -915,8 +1067,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--estimate-dir", required=True)
     parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--comparison-estimate-dir", help="accepted original full-date estimates for descriptive comparison")
     args = parser.parse_args()
-    print(json.dumps(render(args.estimate_dir, args.run_dir), sort_keys=True))
+    print(json.dumps(render(args.estimate_dir, args.run_dir, args.comparison_estimate_dir), sort_keys=True))
 
 
 if __name__ == "__main__":
