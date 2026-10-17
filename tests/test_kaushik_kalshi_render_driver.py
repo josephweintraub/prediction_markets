@@ -231,6 +231,23 @@ class KalshiRenderDriverTests(unittest.TestCase):
         self.assertEqual(len(backend.axes),2);self.assertEqual(len(backend.axes[0]),3)
         self.assertFalse((self.root/'not-created.pdf').exists())
 
+    def test_window_ticks_use_exact_compact_two_line_labels_at_unchanged_positions(self):
+        core,_=fixture();spec=report.sports_figure_specs(sports_bundle(core)['summary'])['sports_pooled_windows']
+        before=deepcopy(spec)
+        expected=[['>24\nh','24-6\nh','6-1\nh','60-15\nmin','15-0\nmin'],
+                  ['0-15\nmin','15-30\nmin','30-60\nmin','1-2\nh','2+\nh'],
+                  ['60-30\nmin','30-15\nmin','15-5\nmin','5-0\nmin']]
+        ticks=[list(range(5)),list(range(5,10)),list(range(10,14))]
+        backend=Backend();driver.draw_figure(spec,self.root/'not-created.pdf',pyplot=backend)
+        for row in backend.axes:
+            for column,axis in enumerate(row):
+                calls=[(args,kwargs) for name,args,kwargs in axis.calls if name=='set_xticks']
+                self.assertEqual(len(calls),1)
+                self.assertEqual(calls[0][0],(ticks[column],expected[column]))
+                self.assertEqual(calls[0][1]['fontsize'],11)
+        self.assertEqual(spec,before)
+        self.assertFalse((self.root/'not-created.pdf').exists())
+
     def test_window_fonts_remain_legible_at_actual_report_linewidth(self):
         plan=self.prepare()
         self.assertIn(r'\documentclass[11pt]{article}',plan['source'])

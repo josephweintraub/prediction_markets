@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-17 - Print-safe Kalshi report presentation
+
+- Preserved the first authored draft after print QA exposed an overflowing
+  literal timing label and crowded window ticks.
+- Added invisible timing-label break opportunities and compact, explicitly
+  defined countdown labels without changing window positions or estimates.
+- Consolidated repeated withholding reasons by outcome while retaining saved
+  support and suppression; require fresh compilation and every-page QA.
+
 ## 2026-10-17 - Bounded native sports replay planning
 
 - Preserved the failed sports replay after its fixed memory/spill ceiling was

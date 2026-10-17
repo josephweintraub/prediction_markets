@@ -1,10 +1,11 @@
 # Fresh Kalshi replication: 16 October 2026
 
-Status: fresh input construction and independent input acceptance are complete.
-Core estimates have passed the independent saved-score audit. Sports estimates
-are complete, but their audit is blocked on a saved-artifact reader adapter;
-final report/release acceptance remains pending. The user explicitly selected a
-fresh raw-data replication, not a presentation of saved sports estimates.
+Status: pipeline accepted; report-layout QA ongoing. Fresh input construction,
+independent input acceptance, core saved-score QA and sports saved-score QA are
+complete. The first actual report rendered and compiled but failed print-layout
+QA; the style-only revision, final report/release, upload, Git push and verified
+instance shutdown remain pending. The user explicitly selected a fresh raw-data
+replication, not a presentation of saved sports estimates.
 
 Scientific contract: [Kalshi v1](../analysis_specs/kaushik_kalshi_replication_v1.md).
 Root owns instance lifecycle; workers have no lifecycle authority. The prior
@@ -339,3 +340,60 @@ the intended retry keeps 16 GB memory, 32 GB minimum available RAM, two threads,
 4 GB spill, the 20 GB disk floor and all scientific queries/gates unchanged.
 Final sports-score acceptance, actual report authoring, publication and shutdown
 remain pending at this checkpoint.
+
+## H7 pipeline acceptance and report-layout checkpoint: 17 October 2026
+
+The fixed physical join policy was committed as H7,
+`4308e71b25dabfedc27e56b50910251d50b8834a`. All 280 canonical Kalshi fixtures
+passed in 60.609 seconds. The independent clean H7 capsule passed the same
+280 fixtures in 31.680 seconds and 14 shared-engine fixtures in 0.059 seconds.
+Its exact source inventory, capsule-only namespace/import origins, unchanged
+source bytes and limited credential-pattern screening also passed. These are
+existing-runtime synthetic/source checks, not a fresh-install or production
+reconstruction claim.
+
+The third independent sports-score audit passed at
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_sports_score_audit_v3/audit_candidate.json`:
+20,495 bytes, SHA-256
+`f183e0be1572b3f943229acad5bd449a5c0740cd0a17d9336bcc233fb119b3dd`.
+Its H7 auditor reconciled all 30 saved joints and passed all eight explicit
+checks. The audit retained 16 GB DuckDB memory, 32 GB minimum available RAM,
+two threads, 4 GB spill, the 20 GB disk floor and the original remaining caps.
+Only the physical join policy changed; source/identity/cohort checks, SQL and
+statistical definitions did not. The H4 producer manifests and estimates remain
+unchanged, and both failed audit stages v1 and v2 are preserved.
+
+The saved sports reconciliation is:
+
+| Sports eligibility status | Prints |
+| --- | ---: |
+| All native winner-candidate prints | 198,611,524 |
+| Missing accepted provider map | 118,220,252 |
+| After retained provider end | 861,838 |
+| Eligible provider-bound prints | 79,529,434 |
+| Eligible: pregame | 17,232,864 |
+| Eligible: in-play | 62,296,570 |
+
+Candidates equal eligible plus the two disjoint exclusions. Pregame plus
+in-play equals the eligible count; the saved eligible sports sample covers
+9,600 provider games. It remains retained-provider overlap, not a Kalshi game
+census. ATP's scheduled-start plus archived-duration qualification and other
+literal timing-quality labels remain attached. Any provisional results release
+must retain the nominal confidence-interval qualification and saved influence
+warnings; no causal claims are made.
+
+The first actual report render used the H7 renderer and reviewed report-config
+SHA-256
+`0be5d4f595127ba56bf88efd96409ca9bea1e15c0c307e2a65a0867d86775cb5`.
+It produced the report source and 21 vector figure assets, and compiled to
+46 pages. It **failed print QA**: the raw ATP timing-quality string overflowed
+and sports-window tick labels overlapped. That render is not a final accepted
+report. A separate worker is preparing an H8 style-only repair; this checkpoint
+does not change report source, tests, scientific results or the reproduction
+guide. Root already executed the one-time PDF marker before intended authoring;
+it must not be repeated.
+
+Final report v2 rendering, compilation and every-page QA; final bundle/upload;
+canonical Git push; and verified instance stop remain pending. Root will append
+their actual completion evidence after QA. This checkpoint neither performs
+those actions nor claims the overall task finished; this worker has no EC2 hold.

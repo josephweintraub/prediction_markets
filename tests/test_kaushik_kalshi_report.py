@@ -210,11 +210,37 @@ class KalshiReportTests(unittest.TestCase):
         self.assertIn('no endpoint grace',source)
         self.assertEqual(source.count(r'$G_{\min}$ is the minimum game count across the required cells, not total matched games.'),1)
         self.assertIn('ATP uses scheduled start plus archived match duration',source)
-        self.assertIn('scheduled\\_start\\_plus\\_archived\\_duration',source)
+        self.assertIn('scheduled\\_start\\_plus\\_archived\\_duration',source.replace(r'\allowbreak{}',''))
+        self.assertEqual(source.count('Before-start and final-hour ticks are positive countdown magnitudes; since-start ticks are elapsed time.'),10)
+        for _,_,label in r.SPORT_WINDOWS:
+            self.assertIn(r.grammar.tex(label)+' &',source)
         self.assertIn('Duration sample. Baseline-tail clock reconciliation',source)
         self.assertIn('UTC source partitions',source)
         self.assertTrue(source.endswith('\\end{document}\n'))
         self.assertEqual(bundle,before)
+
+    def test_literal_timing_quality_breaks_do_not_change_visible_text(self):
+        raw='scheduled_start_plus_archived_duration | provider_quality=elapsed_thirds_from_espn_start_and_archived_duration'
+        wrapped=r._timing_quality_tex(raw)
+        self.assertEqual(wrapped.replace(r'\allowbreak{}',''),r.grammar.tex(raw))
+        self.assertEqual(wrapped.count(r'\allowbreak{}'),raw.count('_')+raw.count('|')+raw.count('='))
+        self.assertIn(r'\_\allowbreak{}',wrapped)
+        self.assertIn(r'|\allowbreak{}',wrapped)
+        self.assertIn(r'=\allowbreak{}',wrapped)
+
+    def test_sports_withholding_notes_union_saved_reasons_per_outcome(self):
+        data=sports_bundle(self.data)['summary']
+        for field in ('phase_rows','profile_rows','window_rows'):
+            for outcome in r.OUTCOMES:
+                for row in [row for row in data[field] if row['scope']=='pooled' and row['outcome']==outcome][:2]:
+                    suppress(row,'fixture_'+outcome+'_reason')
+        before=deepcopy(data)
+        paths={key:spec['filename'] for key,spec in r.sports_figure_specs(data).items()}
+        with patch('builtins.open',side_effect=AssertionError('renderer attempted I/O')),\
+             patch.object(r.grammar,'withholding_note',side_effect=AssertionError('per-cell note used for sports')):
+            source='\n'.join(r._sports_tables(data,paths))
+        self.assertEqual(source.count('Saved withholding reasons: Payoff: fixture payoff cents reason. Return: fixture roi percent reason.'),3)
+        self.assertEqual(data,before)
 
     def test_sports_receipt_pending_or_wrong_core_binding_blocks_release(self):
         bundle=sports_bundle(self.data)

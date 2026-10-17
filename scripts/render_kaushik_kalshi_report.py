@@ -40,6 +40,9 @@ SOURCE_FILES=(
 ROLES=('core_estimates','core_manifest','core_acceptance','core_score_audit',
        'reader_metadata','reader_provenance','sports_estimates','sports_manifest',
        'sports_acceptance','sports_score_audit')
+WINDOW_TICK_LABELS=('>24\nh','24-6\nh','6-1\nh','60-15\nmin','15-0\nmin',
+                    '0-15\nmin','15-30\nmin','30-60\nmin','1-2\nh','2+\nh',
+                    '60-30\nmin','30-15\nmin','15-5\nmin','5-0\nmin')
 
 
 class RenderBlocked(ValueError):
@@ -260,7 +263,8 @@ def draw_figure(spec,path,*,pyplot=None):
                             markersize=4,elinewidth=.85,label=series.get('label'))
                 axis.axhline(0,color='0.45',linewidth=.7,zorder=0)
                 axis.set_ylim(*item['ylim']);axis.set_xlim(min(item['ticks'])-.5,max(item['ticks'])+.5)
-                axis.set_xticks(item['ticks'],[label.replace(' to ','\nto ') if item['window'] else label for label in item['tick_labels']],fontsize=11 if item['window'] else 8)
+                tick_labels=[WINDOW_TICK_LABELS[tick] for tick in item['ticks']] if item['window'] else item['tick_labels']
+                axis.set_xticks(item['ticks'],tick_labels,fontsize=11 if item['window'] else 8)
                 axis.spines[['top','right']].set_visible(False);axis.grid(axis='y',alpha=.2)
                 if item['column']==0:
                     axis.set_ylabel(('Payoff gap (cents)' if item['window'] else 'Mean payoff (cents)') if item['outcome']=='payoff_cents'

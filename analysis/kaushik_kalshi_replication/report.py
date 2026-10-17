@@ -473,6 +473,11 @@ def _yearly_table(metadata):
         'not an exhaustive diagnosis of missing raw metadata; other exclusions remain in the excluded total.')
 
 
+def _timing_quality_tex(value):
+    """Keep literal timing labels while permitting invisible TeX line breaks."""
+    return grammar.tex(value).replace(r'\_',r'\_\allowbreak{}').replace('|',r'|\allowbreak{}').replace('=',r'=\allowbreak{}')
+
+
 def _sports_tables(data,paths):
     profiles,phases,windows=validate_sports(data)
     text=[r'\clearpage']
@@ -488,7 +493,7 @@ def _sports_tables(data,paths):
         r'$G_{\min}$ is the minimum game count across the required cells, not total matched games. '
         r'Provider clock conventions and their source quality are retained from the independently accepted map; settlement is not a game clock.'))
     text.append(grammar.table('Sports. Provider clock conventions',['Sport','Recorded timing quality','Prints'],
-        [[grammar.tex(row['sport']),grammar.tex(row['timing_quality']),_count(row['rows'],'timing-quality prints')]
+        [[grammar.tex(row['sport']),_timing_quality_tex(row['timing_quality']),_count(row['rows'],'timing-quality prints')]
          for row in data['timing_coverage']],grammar.tex(data['input_binding']['timing_qualification']),widths='lp{9cm}r'))
     text.append(grammar.table('Sports. Candidate reconciliation',['Sport','Status','Prints'],
         [[grammar.tex(row['sport']),grammar.tex(row['reason'].replace('_',' ')),_count(row['rows'],'sports exclusions')]
@@ -504,12 +509,15 @@ def _sports_tables(data,paths):
             ['Phase','Payoff gap','Return gap','Tail prints',r'$G_{\min}$'],rows,
             r'D10 minus D1; the change is in-play gap minus pregame gap using the joint game scores. '
             r'Payoff is cents, return gaps are percentage points. Parentheses are CR0 standard errors.'+
-            grammar.withholding_note((phase+' '+target,phases[(scope,phase,target)])
+            grammar.outcome_withholding_note(phases[(scope,phase,target)]
                 for phase in (*SPORT_PHASES,'in_play_minus_pregame') for target in OUTCOMES))])
         for family in ('profiles','windows'):
+            clock_note=(' Before-start and final-hour ticks are positive countdown magnitudes; since-start ticks are elapsed time.'
+                        if family=='windows' else '')
             text.extend([r'\begin{figure}[!htbp]\centering',r'\includegraphics[width=\linewidth]{'+paths['sports_'+scope+'_'+family]+'}',
                 r'\caption*{Sports. '+grammar.tex(scope)+': '+family+r'}',
-                r'{\footnotesize Isolated estimates and capped saved normal 95\% game-cluster intervals. Withheld cells have no marks.}\end{figure}'])
+                r'{\footnotesize Isolated estimates and capped saved normal 95\% game-cluster intervals. Withheld cells have no marks.'+
+                clock_note+r'}\end{figure}'])
         rows=[]
         for phase in SPORT_PHASES:
             for band in range(1,11):
@@ -520,7 +528,7 @@ def _sports_tables(data,paths):
         text.append(grammar.table('Sports. '+grammar.tex(scope)+': complete fixed-bin support',
             ['Phase','Bin','Payoff','Return','Prints','Games'],rows,
             'Payoff is cents; individual return is percent. Both the 500-print and 30-game floors apply to each cell. '+
-            grammar.withholding_note((phase+' D'+str(band)+' '+target,profiles[(scope,phase,band,target)])
+            grammar.outcome_withholding_note(profiles[(scope,phase,band,target)]
                 for phase in SPORT_PHASES for band in range(1,11) for target in OUTCOMES)))
         rows=[]
         for _,window,label in SPORT_WINDOWS:
@@ -533,7 +541,7 @@ def _sports_tables(data,paths):
         text.append(grammar.table('Sports. '+grammar.tex(scope)+': literal-window tail support',
             ['Window','Payoff gap','Return gap','D1 prints','D10 prints',r'$G_{\min}$'],rows,
             'Final-hour windows overlap since-start windows; pregame and since-start windows separately partition their phases. '+
-            grammar.withholding_note((window+' '+target,windows[(scope,window,target)]) for _,window,_ in SPORT_WINDOWS for target in OUTCOMES)))
+            grammar.outcome_withholding_note(windows[(scope,window,target)] for _,window,_ in SPORT_WINDOWS for target in OUTCOMES)))
     return text
 
 
