@@ -39,6 +39,9 @@ class KalshiReaderSummaryTests(unittest.TestCase):
         self.assertEqual(result['last_execution_utc'],'2026-03-26T12:00:00.000000Z')
         self.assertEqual(result['categories'],[{'category':'Sports','n_observations':6,'share':1.0}])
         self.assertEqual(result['claim_support'],{'claims':1,'observations':4,'both_tail_claims':1,'both_tail_claim_observations':4})
+        self.assertEqual(result['source_days'],2)
+        self.assertEqual(result['yearly_coverage'],[{'source_year':2026,'source_days':2,'source_rows':6,'baseline_rows':6,
+            'duration_tail_rows':4,'excluded_rows':0,'unadmitted_market_rows':0,'unadmitted_combo_classification_rows':0}])
         self.assertEqual(sum(row['rows'] for row in result['duration_exclusions']),4)
         self.assertEqual(dict((row['reason'],row['rows']) for row in result['duration_exclusions'])['eligible'],4)
         coverage={row['source_version']:row for row in result['duration_coverage']}
@@ -125,6 +128,43 @@ class KalshiReaderSummaryTests(unittest.TestCase):
         reasons['missing_or_invalid_open_time']-=1
         with self.assertRaisesRegex(reader.SummaryBlocked,'tail-only'):
             reader._summarize(con,manifest,meta,12,{'eligible':10,'invalid_size':2},reasons)
+
+    def test_year_counts_preserve_empty_baseline_years_and_observed_reason_labels(self):
+        years={}
+        receipts=[{'source_day':'2021-06-30','source_rows':9,'baseline_rows':0,'duration_rows':0,'excluded_rows':9,
+            'exclusions':[{'eligibility_reason':'unadmitted_market','rows':6},
+                          {'eligibility_reason':'unadmitted_combo_classification','rows':1},
+                          {'eligibility_reason':'combo_excluded','rows':1},{'eligibility_reason':'invalid_size','rows':1}]},
+            {'source_day':'2026-03-25','source_rows':3,'baseline_rows':3,'duration_rows':2,'excluded_rows':0,
+             'exclusions':[{'eligibility_reason':'eligible','rows':3}]},
+            {'source_day':'2026-03-26','source_rows':3,'baseline_rows':3,'duration_rows':2,'excluded_rows':0,
+             'exclusions':[{'eligibility_reason':'eligible','rows':3}]}]
+        for receipt in receipts:reader._add_yearly_counts(years,receipt)
+        self.assertEqual(sorted(years),[2021,2026])
+        self.assertEqual(years[2021],{'source_year':2021,'source_days':1,'source_rows':9,'baseline_rows':0,
+            'duration_tail_rows':0,'excluded_rows':9,'unadmitted_market_rows':6,'unadmitted_combo_classification_rows':1})
+        self.assertEqual((years[2026]['source_days'],years[2026]['baseline_rows'],years[2026]['duration_tail_rows']),(2,6,4))
+        self.assertNotIn(2022,years)
+        for change in ({'source_rows':8},{'baseline_rows':1},{'duration_rows':1},{'excluded_rows':None},{'source_day':'2021-02-30'}):
+            with self.subTest(change=change),self.assertRaises(reader.SummaryBlocked):
+                reader._add_yearly_counts({},dict(receipts[0],**change))
+
+    def test_year_totals_reconcile_with_accepted_counts_and_specific_status_totals(self):
+        con,manifest,meta,reasons=self.metrics_fixture();manifest['counts']['source_days']=2
+        exclusions={'eligible':10,'unadmitted_market':1,'unadmitted_combo_classification':1}
+        years=[{'source_year':2021,'source_days':1,'source_rows':2,'baseline_rows':0,'duration_tail_rows':0,
+            'excluded_rows':2,'unadmitted_market_rows':1,'unadmitted_combo_classification_rows':1},
+            {'source_year':2026,'source_days':1,'source_rows':10,'baseline_rows':10,'duration_tail_rows':2,
+             'excluded_rows':0,'unadmitted_market_rows':0,'unadmitted_combo_classification_rows':0}]
+        result=reader._summarize(con,manifest,meta,12,exclusions,reasons,yearly_coverage=years)
+        self.assertEqual(result['yearly_coverage'],years)
+        self.assertEqual((result['first_execution_utc'],result['archive_observed_first_execution_utc']),
+            ('2026-03-20T00:00:00.000000Z','1970-01-01T00:00:00.000000Z'))
+        for field in ('source_days','source_rows','baseline_rows','duration_tail_rows','excluded_rows',
+                      'unadmitted_market_rows','unadmitted_combo_classification_rows'):
+            changed=[dict(row) for row in years];changed[0][field]+=1
+            with self.subTest(field=field),self.assertRaisesRegex(reader.SummaryBlocked,'yearly source/eligibility totals'):
+                reader._summarize(con,manifest,meta,12,exclusions,reasons,yearly_coverage=changed)
 
 
 if __name__=='__main__':unittest.main()

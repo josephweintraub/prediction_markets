@@ -128,6 +128,29 @@ def _utc(seconds):
     except (ValueError,OverflowError,OSError) as error:raise SummaryBlocked('invalid admitted UTC execution bound') from error
 
 
+def _add_yearly_counts(years,receipt):
+    """Accumulate observed first-failure counts by UTC source-partition year."""
+    day=receipt.get('source_day')
+    _require(isinstance(day,str) and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}',day),'canonical UTC source day required')
+    try:parsed=datetime.strptime(day,'%Y-%m-%d')
+    except ValueError as error:raise SummaryBlocked('invalid UTC source day') from error
+    _require(parsed.strftime('%Y-%m-%d')==day,'canonical UTC source day required')
+    source,baseline,duration,excluded=(_count(receipt[key]) for key in ('source_rows','baseline_rows','duration_rows','excluded_rows'))
+    reasons={}
+    _require(isinstance(receipt.get('exclusions'),list),'saved daily first-failure counts required')
+    for item in receipt['exclusions']:
+        reason=item.get('eligibility_reason')
+        _require(isinstance(reason,str) and reason,'observed daily eligibility reason required')
+        reasons[reason]=reasons.get(reason,0)+_count(item['rows'])
+    _require(source==baseline+excluded and duration<=baseline and sum(reasons.values())==source
+             and reasons.get('eligible',0)==baseline,'daily year-coverage counts do not reconcile')
+    row=years.setdefault(parsed.year,dict(source_year=parsed.year,source_days=0,source_rows=0,baseline_rows=0,
+        duration_tail_rows=0,excluded_rows=0,unadmitted_market_rows=0,unadmitted_combo_classification_rows=0))
+    for key,value in (('source_days',1),('source_rows',source),('baseline_rows',baseline),('duration_tail_rows',duration),
+                      ('excluded_rows',excluded),('unadmitted_market_rows',reasons.get('unadmitted_market',0)),
+                      ('unadmitted_combo_classification_rows',reasons.get('unadmitted_combo_classification',0))):row[key]+=value
+
+
 def build_reader_metadata(con,*,manifest_path,manifest_sha256,acceptance_path,acceptance_sha256,expected_input_source_head):
     """Return ``(reader_metadata, provenance)`` without writing saved files.
 
@@ -197,12 +220,13 @@ def build_reader_metadata(con,*,manifest_path,manifest_sha256,acceptance_path,ac
         _require(_one(con,'SELECT count(*)-count(DISTINCT ticker) FROM reader_metadata')==0,'native metadata ticker join fanout')
         index=binder.record_json(root,manifest['daily_receipts'])
         _require(index.get('schema_version')=='kaushik_kalshi_receipt_inventory_v1','daily receipt inventory contract differs')
-        day_paths=[];seen=set();source_rows=0;exclusions={};saved_tail_reasons={};bounds={key:[] for key in EXECUTION_FIELDS}
+        day_paths=[];seen=set();source_rows=0;exclusions={};saved_tail_reasons={};bounds={key:[] for key in EXECUTION_FIELDS};years={}
         for item in index.get('receipts',[]):
             receipt=binder.record_json(root,item);day=receipt.get('source_day')
             _require(day in source_days and day not in seen and item['path']=='cells/day='+day+'/receipt.json'
                      and receipt.get('schema_version')=='kaushik_kalshi_day_cells_v1' and receipt.get('status')=='durable_pending_global_admission','complete unique daily receipt binding required')
             source_rows+=_count(receipt['source_rows'])
+            _add_yearly_counts(years,receipt)
             _require(all(key in receipt for key in EXECUTION_FIELDS) and isinstance(receipt.get('duration_tail_exclusions'),list),'cohort-specific daily diagnostics required')
             for key in EXECUTION_FIELDS:
                 if receipt[key] is not None:bounds[key].append(receipt[key])
@@ -225,7 +249,8 @@ def build_reader_metadata(con,*,manifest_path,manifest_sha256,acceptance_path,ac
         _require(_one(con,"SELECT count(*) FROM reader_native_day_claims WHERE matched_ticker IS NULL OR market_reason<>'eligible' OR source_version IS NULL OR n_rows IS NULL OR n_rows<=0 OR n_d1<0 OR n_d10<0 OR n_d1+n_d10>n_rows OR duration_rows<0 OR duration_rows>n_d1+n_d10")==0,'saved daily native claim support invalid')
         _same(con,'SELECT claim_id,ticker,taker_side,event_cluster,category,Y,sum(n_rows)::BIGINT n_rows,sum(n_d1)::BIGINT n_d1,sum(n_d10)::BIGINT n_d10,sum(duration_rows)::BIGINT duration_rows FROM reader_daily_claims GROUP BY ALL','SELECT * FROM reader_claims','final/daily claim support differs')
         _require(_one(con,"SELECT count(*) FROM reader_markets f LEFT JOIN reader_metadata m USING(ticker) WHERE m.ticker IS NULL OR m.market_reason<>'eligible' OR f.event_cluster IS DISTINCT FROM m.event_cluster OR f.category IS DISTINCT FROM m.category OR f.result IS DISTINCT FROM m.result OR f.opening_seconds IS DISTINCT FROM m.opening_seconds OR f.endpoint_seconds IS DISTINCT FROM m.endpoint_seconds")==0,'retained market/native metadata binding differs')
-        result=_summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons)
+        result=_summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons,
+            yearly_coverage=[years[year] for year in sorted(years)])
         _require(all(_identity(Path(path))==identity for path,identity in binder.identities.items()),'saved input drift during reader summary')
         provenance={'schema_version':'kaushik_kalshi_reader_metadata_provenance_v1',
             'accepted_manifest_sha256':manifest_sha256,'accepted_acceptance_sha256':acceptance_sha256,'input_source_head':expected_input_source_head,
@@ -233,6 +258,7 @@ def build_reader_metadata(con,*,manifest_path,manifest_sha256,acceptance_path,ac
             'body_bindings':[binder.values[path] for path in sorted(binder.values)],
             'execution_bounds':'first/last_execution_utc are admitted baseline extrema; archive_observed_* are all-raw source extrema only',
             'coverage_dates':'UTC source partition dates with duration_rows>0, not actual execution extrema; null when no eligible duration rows',
+            'yearly_coverage':'all hash-bound daily receipts grouped by UTC source-partition year; observed first-failure statuses are not causes of missing raw metadata',
             'outside_interval':'valid clocks; saved tail_rows-duration_rows combines before-open and after-settlement without guessing which',
             'raw_tape_read':False,'saved_file_writes':False,
             'temporary_relations':'owned DuckDB TEMP views/tables only; caller resource limits and spill location apply'}
@@ -246,7 +272,7 @@ def build_reader_metadata(con,*,manifest_path,manifest_sha256,acceptance_path,ac
             con.execute('DROP '+kind+' '+_name(name))
 
 
-def _summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons):
+def _summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons,*,yearly_coverage=None):
     baseline,tail,clusters,native,fallback=con.execute("""SELECT coalesce(sum(n_rows),0),coalesce(sum(n_rows) FILTER(WHERE bin IN(1,10)),0),
        count(DISTINCT event_cluster),count(DISTINCT event_cluster) FILTER(WHERE starts_with(event_cluster,'kalshi:event:')),
        count(DISTINCT event_cluster) FILTER(WHERE starts_with(event_cluster,'kalshi:market:')) FROM reader_baseline""").fetchone()
@@ -284,7 +310,7 @@ def _summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons):
     _require(support[1]==duration,'A1 common-duration support differs')
     sample=manifest['sample_metadata']
     _require(baseline>0 and sample['baseline_execution_seconds_min'] is not None and sample['baseline_execution_seconds_max'] is not None,'admitted baseline execution bounds unavailable')
-    return {'schema_version':SCHEMA_VERSION,'first_execution_utc':_utc(sample['baseline_execution_seconds_min']),
+    result={'schema_version':SCHEMA_VERSION,'first_execution_utc':_utc(sample['baseline_execution_seconds_min']),
         'last_execution_utc':_utc(sample['baseline_execution_seconds_max']),
         'duration_first_execution_utc':_utc(sample['duration_tail_execution_seconds_min']),
         'duration_last_execution_utc':_utc(sample['duration_tail_execution_seconds_max']),
@@ -297,3 +323,12 @@ def _summarize(con,manifest,meta,source_rows,exclusions,saved_tail_reasons):
         'duration_exclusions':[{'reason':reason,'rows':reason_rows[reason]} for reason in REASONS],
         'duration_coverage':coverage,'duration_panel_counts':{'L_gt1':l_gt1,'R_gt1':r_gt1},
         'claim_support':dict(zip(('claims','observations','both_tail_claims','both_tail_claim_observations'),map(int,support)))}
+    if yearly_coverage is not None:
+        expected={'source_rows':source_rows,'baseline_rows':baseline,'duration_tail_rows':duration,
+            'excluded_rows':source_rows-baseline,'source_days':manifest['counts']['source_days'],
+            'unadmitted_market_rows':exclusions.get('unadmitted_market',0),
+            'unadmitted_combo_classification_rows':exclusions.get('unadmitted_combo_classification',0)}
+        _require(all(sum(row[key] for row in yearly_coverage)==value for key,value in expected.items()),
+                 'yearly source/eligibility totals do not reconcile to accepted counts')
+        result.update(source_days=manifest['counts']['source_days'],yearly_coverage=yearly_coverage)
+    return result

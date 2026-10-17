@@ -14,6 +14,13 @@
 - Added independent saved-body/raw-day replay and saved-score release checks,
   a non-accepting storage probe, and separately labeled admitted-cohort timing
   diagnostics before the full trade scan.
+- Added native sports identity/result proof production and separate source/map
+  and saved-game-score audit gates, preserving ambiguous results and raw clock
+  quality rather than guessing a match or substituting settlement times.
+- Added receipt-bound annual sample coverage so archive counts and admitted
+  analysis populations remain visibly distinct.
+- Added a report-only, hash-bound renderer for portable LaTeX and discrete
+  vector figures, keeping artifact rendering separate from production analysis.
 
 ## 2026-10-16 - Fresh Kalshi replication contract
 

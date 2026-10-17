@@ -109,6 +109,29 @@ counterexamples, and all 191 installed Kalshi fixtures passed on the canonical
 runtime in 49.266 seconds before the next committed probe. Native sports-map
 production remains separate and awaits its own source review and admission.
 
+The committed eight-day capacity probe at
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_capacity_probe_v1` completed successfully
+under source `02b30ce315d66f31c07cec7012f2dc9ee9518bdd`. Its 933,475,481 source
+bytes contain 27,152,545 rows with exactly as many distinct native IDs. Saved
+daily and final cells occupy 65,219,141 bytes. A composition-sensitive linear
+scenario using the upstream-stated full count is 3,868,162,462 bytes, below the
+unchanged 12 GB input ceiling. This is a capacity check, not a guaranteed bound
+or input acceptance; the full run retains the 20 GB free-space floor and hard
+caps. The probe manifest SHA-256 is
+`79aa2eb3dce9e9804e11bf89c598fcb97d29211b514c11e721d0f9eaab146f07`.
+
+The fresh trade build began at 16:44:16 UTC on 17 October under unchanged
+source `02b30ce315d66f31c07cec7012f2dc9ee9518bdd`, stage
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_inputs_v1`. The canonical checkout was
+clean, the mounted data volume UUID was verified, and 58,860,699,648 free bytes
+and 264,723,083,264 available RAM bytes passed the existing preflight. It is a
+serial 1,919-file build, not an accepted input or result. Concurrent worker work
+is local source/test development only; canonical files and HEAD remain fixed
+until the guarded build exits. Initial early source files have zero admitted
+baseline rows with observed `unadmitted_market` exclusions. A saved-receipt-only
+annual coverage table will reconcile all years without treating an observed
+first exclusion as an exhaustive raw-metadata diagnosis.
+
 Before estimates: admit all source hashes/schemas, complete native ID uniqueness,
 all metadata keys and joins, binary outcome/combination/category rules, clock
 coverage, lossless cell moments and every disjoint exclusion. Preserve the 20 GB

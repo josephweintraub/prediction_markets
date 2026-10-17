@@ -182,6 +182,13 @@ def _metadata(summary,metadata,profile,gaps):
         require(inputs._seconds(metadata.get(key),'ISO8601_UTC') is not None,'observed canonical UTC execution range required')
     require(inputs._seconds(metadata['last_execution_utc'],'ISO8601_UTC')>=
             inputs._seconds(metadata['first_execution_utc'],'ISO8601_UTC'),'observed execution range is reversed')
+    archive_fields=('archive_observed_first_execution_utc','archive_observed_last_execution_utc')
+    if any(key in metadata for key in archive_fields):
+        require(all(inputs._seconds(metadata.get(key),'ISO8601_UTC') is not None for key in archive_fields),
+                'observed raw-archive UTC execution range required')
+        require(inputs._seconds(metadata[archive_fields[0]],'ISO8601_UTC')<=inputs._seconds(metadata['first_execution_utc'],'ISO8601_UTC')
+                and inputs._seconds(metadata[archive_fields[1]],'ISO8601_UTC')>=inputs._seconds(metadata['last_execution_utc'],'ISO8601_UTC'),
+                'raw-archive execution bounds do not contain baseline bounds')
     categories=_index(metadata.get('categories'),('category',))
     require(bool(categories),'native category population required')
     for row in categories.values():
@@ -197,6 +204,25 @@ def _metadata(summary,metadata,profile,gaps):
     for row in reasons.values(): _count(row.get('rows'),'first-failure print count')
     require(sum(row['rows'] for row in reasons.values())==metadata['source_rows'] and
             reasons.get(('eligible',),{}).get('rows')==metadata['baseline_rows'],'first-failure source waterfall differs')
+    if 'yearly_coverage' in metadata:
+        years=_index(metadata['yearly_coverage'],('source_year',))
+        require(bool(years),'nonempty yearly source coverage required')
+        for row in years.values():
+            require(type(row['source_year']) is int and 1<=row['source_year']<=9999,'integer UTC source-partition year required')
+            for field in ('source_days','source_rows','baseline_rows','duration_tail_rows','excluded_rows',
+                          'unadmitted_market_rows','unadmitted_combo_classification_rows'):_count(row.get(field),'year '+field)
+            require(row['source_days']>0 and row['source_rows']==row['baseline_rows']+row['excluded_rows']
+                    and row['duration_tail_rows']<=row['baseline_rows']
+                    and row['unadmitted_market_rows']+row['unadmitted_combo_classification_rows']<=row['excluded_rows'],
+                    'yearly source/eligibility row reconciliation differs')
+        expected={'source_rows':metadata['source_rows'],'baseline_rows':metadata['baseline_rows'],
+            'duration_tail_rows':metadata['duration_tail_rows'],'excluded_rows':metadata['source_rows']-metadata['baseline_rows'],
+            'unadmitted_market_rows':reasons.get(('unadmitted_market',),{}).get('rows',0),
+            'unadmitted_combo_classification_rows':reasons.get(('unadmitted_combo_classification',),{}).get('rows',0)}
+        if 'source_days' in metadata:
+            _count(metadata['source_days'],'source days');expected['source_days']=metadata['source_days']
+        require(all(sum(row[key] for row in years.values())==value for key,value in expected.items()),
+                'yearly source/eligibility totals differ')
     if 'duration_exclusions' in metadata or 'duration_coverage' in metadata:
         reasons=_index(metadata.get('duration_exclusions'),('reason',))
         for row in reasons.values(): _count(row.get('rows'),'tail-only clock count')
@@ -434,6 +460,19 @@ def _duration_tables(metadata):
     return [coverage,exclusions]
 
 
+def _yearly_table(metadata):
+    rows=sorted(metadata['yearly_coverage'],key=lambda row:row['source_year'])
+    fields=('source_rows','baseline_rows','duration_tail_rows','excluded_rows',
+            'unadmitted_market_rows','unadmitted_combo_classification_rows')
+    body=[[str(row['source_year']),*[_count(row[key],'year '+key) for key in fields]] for row in rows]
+    body.append(['Total',*[_count(sum(row[key] for row in rows),'year total '+key) for key in fields]])
+    return grammar.table('Sample. Yearly source and eligibility coverage',
+        ['UTC year','Source','Baseline','Duration tails','Excluded','No market match','Unknown type'],body,
+        'Years are UTC source partitions, not execution-time extrema. No market match means no match in retained noncompound metadata; '
+        'Unknown type means no independently admitted single-contract classification. Counts reflect the observed first exclusion, '
+        'not an exhaustive diagnosis of missing raw metadata; other exclusions remain in the excluded total.')
+
+
 def _sports_tables(data,paths):
     profiles,phases,windows=validate_sports(data)
     text=[r'\clearpage']
@@ -522,6 +561,7 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
     require(draft or user_scope or fresh_sports is not None,'full fresh report release requires admitted sports or an explicit user scope decision')
     require(draft or ('duration_exclusions' in metadata and 'duration_coverage' in metadata),
             'released report requires bound tail-only clock/source coverage')
+    require(draft or 'yearly_coverage' in metadata,'released report requires bound yearly source/eligibility coverage')
     expected_paths={'baseline':FIGURE_PATH}
     if fresh_sports is not None:
         expected_paths.update({key:value['filename'] for key,value in sports_figure_specs(fresh_sports).items()})
@@ -549,8 +589,11 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
                  r'so the Appendix A2 maker/taker comparison is unavailable. '
                  r'Computed by \texttt{analysis/kaushik\_kalshi\_replication/estimate.py}; saved \texttt{estimates.json}.\par'])
     if user_scope and not draft: text.append(r'Sports results are outside this report under the explicit user scope decision.\par')
-    sample=[['First execution UTC',grammar.tex(metadata['first_execution_utc'])],
-            ['Last execution UTC',grammar.tex(metadata['last_execution_utc'])]]
+    sample=[['First baseline execution UTC',grammar.tex(metadata['first_execution_utc'])],
+            ['Last baseline execution UTC',grammar.tex(metadata['last_execution_utc'])]]
+    for key,label in (('archive_observed_first_execution_utc','First raw-archive execution UTC'),
+                      ('archive_observed_last_execution_utc','Last raw-archive execution UTC')):
+        if key in metadata:sample.append([label,grammar.tex(metadata[key])])
     for key,label in (('source_rows','Source prints'),('baseline_rows','Baseline prints'),('markets','Markets'),
                       ('normalized_claims','YES/NO claims'),('clusters','Event/market clusters'),
                       ('unique_event_clusters','Native event clusters'),('market_fallback_clusters','Market fallback clusters'),
@@ -559,6 +602,7 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
         sample.append([label,_count(metadata[key],key)])
     text.append(grammar.table('Sample. Coverage and reconciliation',['Quantity','Kalshi'],sample,
         'The admitted metadata and eventual resolution requirement define coverage; this is not an exchange-wide completeness certificate.'))
+    if 'yearly_coverage' in metadata:text.append(_yearly_table(metadata))
     text.append(grammar.table('Sample. Disjoint first-failure eligibility',['Reason','Prints'],
         [[grammar.tex(row['reason'].replace('_',' ')),_count(row['rows'],'exclusions')] for row in metadata['exclusions']],
         'Every source print receives exactly one reason, including eligible. Missing settlement times do not remove otherwise eligible baseline prints.'))

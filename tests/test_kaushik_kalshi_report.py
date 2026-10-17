@@ -23,7 +23,11 @@ def fixture():
               'exclusions':[{'reason':'eligible','rows':90000},{'reason':'invalid_size','rows':10}]}
     metadata.update(duration_exclusions=[{'reason':'eligible','rows':18000}],
         duration_coverage=[{'source_version':'fixture_native','tail_rows':18000,'duration_tail_rows':18000,
-                            'first_utc_day':'2026-03-25','last_utc_day':'2026-03-26'}])
+                            'first_utc_day':'2026-03-25','last_utc_day':'2026-03-26'}],source_days=2,
+        yearly_coverage=[{'source_year':2021,'source_days':1,'source_rows':10010,'baseline_rows':10000,
+            'duration_tail_rows':2000,'excluded_rows':10,'unadmitted_market_rows':0,'unadmitted_combo_classification_rows':0},
+            {'source_year':2026,'source_days':1,'source_rows':80000,'baseline_rows':80000,
+             'duration_tail_rows':16000,'excluded_rows':0,'unadmitted_market_rows':0,'unadmitted_combo_classification_rows':0}])
     return data,metadata
 
 
@@ -256,6 +260,52 @@ class KalshiReportTests(unittest.TestCase):
         self.assertIn('rank deficient residualized design',source)
         self.assertIn('withheld',source)
         self.assertIn('18,000',source)
+
+    def test_yearly_coverage_shows_zero_baseline_year_and_observed_exclusion_statuses(self):
+        self.metadata['yearly_coverage'][0].update(source_rows=10,baseline_rows=0,duration_tail_rows=0,
+            unadmitted_market_rows=6,unadmitted_combo_classification_rows=1)
+        self.metadata['yearly_coverage'][1].update(source_rows=90000,baseline_rows=90000,duration_tail_rows=18000)
+        self.metadata['exclusions']=[{'reason':'eligible','rows':90000},{'reason':'unadmitted_market','rows':6},
+            {'reason':'unadmitted_combo_classification','rows':1},{'reason':'combo_excluded','rows':1},{'reason':'invalid_size','rows':2}]
+        self.metadata['first_execution_utc']='2026-03-25T12:00:00Z'
+        self.metadata['archive_observed_first_execution_utc']='2021-06-30T00:00:00Z'
+        self.metadata['archive_observed_last_execution_utc']='2026-10-01T23:59:59Z'
+        source=self.render()
+        self.assertIn('2021 & 10 & 0 & 0 & 10 & 6 & 1',source)
+        self.assertIn('Total & 90,010 & 90,000 & 18,000 & 10 & 6 & 1',source)
+        self.assertNotIn('2022 &',source)
+        self.assertIn('Years are UTC source partitions, not execution-time extrema',source)
+        self.assertIn('No market match',source)
+        self.assertIn('Unknown type',source)
+        self.assertIn('no match in retained noncompound metadata',source)
+        self.assertIn('no independently admitted single-contract classification',source)
+        self.assertIn('not an exhaustive diagnosis of missing raw metadata',source)
+        self.assertIn('other exclusions remain in the excluded total',source)
+        self.assertNotIn('Unadm.',source)
+        self.assertIn('First baseline execution UTC',source)
+        self.assertIn('First raw-archive execution UTC',source)
+        self.assertIn('2026-03-25T12:00:00Z',source)
+
+    def test_year_coverage_is_release_required_but_legacy_draft_can_omit_it(self):
+        del self.metadata['yearly_coverage']
+        self.assertNotIn('Yearly source and eligibility',self.render())
+        with self.assertRaisesRegex(r.ReportBlocked,'bound yearly source/eligibility'):
+            self.render(draft=False,sports_release_decision={'status':'user_approved_non_sports_scope',
+                'authorization_reference':'fixture explicit choice'})
+
+    def test_year_coverage_rows_totals_and_raw_archive_bounds_fail_closed(self):
+        for field in ('source_days','source_rows','baseline_rows','duration_tail_rows','excluded_rows',
+                      'unadmitted_market_rows','unadmitted_combo_classification_rows'):
+            self.data,self.metadata=fixture();self.metadata['yearly_coverage'][0][field]+=1
+            with self.subTest(field=field),self.assertRaisesRegex(r.ReportBlocked,'yearly source/eligibility'):
+                self.render()
+        self.data,self.metadata=fixture();self.metadata['yearly_coverage'][0]['source_year']=True
+        with self.assertRaisesRegex(r.ReportBlocked,'integer UTC source-partition year'):self.render()
+        self.data,self.metadata=fixture();self.metadata['yearly_coverage'].append(dict(self.metadata['yearly_coverage'][0]))
+        with self.assertRaisesRegex(r.ReportBlocked,'duplicate saved result key'):self.render()
+        self.data,self.metadata=fixture();self.metadata['archive_observed_first_execution_utc']='2022-01-01T00:00:00Z'
+        self.metadata['archive_observed_last_execution_utc']='2026-10-01T23:59:59Z'
+        with self.assertRaisesRegex(r.ReportBlocked,'do not contain baseline'):self.render()
 
 
 if __name__=='__main__':
