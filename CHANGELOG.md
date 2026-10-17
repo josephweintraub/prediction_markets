@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-17 - Guarded native Kalshi replication implementation
+
+- Added explicit native print, direction, payout, bin and settlement-clock
+  contracts, with separate baseline and duration eligibility.
+- Added checksummed serial source staging and bounded metadata/cell builders,
+  preserving unknown identities, exclusions and original source datasets.
+- Validated the grouped numerical path against independent raw-print fixture
+  regressions and joint clustered covariance before production admission.
+
+## 2026-10-16 - Fresh Kalshi replication contract
+
+- Recorded approval for a separate raw-data Kalshi counterpart using the
+  existing payoff, return, binning and duration specifications.
+- Kept combination contracts outside scope, settlement as the duration
+  endpoint, and missing clocks separate from baseline eligibility.
+- Required native field/identity/coverage admission and serial verified source
+  staging within the existing disk, without changing previous studies.
+
 ## 2026-10-15 - Accepted exchange-filtered full-date replication
 
 - Completed the immutable logical-input, provider-binding and full model-grid
