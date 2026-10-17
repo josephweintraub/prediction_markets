@@ -304,3 +304,38 @@ Final report rendering, compilation/page QA, release and verified instance
 shutdown are not asserted complete here. Exact CLI/API reproduction and
 external-body requirements are in the
 [reproduction guide](../analysis_specs/kaushik_kalshi_reproduce_v1.md).
+
+## Post-H4 audit-reader and execution-plan closure
+
+The first sports-score audit is preserved as
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_sports_score_audit_v1`.
+Its reader rejected the producer's real `path/sha256/stat` core JSON identity
+because a synthetic integration fixture had supplied flat `path/bytes/sha256`.
+Commit `36166867f2d1ef744ab37fbf312551020db086ca` adds a strict read-boundary
+adapter and real-producer identity/drift tests. Completed manifests, estimates
+and producers remain unchanged. All 271 Kalshi fixtures passed on EC2 in
+60.823 seconds.
+
+Commit `2496427118b60fc15ae7cbf9fc865c258ae9bb30` clarifies the report's
+tail-specific duration model, literal day-clock definitions and game-count
+labels. The 35 report/mocked-driver fixtures passed on EC2 in 3.439 seconds.
+Its exact clean 46-file source capsule passed 272 local Kalshi fixtures in
+29.085 seconds, 14 shared-engine fixtures in 0.055 seconds, namespace/import
+origin checks, byte-level archive/source inventory and limited credential-pattern
+screening. This is fixture/source QA, not a fresh environment or raw-data rebuild.
+
+The second independent sports-score audit is preserved as
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_sports_score_audit_v2`.
+It passed the repaired core-binding read and then exhausted the unchanged
+16 GB memory / 4 GB spill limit on native claim/map validation. A read-only
+`EXPLAIN`, not `EXPLAIN ANALYZE`, showed the optimizer placing the 198,611,524-row
+candidate cache on the hash-build side because its multi-file estimate was
+about 1,000 rows. A second `EXPLAIN` with fixed
+`disabled_optimizers='join_order,build_side_probe_side'` retained the small
+19,383-row map on that side. The physical-plan setting already used by the
+sports producer is being admitted separately for the independent auditor.
+The proposed 64 GB / 96 GB available-RAM alternative was not committed or run;
+the intended retry keeps 16 GB memory, 32 GB minimum available RAM, two threads,
+4 GB spill, the 20 GB disk floor and all scientific queries/gates unchanged.
+Final sports-score acceptance, actual report authoring, publication and shutdown
+remain pending at this checkpoint.

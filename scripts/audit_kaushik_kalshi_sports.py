@@ -50,6 +50,9 @@ CLOCK_PROOF = ('Exact clock values and stated conventions match the hash-bound r
     'It is NOT a new play-by-play boundary reconstruction or a guarantee of observed actual starts/ends.')
 MAX_BOUND_BYTES, MAX_CACHE_BYTES, MAX_ROWS = 32_000_000_000, 12_000_000_000, 5_000_000
 MAX_NUMPY_BYTES, MAX_OUTPUT_BYTES, FLOOR = 8_000_000_000, 1_000_000_000, 20_000_000_000
+DUCKDB_MEMORY_LIMIT = '16GB'
+MINIMUM_AVAILABLE_RAM_BYTES = 32_000_000_000
+DISABLED_OPTIMIZERS = 'join_order,build_side_probe_side'
 SOURCE_FILES = ('scripts/audit_kaushik_kalshi_sports.py','tests/test_kaushik_kalshi_sports_audit.py',
     'scripts/audit_kaushik_kalshi_inputs.py','scripts/audit_kaushik_replication_saved_scores.py',
     'analysis/kaushik_polymarket_replication/render_report.py','production_guard.py')
@@ -1053,7 +1056,9 @@ def _save_report(target,report,records,source):
         pq.write_table(table,stream,compression='zstd');stream.flush();os.fsync(stream.fileno())
     require(path.stat().st_size<=32_000_000 and pq.ParquetFile(path).read().equals(table),'sports audit body inventory exact reopen differs')
     report={**report,'audit_source':source,'body_bindings':bodies._record(target,path,parquet=True),
-        'resources':{'memory_limit':'16GB','threads':2,'numpy_bytes':MAX_NUMPY_BYTES,'spill_bytes':4_000_000_000,
+        'resources':{'memory_limit':DUCKDB_MEMORY_LIMIT,'minimum_available_ram_bytes':MINIMUM_AVAILABLE_RAM_BYTES,
+                     'disabled_optimizers':DISABLED_OPTIMIZERS,
+                     'threads':2,'numpy_bytes':MAX_NUMPY_BYTES,'spill_bytes':4_000_000_000,
                      'output_bytes':MAX_OUTPUT_BYTES,'minimum_free_bytes':FLOOR,'saved_cache_bytes':MAX_CACHE_BYTES,'planned_read_bytes_ceiling':128_000_000_000}}
     _write_json(target/'audit_candidate.json',report)
     require(sum(p.stat().st_size for p in target.rglob('*') if p.is_file() and 'spill' not in p.relative_to(target).parts)<=MAX_OUTPUT_BYTES
@@ -1092,11 +1097,12 @@ def run_production(args):
     require(target.is_absolute() and target.resolve()==target and target.parent==RUN_ROOT and not os.path.lexists(target),'new immutable top-level sports audit stage required')
     require(shutil.disk_usage(target.parent).free>=FLOOR+MAX_OUTPUT_BYTES+1_000_000_000+4_000_000_000,'sports audit output/spill/free-floor reservation failed')
     available=re.search(r'^MemAvailable:\s+(\d+) kB$',Path('/proc/meminfo').read_text(),re.MULTILINE)
-    require((os.cpu_count() or 0)>=2 and available and int(available.group(1))*1024>=32_000_000_000,'sports audit two CPUs/32GB available RAM required')
+    require((os.cpu_count() or 0)>=2 and available and int(available.group(1))*1024>=MINIMUM_AVAILABLE_RAM_BYTES,'sports audit two CPUs/32GB available RAM required')
     target.mkdir();con=None
     try:
         con=duckdb.connect()
-        for sql in ("SET TimeZone='UTC'","SET memory_limit='16GB'","SET threads=2","SET enable_object_cache=false"):
+        for sql in ("SET TimeZone='UTC'",'SET memory_limit='+literal(DUCKDB_MEMORY_LIMIT),"SET threads=2","SET enable_object_cache=false",
+                    'SET disabled_optimizers='+literal(DISABLED_OPTIMIZERS)):
             con.execute(sql)
         con.execute('SET temp_directory='+literal(target/'spill'));con.execute("SET max_temp_directory_size='4GB'")
         if args.command=='map-audit':

@@ -624,7 +624,8 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
     rows.extend([[r'D10$-$D1','--','--',grammar.cell(pg),grammar.cell(rg),_count(metadata['tail_rows'],'tails'),_count(pg['n_clusters'],'tail clusters')],
                  ['','','',grammar.se(pg),grammar.se(rg),'','']])
     text.append(grammar.table('Table 1. Complete fixed-bin evidence',['Bin','Mean price','Win rate','Payoff','Return','N','G'],rows,
-        r'Mean price is dollars; payoff is cents; return is percent, with gap in percentage points. N is prints and G contributing event/market clusters. '+VARIANCE_NOTE+
+        r'Mean price is dollars; payoff is cents; return is percent, with gap in percentage points. N is prints. '
+        r'G counts contributing event/market clusters for individual bins; for the gap it is the minimum across the required tail cells. '+VARIANCE_NOTE+
         grammar.withholding_note([(f'D{band} {target}',profile[(target,band)]) for target in OUTCOMES for band in range(1,11)]+
                                  [(f'D10-D1 {target}',gaps[(target,)]) for target in OUTCOMES])))
     text.append(r'\clearpage')

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-17 - Bounded native sports replay planning
+
+- Preserved the failed sports replay after its fixed memory/spill ceiling was
+  reached; inspected the exact validation query without executing it.
+- Pinned physical join ordering to retain the small-map build side while
+  preserving queries, eligibility, numerical rules and resource ceilings.
+- Retained boundary tests and recorded runtime settings in audit provenance.
+
 ## 2026-10-17 - Native sports audit binding compatibility
 
 - Reopened the producer's actual nested-stat core JSON bindings in the

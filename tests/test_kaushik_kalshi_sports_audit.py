@@ -8,7 +8,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock,patch
 
 import duckdb
 import numpy as np
@@ -72,6 +72,154 @@ class ProducerCoreBindingTests(unittest.TestCase):
         with patch.object(bound,'json',side_effect=read_then_change_time),\
              self.assertRaisesRegex(audit.AuditBlocked,'stat drift during reopen'):
             audit._bound_core_json(bound,self.record)
+
+
+class SportsAuditResourceAdmissionTests(unittest.TestCase):
+    def setUp(self):
+        self.folder=tempfile.TemporaryDirectory(prefix='sports-audit-resource-fixture-')
+        self.addCleanup(self.folder.cleanup);self.root=Path(self.folder.name).resolve()
+        self.target=self.root/'new-audit'
+        self.source={'head':'a'*40,'files':{'fixture.py':'b'*64}}
+        self.report={'status':'fixture_audit_only','checks':{'fixture':True}}
+        self.connection=SimpleNamespace(execute=Mock(),close=Mock())
+        self.stack=ExitStack();self.addCleanup(self.stack.close)
+        for name,value in (('RUN_ROOT',self.root),('_guard',Mock(return_value=self.source)),
+                           ('_own_source',Mock(return_value=self.source))):
+            self.stack.enter_context(patch.object(audit,name,value))
+        self.stack.enter_context(patch.object(audit.shutil,'disk_usage',return_value=SimpleNamespace(free=100_000_000_000)))
+        self.stack.enter_context(patch.object(audit.os,'cpu_count',return_value=2))
+        self.ram=self.stack.enter_context(patch.object(Path,'read_text',return_value='MemAvailable: 31250000 kB\n'))
+        self.connect=self.stack.enter_context(patch.object(audit.duckdb,'connect',return_value=self.connection))
+        self.worker=self.stack.enter_context(patch.object(audit,'audit_scores',return_value=(self.report,[])))
+        self.args=SimpleNamespace(expected_audit_head='a'*40,output_dir=self.target,command='scores',sports_dir=self.root/'fixture-sports',
+            sports_manifest_sha256='1'*64,sports_sha256='2'*64,expected_producer_head='3'*40,
+            input_manifest=self.root/'input.json',input_acceptance=self.root/'input-acceptance.json',
+            map_manifest=self.root/'map.json',map_acceptance=self.root/'map-acceptance.json')
+
+    def unopened(self):
+        self.assertFalse(self.target.exists());self.connect.assert_not_called();self.worker.assert_not_called()
+
+    def test_exact_32gb_boundary_records_original_caps_and_fixed_optimizer_policy(self):
+        result=audit.run_production(self.args)
+        statements=[call.args[0] for call in self.connection.execute.call_args_list]
+        self.assertIn("SET memory_limit='16GB'",statements)
+        self.assertIn("SET threads=2",statements)
+        self.assertIn("SET max_temp_directory_size='4GB'",statements)
+        self.assertIn("SET disabled_optimizers='join_order,build_side_probe_side'",statements)
+        self.assertEqual(result['resources'],{'memory_limit':'16GB','minimum_available_ram_bytes':32_000_000_000,
+            'disabled_optimizers':'join_order,build_side_probe_side',
+            'threads':2,'numpy_bytes':8_000_000_000,'spill_bytes':4_000_000_000,'output_bytes':1_000_000_000,
+            'minimum_free_bytes':20_000_000_000,'saved_cache_bytes':12_000_000_000,'planned_read_bytes_ceiling':128_000_000_000})
+        saved=json.loads((self.target/'audit_candidate.json').read_bytes())
+        self.assertEqual(saved['resources'],result['resources'])
+        self.connection.close.assert_called_once()
+
+    def test_ram_just_below_original_32gb_rejects_before_stage_or_connection(self):
+        self.ram.return_value='MemAvailable: 31249999 kB\n'
+        with self.assertRaisesRegex(audit.AuditBlocked,'32GB available RAM required'):
+            audit.run_production(self.args)
+        self.unopened()
+
+    def test_missing_or_malformed_ram_evidence_rejects_before_stage(self):
+        for text in ('','MemAvailable: NaN kB\n','MemAvailable: -1 kB\n'):
+            self.ram.return_value=text
+            with self.subTest(meminfo=text),self.assertRaisesRegex(audit.AuditBlocked,'32GB available RAM required'):
+                audit.run_production(self.args)
+            self.unopened()
+        self.ram.side_effect=FileNotFoundError('fixture missing meminfo')
+        with self.assertRaises(FileNotFoundError):audit.run_production(self.args)
+        self.unopened()
+
+    def test_fewer_than_two_cpus_rejects_before_stage(self):
+        for cpus in (None,0,1):
+            with self.subTest(cpus=cpus),patch.object(audit.os,'cpu_count',return_value=cpus),\
+                 self.assertRaisesRegex(audit.AuditBlocked,'two CPUs'):
+                audit.run_production(self.args)
+            self.unopened()
+
+    def test_unchanged_26gb_disk_reservation_rejects_before_ram_or_stage(self):
+        with patch.object(audit.shutil,'disk_usage',return_value=SimpleNamespace(free=25_999_999_999)),\
+             self.assertRaisesRegex(audit.AuditBlocked,'output/spill/free-floor reservation'):
+            audit.run_production(self.args)
+        self.ram.assert_not_called();self.unopened()
+
+    def test_memory_setting_failure_preserves_failure_without_fallback_or_worker(self):
+        def configure(sql):
+            if sql=="SET memory_limit='16GB'":raise MemoryError('fixture memory setting rejected')
+        self.connection.execute.side_effect=configure
+        with self.assertRaisesRegex(MemoryError,'memory setting rejected'):audit.run_production(self.args)
+        self.assertEqual(json.loads((self.target/'failure.json').read_bytes())['status'],'sports_audit_incomplete')
+        statements=[call.args[0] for call in self.connection.execute.call_args_list]
+        self.assertEqual(statements.count("SET memory_limit='16GB'"),1)
+        self.assertFalse(any('32GB' in sql or '64GB' in sql for sql in statements))
+        self.worker.assert_not_called();self.connection.close.assert_called_once()
+
+
+    def test_optimizer_setting_failure_cannot_fall_back_to_default_or_start_worker(self):
+        statement="SET disabled_optimizers='join_order,build_side_probe_side'"
+        def configure(sql):
+            if sql==statement:raise RuntimeError('fixture optimizer policy rejected')
+        self.connection.execute.side_effect=configure
+        with self.assertRaisesRegex(RuntimeError,'optimizer policy rejected'):audit.run_production(self.args)
+        self.assertEqual(json.loads((self.target/'failure.json').read_bytes())['status'],'sports_audit_incomplete')
+        self.assertEqual([call.args[0] for call in self.connection.execute.call_args_list].count(statement),1)
+        self.worker.assert_not_called();self.connection.close.assert_called_once()
+
+
+class IndependentJoinPlanTests(unittest.TestCase):
+    def test_multifile_cache_preserves_small_map_right_and_identical_direct_results(self):
+        # The map has only four admitted rows, but its unrecognized modular
+        # predicate overestimates it. This reproduces the relevant direction
+        # of the production estimator error without large data or raw tape.
+        with tempfile.TemporaryDirectory(prefix='sports-join-plan-fixture-') as folder:
+            root=Path(folder).resolve();con=duckdb.connect()
+            try:
+                for number in (0,1):
+                    con.execute("COPY (SELECT 'M'||((i%5)*25000)::VARCHAR ticker,"+
+                        "CASE WHEN i=8 THEN 'nba' ELSE 'nfl' END sport,i::DOUBLE AS \"timestamp\","+
+                        "CASE WHEN i=6 THEN 'wrong:event' ELSE 'kalshi:event:E'||((i%5)*25000)::VARCHAR END event_cluster,"+
+                        "'kalshi:claim:M'||((i%5)*25000)::VARCHAR||CASE WHEN i%2=0 THEN ':yes' ELSE ':no' END claim_id,"+
+                        "CASE WHEN i=7 THEN 1 WHEN i%2=0 THEN 1 ELSE 0 END Y "+
+                        f"FROM range({number*500},{(number+1)*500}) r(i)) TO "+audit.literal(root/f'cache{number}.parquet')+" (FORMAT PARQUET)")
+                con.execute("COPY (SELECT i map_numeric,'M'||i::VARCHAR ticker,'nfl' sport,'G'||i::VARCHAR game_key,"+
+                    "'E'||i::VARCHAR native_event_ticker,1 yes_payout,0.0 actual_start_seconds,2000.0 actual_end_seconds "+
+                    "FROM range(100000) r(i)) TO "+audit.literal(root/'map.parquet')+" (FORMAT PARQUET)")
+                con.execute('CREATE VIEW plan_cache AS SELECT * FROM read_parquet(['+
+                    ','.join(audit.literal(root/f'cache{i}.parquet') for i in (0,1))+'],hive_partitioning=false)')
+                con.execute('CREATE VIEW plan_map AS SELECT * EXCLUDE(map_numeric) FROM read_parquet('+
+                    audit.literal(root/'map.parquet')+') WHERE map_numeric%25000=0')
+                self.assertEqual(con.execute('SELECT count(*) FROM plan_map').fetchone()[0],4)
+                con.execute("CREATE VIEW plan_joined AS SELECT c.*,m.game_key,m.actual_start_seconds,m.actual_end_seconds,m.yes_payout,"+
+                    "m.native_event_ticker,m.sport map_sport,CASE WHEN m.ticker IS NULL THEN 'missing_accepted_map' "+
+                    "WHEN c.timestamp>m.actual_end_seconds THEN 'after_actual_end' ELSE 'eligible' END reason "+
+                    'FROM plan_cache c LEFT JOIN plan_map m USING(ticker)')
+                mismatch="SELECT count(*) FROM plan_joined WHERE game_key IS NOT NULL AND (sport IS DISTINCT FROM map_sport OR "+\
+                    "event_cluster IS DISTINCT FROM 'kalshi:event:'||native_event_ticker OR "+\
+                    "Y IS DISTINCT FROM CASE WHEN claim_id='kalshi:claim:'||ticker||':yes' THEN yes_payout ELSE 1-yes_payout END)"
+                def walk(node):
+                    yield node
+                    for child in node.get('children',[]):yield from walk(child)
+                def projections(node):
+                    values=[]
+                    for child in walk(node):
+                        value=child.get('extra_info',{}).get('Projections',[])
+                        values.extend(value if isinstance(value,list) else [value])
+                    return set(values)
+                answers,joined,plans={},{},{}
+                for label,policy in (('default',''),('fixed',audit.DISABLED_OPTIMIZERS)):
+                    con.execute('SET disabled_optimizers='+audit.literal(policy))
+                    answers[label]=con.execute(mismatch).fetchone()[0]
+                    joined[label]=con.execute('SELECT * FROM plan_joined ORDER BY timestamp').fetchall()
+                    tree=json.loads(con.execute('EXPLAIN (FORMAT JSON) '+mismatch).fetchone()[1])
+                    joins=[node for top in tree for node in walk(top) if node['name']=='HASH_JOIN']
+                    self.assertEqual(len(joins),1);plans[label]=joins[0]
+                self.assertEqual(answers,{'default':3,'fixed':3})
+                self.assertEqual(len(joined['fixed']),1000);self.assertEqual(joined['default'],joined['fixed'])
+                self.assertIn('claim_id',projections(plans['default']['children'][1]))
+                self.assertIn('yes_payout',projections(plans['fixed']['children'][1]))
+                self.assertNotIn('claim_id',projections(plans['fixed']['children'][1]))
+                self.assertIn('claim_id',projections(plans['fixed']['children'][0]))
+            finally:con.close()
 
 
 class IndependentSportsAuditTests(unittest.TestCase):

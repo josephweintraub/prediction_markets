@@ -100,6 +100,7 @@ class KalshiReportTests(unittest.TestCase):
         self.assertNotIn('Interpretation limits',source)
         self.assertNotIn('Fingerprint',source)
         self.assertIn('Appendix A2 maker/taker comparison is unavailable',source)
+        self.assertIn('G counts contributing event/market clusters for individual bins; for the gap it is the minimum across the required tail cells.',source)
 
     def test_duration_equation_defines_native_day_clocks_and_reported_tail_gradients(self):
         with patch('builtins.open',side_effect=AssertionError('renderer attempted I/O')):

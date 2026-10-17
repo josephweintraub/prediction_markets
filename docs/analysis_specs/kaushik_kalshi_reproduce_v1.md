@@ -339,6 +339,10 @@ increase them. GB values are decimal bytes where encoded numerically.
 | Sports estimator | DuckDB 16 GB, 2 threads; 32 GB available RAM; 8 GB NumPy | 4 GB output + 1 GB transient + 4 GB spill + 20 GB floor = 29 GB initial free |
 | Sports audit | DuckDB 16 GB, 2 threads; 32 GB available RAM; 8 GB NumPy | 1 GB output + 1 GB transient + 4 GB spill + 20 GB floor = 26 GB initial free; 12 GB cache and 128 GB planned source-read ceilings |
 
+Sports audits use fixed `disabled_optimizers='join_order,build_side_probe_side'`
+to preserve the explicit candidate-left/map-right join build policy, matching
+the producer without changing SQL, eligibility or statistical definitions.
+
 Core saved-score QA separately bounds JSON to 16 MB, each score artifact to
 3 GB, total scores to 12 GB and batches to 64 MB. Read and honor each recorded
 stage's actual manifest/limits; a passing capacity probe does not relax them.
