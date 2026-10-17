@@ -1,11 +1,12 @@
 # Fresh Kalshi replication: 16 October 2026
 
-Status: pipeline accepted; report-layout QA ongoing. Fresh input construction,
-independent input acceptance, core saved-score QA and sports saved-score QA are
-complete. The first actual report rendered and compiled but failed print-layout
-QA; the style-only revision, final report/release, upload, Git push and verified
-instance shutdown remain pending. The user explicitly selected a fresh raw-data
-replication, not a presentation of saved sports estimates.
+Status: pipeline and final report accepted. Fresh input construction, independent
+input/core/sports QA, final compilation, numerical-content parity and every-page
+visual QA are complete. The first print-layout failure is preserved and is not
+the released report. Final publication and instance-lifecycle receipts are
+runtime records under the local output directory; root must finish verified
+publication, release every dependency, stop the instance and verify its state.
+The user selected a fresh raw-data replication, not saved-estimate reformatting.
 
 Scientific contract: [Kalshi v1](../analysis_specs/kaushik_kalshi_replication_v1.md).
 Root owns instance lifecycle; workers have no lifecycle authority. The prior
@@ -397,3 +398,59 @@ Final report v2 rendering, compilation and every-page QA; final bundle/upload;
 canonical Git push; and verified instance stop remain pending. Root will append
 their actual completion evidence after QA. This checkpoint neither performs
 those actions nor claims the overall task finished; this worker has no EC2 hold.
+
+## Accepted final report: 17 October 2026
+
+Print-only source commit `7d72e59abc4f72a62b3e30dc0c6fa1e33436ffdc`
+retains all statistical content. The 38 report/mocked-driver tests passed on
+the canonical runtime in 3.720 seconds. Independent clean-capsule verification
+passed all 283 Kalshi fixtures in 30.463 seconds and 14 shared-engine fixtures
+in 0.065 seconds, with all 41 imported project-module origins confined to the
+unchanged 46-file capsule. The bounded five-pattern credential screen found no
+hits; it is not exhaustive credential certification.
+
+The new immutable report is
+`output/kalshi_replication_2026-10-16_v1/report_v2/kalshi_flb_replication.tex`.
+Its reviewed ten-JSON/eight-source-file config is `report_render_config_v2.json`,
+SHA-256 `2c0484645ba819bd0e4701213f3dac1aa9cd14f75521ea7eeaf5ce8b101cbd86`.
+The source is 78,587 bytes, SHA-256
+`d937613dfe6f30c1950b15bf14032e79d89e530417f0593f9726635e47f83a2f`.
+The renderer manifest is 9,868 bytes, SHA-256
+`9d8c47047dba2e1380446809c3774f1613216452733403b9ac2b11e09c6ecb14`.
+
+Two clean `pdflatex -interaction=nonstopmode -halt-on-error -file-line-error`
+passes ran from `report_v2/` with output directory `report_compile_v2/`.
+The TeX Live 2025 pdfTeX compiler produced 50 pages, 45 native tables and
+21 embedded vector figures, with no warnings, overfull or underfull boxes.
+The compiled PDF is 648,014 bytes, SHA-256
+`54893a0f4d6ac1e84f9444761bbbf0d07ead00b2512b16b232e7d50436ecdfb3`.
+All 66 captions are present. The portable source uses only relative figure
+assets; compilation of the supplied source does not require raw data.
+
+Poppler 26.04.0 rendered all pages at 144 dpi. Independent visual QA covered
+pages 1–7, 8–28 and 29–50 without sampling; first-seven v2 PNGs are exactly
+identical to the already-reviewed v1 pages. Root also checked pages 8, 17 and
+50. The literal quality tokens wrap without visible content changes and compact
+window ticks explain countdown magnitudes versus elapsed time. Suppressed
+estimates remain unplotted and bin/window points remain unconnected.
+
+Independent isolated prepare-only comparison passed all ten JSON-role bindings
+and reproduced each saved source exactly. All 21 scientific figure specs and
+numeric geometries are identical across render versions: 82 axes, 598 plotted
+estimates and 102 withheld marks, with identical positions, intervals and
+suppression. All 45 tables preserve numeric contents and all 11 profile figure
+PDFs are byte-identical. Baseline profiles, 24 duration coefficients and the
+four A1 interactions/support/notation were independently reconciled to accepted
+JSON. The three final QA receipts and original configs are saved in the local
+output directory, not added as a reader-facing appendix.
+
+The finished private Dropbox destination is
+`Polymarket Data and Code/Kaushik Kalshi Replication 2026-10-17 v1`.
+The handoff includes the portable report/figures, compiled preview, committed
+source/tests/docs, saved estimates and machine-facing audit/provenance records.
+Raw trade, metadata/provider, cell/cache/score bodies, credentials and Git history
+are not bundled. Full production reconstruction still requires the original
+hash-bound bodies and historical source revisions described in the reproduction
+guide. Final archive/publication bindings and subsequent shutdown verification
+are runtime artifacts; this source record does not assert an unobserved external
+transfer or stopped state in advance.

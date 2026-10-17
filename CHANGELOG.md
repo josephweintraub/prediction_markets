@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-17 - Accepted native Kalshi replication report
+
+- Completed independent input, native-map, core-score and sports-cache/score
+  acceptance while preserving failed stages and original source datasets.
+- Produced the portable LaTeX report, 45 native tables and 21 vector figures;
+  compiled twice without warnings and reviewed every one of its 50 pages.
+- Verified numerical/figure parity, support/suppression, clean source-capsule
+  fixtures and a credential-screened summary/source handoff inventory.
+- Recorded exact production/render revisions, cohort/clock coverage and
+  reproducibility boundaries separately from the concise reader report.
+
 ## 2026-10-17 - Print-safe Kalshi report presentation
 
 - Preserved the first authored draft after print QA exposed an overflowing
