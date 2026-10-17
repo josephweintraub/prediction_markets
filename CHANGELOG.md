@@ -6,6 +6,8 @@
   independent sports auditor without modifying completed estimates or manifests.
 - Added real-producer integration coverage and strict identity/hash/drift
   counterexamples; retained immutable failed audit output for the run record.
+- Clarified the report's tail-specific duration equation, day-clock definitions
+  and required-cell game-count label without changing the estimates.
 
 ## 2026-10-17 - Guarded native Kalshi replication implementation
 

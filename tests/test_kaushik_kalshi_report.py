@@ -101,6 +101,23 @@ class KalshiReportTests(unittest.TestCase):
         self.assertNotIn('Fingerprint',source)
         self.assertIn('Appendix A2 maker/taker comparison is unavailable',source)
 
+    def test_duration_equation_defines_native_day_clocks_and_reported_tail_gradients(self):
+        with patch('builtins.open',side_effect=AssertionError('renderer attempted I/O')):
+            source=self.render()
+        equation=r'\[ z_i=\alpha_q+\beta_{Lq}x_{Li}+\beta_{Rq}x_{Ri}+F_i^\top\gamma_q+\varepsilon_i,\qquad i\in q. \]'
+        self.assertEqual(source.count(equation),1)
+        self.assertLess(source.index(equation),source.index('Table 2A.'))
+        for expected in (r'$q\in\{D1,D10\}$',r'$x_{Li}=\log_2(1+L_i)$',r'$x_{Ri}=\log_2(1+R_i)$',
+                         r'$L_i=(\tau_i-o_i)/86400$',r'$R_i=(\tau_i-t_i)/86400$',
+                         r'$o_i$ is native \texttt{open\_time}',r'$\tau_i$ is \texttt{settlement\_ts}',
+                         'execution time, all in UTC seconds','control coefficients vary by tail',
+                         r'$\beta_{\cdot,D10}-\beta_{\cdot,D1}$',
+                         'Remaining time decreases as execution time advances'):
+            self.assertIn(expected,source)
+        self.assertNotIn('Computed by',source)
+        self.assertNotIn('estimate.py',source)
+        self.assertNotIn('estimates.json',source)
+
     def test_immutable_pending_acceptance_is_superseded_only_by_completed_bound_audit(self):
         self.assertIn('Table 1.',self.render())
         for status in ('pending','complete','unknown'):
@@ -190,6 +207,7 @@ class KalshiReportTests(unittest.TestCase):
             self.assertIn(scope+': joint tail contrasts',source)
         self.assertIn('500 prints and 30 games',source)
         self.assertIn('no endpoint grace',source)
+        self.assertEqual(source.count(r'$G_{\min}$ is the minimum game count across the required cells, not total matched games.'),1)
         self.assertIn('ATP uses scheduled start plus archived match duration',source)
         self.assertIn('scheduled\\_start\\_plus\\_archived\\_duration',source)
         self.assertIn('Duration sample. Baseline-tail clock reconciliation',source)

@@ -485,6 +485,7 @@ def _sports_tables(data,paths):
         r'Native YES/NO claim payouts are independently bound to provider game identity and results. '
         r'Game clusters are namespaced by sport. Pregame is $t<s$; in play is $s\le t\le e$, with no endpoint grace. '
         r'Each required bin/tail cell needs at least 500 prints and 30 games; both guards apply separately. '
+        r'$G_{\min}$ is the minimum game count across the required cells, not total matched games. '
         r'Provider clock conventions and their source quality are retained from the independently accepted map; settlement is not a game clock.'))
     text.append(grammar.table('Sports. Provider clock conventions',['Sport','Recorded timing quality','Prints'],
         [[grammar.tex(row['sport']),grammar.tex(row['timing_quality']),_count(row['rows'],'timing-quality prints')]
@@ -586,8 +587,7 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
                  r'D1--D10 are fixed ten-cent bins and gaps are signed D10 minus D1.\par',
                  r'Native event categories are retained; missing categories are Unclassified. Opening is \texttt{open\_time}; '
                  r'the endpoint is \texttt{settlement\_ts}; missing clocks affect duration only. Public prints lack wallet-role observations, '
-                 r'so the Appendix A2 maker/taker comparison is unavailable. '
-                 r'Computed by \texttt{analysis/kaushik\_kalshi\_replication/estimate.py}; saved \texttt{estimates.json}.\par'])
+                 r'so the Appendix A2 maker/taker comparison is unavailable.\par'])
     if user_scope and not draft: text.append(r'Sports results are outside this report under the explicit user scope decision.\par')
     sample=[['First baseline execution UTC',grammar.tex(metadata['first_execution_utc'])],
             ['Last baseline execution UTC',grammar.tex(metadata['last_execution_utc'])]]
@@ -629,6 +629,13 @@ def render_source(summary,metadata,*,estimate_acceptance,score_audit,estimates_s
                                  [(f'D10-D1 {target}',gaps[(target,)]) for target in OUTCOMES])))
     text.append(r'\clearpage')
     text.extend(_duration_tables(metadata))
+    text.extend([r'Duration models have tail-specific coefficients for $q\in\{D1,D10\}$:',
+        r'\[ z_i=\alpha_q+\beta_{Lq}x_{Li}+\beta_{Rq}x_{Ri}+F_i^\top\gamma_q+\varepsilon_i,\qquad i\in q. \]',
+        r'Here $z_i$ is payoff or individual return; $x_{Li}=\log_2(1+L_i)$ and $x_{Ri}=\log_2(1+R_i)$. '
+        r'In days, $L_i=(\tau_i-o_i)/86400$ and $R_i=(\tau_i-t_i)/86400$, where $o_i$ is native \texttt{open\_time}, '
+        r'$\tau_i$ is \texttt{settlement\_ts}, and $t_i$ is execution time, all in UTC seconds. '
+        r'Omitted clocks and controls follow each column; control coefficients vary by tail. '
+        r'Reported gradients are $\beta_{\cdot,D10}-\beta_{\cdot,D1}$. Remaining time decreases as execution time advances.\par'])
     models=sorted(summary['table2'],key=lambda row:row['spec']['column'])
     for target,suffix in zip(OUTCOMES,('A','B')):
         text.append(_slopes_table(models,'Table 2'+suffix+'. Duration gradients',[target],('xL','xR'),
