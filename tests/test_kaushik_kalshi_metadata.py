@@ -92,6 +92,35 @@ class KalshiMetadataTests(unittest.TestCase):
         self.assertEqual(self.con.execute('SELECT sum("rows") FROM ' + result["exclusions_relation"]).fetchone()[0], 5)
         self.assertEqual(self.con.execute('SELECT sum("rows") FROM ' + result["exclusions_relation"] + " WHERE market_reason='combo_excluded'").fetchone()[0], 3)
 
+    def test_native_legacy_event_internal_ascii_space_is_opaque_and_eligible(self):
+        event = "GDP-232022 Q4"
+        self.con.execute("INSERT INTO events VALUES (?, 'Economics', 'KXGDP')", [event])
+        result = self.project([row("GDP-MARKET", event_ticker=event)])
+        prepared = self.projected(result)[0]
+        self.assertEqual(prepared["event_ticker"], event)
+        self.assertEqual(prepared["event_cluster"], "kalshi:event:" + event)
+        self.assertEqual((prepared["market_reason"], prepared["category"]), ("eligible", "Economics"))
+        normalized = inputs.normalize_trade(
+            {"trade_id": "fixture", "ticker": "GDP-MARKET", "created_time": "2026-03-25T00:00:00Z",
+             "trade_date": "2026-03-25", "taker_side": "yes", "size": 1,
+             "yes_price": .05, "no_price": .95, "source": "fixture"},
+            prepared, source_date="2026-03-25", source_ordinal=0)
+        self.assertTrue(normalized["baseline_eligible"])
+        self.assertEqual(normalized["event_cluster"], "kalshi:event:" + event)
+
+    def test_native_identifier_still_rejects_edge_space_tabs_newlines_and_controls(self):
+        values = [" GDP-232022 Q4", "GDP-232022 Q4 ", "GDP-232022\tQ4",
+                  "GDP-232022\nQ4", "GDP-232022\rQ4", "GDP-232022\x01Q4",
+                  "GDP-232022\x7fQ4", "GDP-232022\u0085Q4", "GDP-232022\u2003Q4"]
+        self.con.execute("CREATE TABLE identifiers(raw VARCHAR)")
+        self.con.executemany("INSERT INTO identifiers VALUES (?)", [(value,) for value in values])
+        self.assertEqual(self.con.execute("SELECT count(*) FROM identifiers WHERE " + m._valid_identifier("raw")).fetchone()[0], 0)
+        for index, event in enumerate(values):
+            with self.subTest(event=repr(event)):
+                result = self.project([row("BAD-" + str(index), event_ticker=event)],
+                                      name="bad_source_" + str(index), prefix="bad_stage_" + str(index))
+                self.assertNotEqual(self.projected(result)[0]["market_reason"], "eligible")
+
     def test_strict_dollar_notional_never_guesses_legacy_cents_or_sentinels(self):
         result = self.project([row("ONE"), row("HUNDRED", notional_value=100), row("ZERO", notional_value=0),
                                row("MISSING", notional_value=None), row("NAN", notional_value=float("nan"))])

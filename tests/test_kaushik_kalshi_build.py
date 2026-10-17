@@ -105,6 +105,26 @@ class KalshiBuildTests(unittest.TestCase):
             b.annotate_day(self.con,path,'2026-03-25',expected_rows=1)
         self.assertEqual(self.con.execute('SELECT count(*) FROM native_ids').fetchone()[0],0)
 
+    def test_opaque_native_identifier_spaces_match_oracle_without_key_rewriting(self):
+        ticker='GDP-232022 Q4-YES'
+        market=prepare(market_raw(ticker=ticker,event_ticker='GDP-232022 Q4'),category='Economics')
+        self.metadata([market])
+        invalid=[' '+ticker,ticker+' ',ticker.replace(' ','\t'),ticker.replace(' ','\u00a0'),
+                 ticker.replace(' ','\x00'),ticker.replace(' ','\x7f')]
+        rows=[trade(ticker=ticker)]+[trade(ticker=value) for value in invalid]
+        path,values=self.raw(rows)
+        b.annotate_day(self.con,path,'2026-03-25',expected_rows=len(rows))
+        columns=('eligibility_reason','duration_reason','P','Y','bin','claim_id','event_cluster')
+        actual=self.con.execute('SELECT '+','.join(columns)+' FROM kk_annotated ORDER BY source_ordinal').fetchall()
+        for ordinal,(raw,row) in enumerate(zip(values,actual)):
+            expected=k.normalize_trade(raw,market if raw['ticker']==ticker else None,
+                                       source_date='2026-03-25',source_ordinal=ordinal)
+            with self.subTest(ordinal=ordinal):
+                self.assertEqual(row,tuple(expected[name] for name in columns))
+        self.assertEqual(actual[0][0],'eligible')
+        self.assertEqual(actual[0][-1],'kalshi:event:GDP-232022 Q4')
+        self.assertEqual(b.finalize_ids(self.con,len(rows))['distinct_native_trade_ids'],len(rows))
+
     def test_exact_id_gate_catches_crossday_duplicate_among_exclusions(self):
         day1,_=self.raw([trade()],start_id=1)
         b.annotate_day(self.con,day1,'2026-03-25',expected_rows=1)

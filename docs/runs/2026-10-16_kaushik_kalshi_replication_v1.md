@@ -62,6 +62,17 @@ unstable flag. Strict timestamp-format/range parity and immutable JSON
 publication have separate regression fixtures. These are implementation checks,
 not findings about the archive's empirical results.
 
+The first committed full metadata stage
+`/mnt/data/runs/2026-10-17_kaushik_kalshi_metadata_v1` stopped before publishing
+any completed metadata receipts. Its native event reference had 822,590 unique,
+non-null keys and one valid legacy key, `GDP-232022 Q4`, containing an internal
+ASCII space. Our identifier check was too restrictive, not evidence of a
+duplicate or corrupt event. The immutable failure is preserved. A narrow
+validator repair keeps this exact identity, rejects padding/other whitespace
+and controls, leaves UUID validation unchanged, and adds Python/SQL regression
+fixtures before a new committed stage is attempted. No source record is dropped
+or rewritten because of that space.
+
 Before estimates: admit all source hashes/schemas, complete native ID uniqueness,
 all metadata keys and joins, binary outcome/combination/category rules, clock
 coverage, lossless cell moments and every disjoint exclusion. Preserve the 20 GB

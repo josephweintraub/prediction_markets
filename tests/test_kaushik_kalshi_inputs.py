@@ -226,9 +226,27 @@ class KalshiInputTests(unittest.TestCase):
         self.assertEqual(result["eligibility_reason"], "unadmitted_market")
         self.assertEqual(normalize(market=prepare(market_raw(ticker="DIFFERENT")))["eligibility_reason"],
                          "trade_market_ticker_disagreement")
-        for value in (None, "", " padded ", "embedded space"):
+        for value in (None, "", " padded ", "embedded\ttab", "embedded\x00control", "embedded\x7fcontrol"):
             with self.subTest(value=value):
                 self.assertEqual(normalize(trade(trade_id=value))["eligibility_reason"], "invalid_trade_identifier")
+
+    def test_opaque_native_identifiers_preserve_internal_ascii_spaces(self):
+        ticker = "GDP-232022 Q4-YES"
+        market = prepare(market_raw(ticker=ticker,event_ticker="GDP-232022 Q4"),category="Economics")
+        result = normalize(trade(ticker=ticker),market)
+        reference = normalize()
+        self.assertEqual(market["ticker"],ticker)
+        self.assertEqual(result["event_cluster"],"kalshi:event:GDP-232022 Q4")
+        self.assertEqual(result["claim_id"],"kalshi:claim:"+ticker+":yes")
+        for field in ("baseline_eligible","duration_eligible","P","Y","bin","payoff","roi"):
+            self.assertEqual(result[field],reference[field],field)
+        for value in (" GDP-232022 Q4","GDP-232022 Q4 ","GDP-232022\tQ4",
+                      "GDP-232022\nQ4","GDP-232022\u00a0Q4","GDP-232022\x00Q4","GDP-232022\x7fQ4"):
+            with self.subTest(value=value):
+                self.assertFalse(k._identifier(value))
+                self.assertEqual(prepare(market_raw(event_ticker=value))["eligibility_reason"],
+                                 "invalid_native_event_ticker")
+                self.assertEqual(normalize(trade(ticker=value))["eligibility_reason"],"invalid_trade_identifier")
 
     def test_invalid_price_and_size_records_remain_annotated(self):
         for field in ("yes_price", "no_price"):

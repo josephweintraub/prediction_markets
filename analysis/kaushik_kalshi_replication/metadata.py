@@ -71,8 +71,9 @@ def _source_schema(con, relation):
 
 
 def _valid_identifier(expression):
+    invalid = r"[\s\p{Z}\x{0000}-\x{001f}\x{007f}\x{0085}]"
     return (f"({expression} IS NOT NULL AND {expression} <> '' AND {expression}=trim({expression}) "
-            f"AND NOT regexp_matches({expression}, '[[:space:][:cntrl:]]'))")
+            f"AND NOT regexp_matches(replace({expression}, ' ', ''), {_literal(invalid)}))")
 
 
 def _bounded_seconds(expression):

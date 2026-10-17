@@ -2,6 +2,9 @@
 
 ## 2026-10-17 - Guarded native Kalshi replication implementation
 
+- Preserved valid internal spaces in opaque native IDs after a legacy event
+  exposed an overly strict validator; kept the failed stage and exact keys,
+  with Python/SQL parity and invalid-whitespace regression tests.
 - Added explicit native print, direction, payout, bin and settlement-clock
   contracts, with separate baseline and duration eligibility.
 - Added checksummed serial source staging and bounded metadata/cell builders,

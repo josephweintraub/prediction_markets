@@ -91,8 +91,12 @@ def validate_trade_schema(fields: Mapping[str, str]):
 
 
 def _identifier(value):
+    # Native legacy identifiers are opaque and may contain internal ASCII
+    # spaces (for example GDP-232022 Q4). Preserve those exact join bytes.
     return (isinstance(value, str) and bool(value) and value == value.strip()
-            and not any(character.isspace() or ord(character) < 32 for character in value))
+            and not any((character.isspace() and character != " ")
+                        or ord(character) < 32 or ord(character) == 127
+                        for character in value))
 
 
 def _evidence(value):

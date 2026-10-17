@@ -21,6 +21,12 @@ for eligibility and descriptive totals, but weight each admitted print equally.
 Audit duplicate identities, conflicting payloads and partition placement before
 acceptance; do not silently deduplicate incompatible rows.
 
+Native event and market identifiers are opaque strings. Preserve internal
+ASCII spaces exactly in joins, claim IDs and clusters; reject empty keys,
+leading/trailing whitespace, other whitespace and control characters. Do not
+strip or rewrite the source identity. Trade IDs separately require canonical,
+losslessly round-tripping UUIDs.
+
 For the taker's YES direction use the recorded YES price and YES payout; for NO
 use the recorded NO price and NO payout. Prices in this archive are already
 dollars despite the legacy column names. Do not divide them by 100. Use the

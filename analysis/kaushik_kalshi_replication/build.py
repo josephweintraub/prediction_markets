@@ -118,8 +118,11 @@ def _footer(path):
 
 
 def _valid_identifier(column):
-    # Native IDs are ASCII; include Unicode spacing to match the pure oracle.
-    return f"({column} IS NOT NULL AND {column}<>'' AND NOT regexp_matches({column}, '[\\s\\p{{Z}}\\x{{0085}}\\x{{001c}}-\\x{{001f}}]'))"
+    # Opaque native keys may contain internal ASCII spaces. Remove spaces only
+    # from this validation expression, never from the joined/cluster identifier.
+    return (f"({column} IS NOT NULL AND {column}<>'' AND {column}=trim({column}) "
+            f"AND NOT regexp_matches(replace({column},' ',''), "
+            "'[\\s\\p{Z}\\x{0000}-\\x{001f}\\x{007f}\\x{0085}]'))")
 
 
 def annotate_day(con, trade_daily_path, source_day, *, expected_rows,
