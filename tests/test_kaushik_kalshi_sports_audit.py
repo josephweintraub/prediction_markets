@@ -3,7 +3,9 @@ from contextlib import ExitStack
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -16,6 +18,60 @@ import pyarrow.parquet as pq
 from scripts import audit_kaushik_kalshi_sports as audit
 from tests import test_kaushik_kalshi_sports as score_fixture
 from tests import test_kaushik_kalshi_sports_binding as map_fixture
+
+
+class ProducerCoreBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.folder=tempfile.TemporaryDirectory(prefix='sports-core-binding-fixture-')
+        self.addCleanup(self.folder.cleanup)
+        self.root=Path(self.folder.name).resolve();self.path=self.root/'manifest.json'
+        self.path.write_bytes(b'{"fixture":"actual producer JSON binding"}\n')
+        self.io=score_fixture.s.io
+        self.value,self.record=self.io.read_json(self.path)
+        self.patch=patch.object(audit,'DATA_ROOT',self.root);self.patch.start();self.addCleanup(self.patch.stop)
+
+    def test_actual_producer_record_reopens_without_mutating_saved_identity(self):
+        original=deepcopy(self.record);bound=audit.Bound()
+        self.assertEqual(set(self.record),{'path','sha256','stat'})
+        self.assertEqual(audit._bound_core_json(bound,self.record),self.value)
+        self.assertEqual(self.record,original)
+        self.assertEqual(bound.records()[0]['bytes'],self.record['stat']['bytes'])
+        bound.check_drift()
+
+    def test_malformed_stat_and_conflicting_top_level_size_are_rejected(self):
+        cases=[]
+        for name in ('device','inode','bytes','mtime_ns','ctime_ns'):
+            row=deepcopy(self.record);del row['stat'][name];cases.append(row)
+            row=deepcopy(self.record);row['stat'][name]=True;cases.append(row)
+        row=deepcopy(self.record);row['stat']['bytes']=0;cases.append(row)
+        row=deepcopy(self.record);row['stat']['unexpected']=1;cases.append(row)
+        row=deepcopy(self.record);row['bytes']=row['stat']['bytes']+1;cases.append(row)
+        for row in cases:
+            with self.subTest(record_fields=set(row),stat=row.get('stat')),self.assertRaises(audit.AuditBlocked):
+                audit._bound_core_json(audit.Bound(),row)
+
+    def test_hash_size_mtime_and_other_recorded_identity_drift_reject(self):
+        row=deepcopy(self.record);row['sha256']='f'*64
+        with self.assertRaisesRegex(audit.AuditBlocked,'body size/hash differs'):
+            audit._bound_core_json(audit.Bound(),row)
+        for name in ('bytes','mtime_ns','ctime_ns','device','inode'):
+            row=deepcopy(self.record);row['stat'][name]+=1
+            with self.subTest(field=name),self.assertRaisesRegex(audit.AuditBlocked,'recorded stat identity differs'):
+                audit._bound_core_json(audit.Bound(),row)
+        self.path.write_bytes(self.path.read_bytes()+b' ')
+        with self.assertRaisesRegex(audit.AuditBlocked,'recorded stat identity differs'):
+            audit._bound_core_json(audit.Bound(),self.record)
+
+    def test_same_bytes_mtime_change_during_reopen_is_not_a_pass(self):
+        bound=audit.Bound();original=bound.json
+        def read_then_change_time(record):
+            value=original(record)
+            current=self.path.stat()
+            os.utime(self.path,ns=(current.st_atime_ns,current.st_mtime_ns+1_000_000))
+            return value
+        with patch.object(bound,'json',side_effect=read_then_change_time),\
+             self.assertRaisesRegex(audit.AuditBlocked,'stat drift during reopen'):
+            audit._bound_core_json(bound,self.record)
 
 
 class IndependentSportsAuditTests(unittest.TestCase):
@@ -284,6 +340,10 @@ class IndependentSportsAuditTests(unittest.TestCase):
             'estimates_sha256':core_estimates['sha256'],'input_binding':{'manifest':input_record}})
         core_acceptance=fixture.text(core_root/'acceptance.json',{'schema_version':'kaushik_kalshi_estimate_acceptance_v1','status':'estimates_reopened_accepted',
             'all_outputs_reopened':True,'manifest_sha256':core['sha256'],'estimates_sha256':core_estimates['sha256']})
+        # Match estimate_saved's real shared-reader records; flat fixture-only
+        # path/bytes/hash records concealed the production audit mismatch.
+        core_binding={role:score_fixture.s.io.read_json(record['path'],record['sha256'])[1]
+            for role,record in (('manifest',core),('acceptance',core_acceptance))}
         binding={'input_manifest_sha256':input_record['sha256'],'input_acceptance_sha256':accepted_record['sha256'],
             'map_manifest_sha256':audit.bodies.digest(map_root/'manifest.json'),'map_acceptance_sha256':audit.bodies.digest(map_root/'acceptance.json'),
             'candidate_rows':2,'candidate_files':[{'path':str(path),'bytes':cache['bytes'],'sha256':cache['sha256'],'rows':2}],
@@ -296,7 +356,7 @@ class IndependentSportsAuditTests(unittest.TestCase):
         outputs={**summary['score_artifacts'],**{'aggregate_'+k:r for k,r in summary['aggregate_artifacts'].items()}}
         sports_manifest=fixture.text(sports_root/'manifest.json',{'schema_version':'kaushik_kalshi_sports_estimate_stage_v1','status':'sports_estimates_complete',
             'source':fixture.snapshot,'sports_sha256':audit.bodies.digest(sports_root/'sports_estimates.json'),'input_binding':binding,
-            'core_estimates_sha256':core_estimates['sha256'],'core_binding':{'manifest':core,'acceptance':core_acceptance},'outputs':outputs})
+            'core_estimates_sha256':core_estimates['sha256'],'core_binding':core_binding,'outputs':outputs})
         def run():
             connection=duckdb.connect();self.addCleanup(connection.close)
             with patch.object(audit.bodies,'expected_days',return_value={day}):

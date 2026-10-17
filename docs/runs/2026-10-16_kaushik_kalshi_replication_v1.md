@@ -1,8 +1,10 @@
 # Fresh Kalshi replication: 16 October 2026
 
-Status: implementation and source admission in progress. No fresh estimates or
-report are accepted. The user explicitly selected a fresh raw-data replication,
-not a presentation of saved sports estimates.
+Status: fresh input construction and independent input acceptance are complete.
+Core estimates have passed the independent saved-score audit. Sports estimates
+are complete, but their audit is blocked on a saved-artifact reader adapter;
+final report/release acceptance remains pending. The user explicitly selected a
+fresh raw-data replication, not a presentation of saved sports estimates.
 
 Scientific contract: [Kalshi v1](../analysis_specs/kaushik_kalshi_replication_v1.md).
 Root owns instance lifecycle; workers have no lifecycle authority. The prior
@@ -45,7 +47,10 @@ IAM profile during the preceding inventory. No IAM or credential changes were
 made. Existing Dropbox reads work, so the planned serial source staging does
 not require new S3 permissions or a larger disk.
 
-## Validation and remaining gates
+## Validation history and preflight gates
+
+The milestones below retain their status at execution; the completed-input
+section records the later acceptance that supersedes provisional statements.
 
 Pure normalization, serial-staging and grouped-estimator fixtures have passed,
 including direct print-level numerical oracles. Full combined runtime tests,
@@ -138,3 +143,164 @@ coverage, lossless cell moments and every disjoint exclusion. Preserve the 20 GB
 free-space floor and measured RAM/spill/output ceilings. Sports identity and
 actual play-clock binding is a separate admission gate, not inferred from native
 settlement or milestone end fields.
+
+## Completed input acceptance and coverage: 17 October 2026
+
+The full build completed all 1,919 pinned daily files. Its exact global native
+UUID proof found 1,610,423,776 rows and the same number of distinct IDs. The
+independent input audit passed all ten required checks, reopened the saved
+body/receipt/provenance chain, and independently replayed 27,152,545 native
+prints on the fixed eight days: 2021-06-30, 2025-03-12, 2025-03-13, 2025-04-01,
+2026-04-01, 2026-06-01, 2026-09-01 and 2026-10-01. This is bounded raw replay,
+not independent replay of the full 1.61-billion-print history. Exact accounting
+of the supplied files does not establish an exchange-wide census or perfect
+source data.
+
+Committed producer/auditor bindings are separate, rather than assumed equal:
+
+| Stage | Source head |
+| --- | --- |
+| H2: metadata v2 | `ec1415f0eb17a3bf164fed5d28b8fc3920c7f887` |
+| H3: full trade inputs | `02b30ce315d66f31c07cec7012f2dc9ee9518bdd` |
+| H4: input audit, reader adapter, core and sports stages | `0fbf27f0d7b8c03fecb66eece88736195c3bcd70` |
+
+H4 passed all 267 canonical-runtime fixtures in 60.524 seconds. The accepted
+input pair is in `/mnt/data/runs/2026-10-17_kaushik_kalshi_inputs_v1`:
+
+- Original `candidate_manifest.json` SHA-256:
+  `a0dd23b4eac187fc87bd4c3d891adc9c22b3305c8f497f2687cdf435a25fdd0e`.
+- H4 independent input-audit candidate SHA-256:
+  `a6a9762060eeee105af31fca20be20c0d79ae72f175b2d67e9c42e580701e048`.
+- Published accepted `manifest.json` SHA-256:
+  `1bac871abb93eb80b5ae5b588bb5a2a017990b35c65d53892523b075bb4755e3`.
+- Published `acceptance.json` SHA-256:
+  `e9531a6b355be554b2e88613145f9fb8ac11a7028af6b729843b303f12a93874`.
+
+The unchanged original candidate retains its pending-publication status by
+design; the separate accepted pair carries acceptance. Saved outputs before
+the candidate manifest occupied 4,991,896,406 bytes, within the 12 GB ceiling.
+
+### Cohort accounting and clocks
+
+The disjoint first-failure counts reconcile exactly:
+
+| Eligibility status | Prints |
+| --- | ---: |
+| Eligible baseline | 1,107,435,134 |
+| Unadmitted market | 299,753,791 |
+| Known combination excluded | 153,673,297 |
+| Not finalized | 47,233,897 |
+| Nonbinary or missing result | 2,295,553 |
+| Unadmitted combination classification | 32,084 |
+| Invalid trade identifier | 20 |
+| All excluded | 502,988,642 |
+| All supplied source prints | 1,610,423,776 |
+
+Thus source = baseline + excluded; baseline retains 68.7667% of supplied
+prints. These are eligibility labels, not diagnoses of upstream missingness.
+In particular, the 20 identifier exclusions do not contradict the global UUID
+proof or establish which other identifier failed.
+
+| Cohort | First observed execution UTC | Last observed execution UTC |
+| --- | --- | --- |
+| Supplied archive, before eligibility | 2021-06-30T20:09:14.185137Z | 2026-10-01T23:59:59.990712Z |
+| Admitted baseline | 2025-03-09T23:00:11.737581Z | 2026-10-01T23:59:59.990712Z |
+| Admitted duration tails | 2025-03-09T23:01:42.272265Z | 2026-07-25T11:00:46.954289Z |
+
+The archive span is not the effective analysis span. No manual 2025 cutoff was
+introduced. Saved yearly coverage uses UTC source-partition years, not these
+execution extrema:
+
+| Source year | Files | Source prints | Baseline prints | Duration-tail prints | Excluded prints |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2021 | 184 | 153,450 | 0 | 0 | 153,450 |
+| 2022 | 365 | 1,023,122 | 0 | 0 | 1,023,122 |
+| 2023 | 365 | 1,722,748 | 0 | 0 | 1,722,748 |
+| 2024 | 366 | 5,463,739 | 0 | 0 | 5,463,739 |
+| 2025 | 365 | 98,622,423 | 92,196,925 | 17,487,640 | 6,425,498 |
+| 2026 | 274 | 1,503,438,294 | 1,015,238,209 | 98,922,008 | 488,200,085 |
+
+Each year and the column totals reconcile. Of 8,363,059 pre-2025 source prints,
+8,362,889 have the first-failure label `unadmitted_market`; this summary does
+not assign a more specific cause to that label or the remaining 170 prints.
+The 2026 partitions contribute 91.6747% of the admitted baseline.
+
+The baseline has 269,386,011 tail prints (24.3252% of baseline). Duration
+analysis retains 116,409,648 prints: 43.2130% of tails, not of all prices.
+The other 152,976,363 tail prints all have
+`missing_or_invalid_settlement_ts`; saved tail exclusions for missing opening
+time, nonpositive lifespan and outside the recorded open–settlement interval
+are zero. Source-version reconciliation is exact:
+
+| Native metadata source | Tail prints | Retained duration-tail prints | UTC source-partition coverage of retained duration |
+| --- | ---: | ---: | --- |
+| `bulk_v2` | 148,819,291 | 0 | None |
+| `event_v1` | 4,157,072 | 0 | None |
+| `forward` | 116,409,648 | 116,409,648 | 2025-03-09 through 2026-07-25 |
+
+Duration results therefore describe a source-version-limited complete-case
+tail cohort, not uniform clock coverage of the baseline. The 838,049,123
+middle-bin baseline prints are intentionally outside the duration-tail
+denominator, not clock exclusions. The duration restrictions `L_gt1`
+(67,226,641 prints) and `R_gt1` (11,236,124) are separate overlapping panels,
+not an additive partition. Settlement is the native lifecycle endpoint, not a
+closing-price or provider sports-clock substitute. Finalized-outcome admission
+also requires the resolution-censoring caveat for end-of-sample comparisons.
+
+### Sample support, saved reader evidence and outstanding release gates
+
+Public prints have equal observation weight, not contract-size or dollar
+weight. The fixed probability bins, binary taker-side claim normalization,
+payoff/return definitions and event-clustered CR0 uncertainty follow the
+[scientific contract](../analysis_specs/kaushik_kalshi_replication_v1.md).
+Known combinations and unproved combination classifications are excluded;
+there is no wallet analysis or A2 exercise. Lossless saved cell sums, rather
+than group means treated as sums, feed the core regressions.
+
+The baseline covers 2,982,229 markets, 4,978,820 normalized ticker/direction
+claims, 606,231 native event clusters and zero market-fallback clusters. Its
+19 native categories sum to the baseline count. Sports contributes 595,956,268
+prints and Crypto 411,900,747, together 91.0082% of baseline; these shares do
+not establish duration-category composition. The common duration cohort has
+335,040 clusters and 2,473,848 claims. Of those claims, 156,172 visit both
+tails, contributing 15,367,095 prints. “Both tails” refers to the same
+ticker/direction claim, not the presence of both YES and NO claims.
+
+The H4 saved-only reader adapter reopened bound accepted-input and native
+metadata artifacts, without raw tape reads. Local checks verified these files
+under `output/kalshi_replication_2026-10-16_v1/accepted_summary_v1/`:
+
+- `reader_metadata.json`: 6,411 bytes, SHA-256
+  `0a10181f1c71cebf43fc3a9ad7d30182369e2de10da03d05cd6c1d373e7e1f72`.
+- `reader_provenance.json`: 1,405,091 bytes, SHA-256
+  `268a41b1542d2082731caa409319ee70d20340511836efe323909fb075cc1de7`.
+
+The reader provenance binds 3,930 unique body paths, the accepted input pair
+and the separate H2 metadata manifest. These are saved-summary checks, not a
+new raw-data scan. The saved native sports cache contains 198,611,524 winner-
+candidate prints; this is not the final provider-bound sports sample. Sports
+requires independent identity, named-YES result and retained provider clock
+proofs. Provider-overlap coverage and ATP's scheduled-start plus archived-
+duration convention must remain explicit; clock verification does not claim
+new play-by-play reconstruction or guaranteed observed actual boundaries.
+
+At this checkpoint, core estimates are complete and independently saved-score
+accepted. H4 core manifest, estimates and score-audit SHA-256 bindings are,
+respectively:
+`79101f4a4c66b1f56b384bc0316841a0688e9c85cc602d0a000407333b11dece`,
+`30e05b4b60e6d539b3505d3dc43b51c1047267c85470042487ff6f4cff8b5e5e`,
+`cf305b1539494acee261b793479ac7269e90747e2e5e3e06070abba3cb3cdc70`.
+The numerical findings are recorded separately, not inferred from these
+coverage summaries.
+
+H4 sports estimates are complete, with manifest SHA-256
+`f4e72c23b53990cb26d730d06b20f660b16f329b2f91cbff17826c65ffa2d69b`
+and estimates SHA-256
+`9b4cadbe13592580f353fc979f5c4d43939bf4fdf1b8a288ddff244ee2240f1a`.
+Independent sports audit/release is not yet accepted: its artifact reader
+expects top-level `bytes` while the saved binding uses `stat.bytes`. Root is
+handling that adapter issue; it is not evidence of a failed numerical gate.
+Final report rendering, compilation/page QA, release and verified instance
+shutdown are not asserted complete here. Exact CLI/API reproduction and
+external-body requirements are in the
+[reproduction guide](../analysis_specs/kaushik_kalshi_reproduce_v1.md).

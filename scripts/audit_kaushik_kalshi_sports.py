@@ -161,6 +161,32 @@ def _json_record(path,sha):
     return {'path':str(path),'bytes':path.stat().st_size,'sha256':sha}
 
 
+def _bound_core_json(bound,record):
+    """Reopen the unchanged shared-reader identity saved by the producer.
+
+    The sports producer uses io.read_json's path/sha256/stat record, not the
+    auditor's flat path/bytes/sha256 body record. Normalize only at this read
+    boundary, retaining every original filesystem identity check.
+    """
+    require(type(record) is dict and set(record)=={'path','sha256','stat'},
+        'producer core JSON binding shape differs')
+    saved=record['stat'];fields=('device','inode','bytes','mtime_ns','ctime_ns')
+    require(type(saved) is dict and set(saved)==set(fields)
+        and all(type(saved[name]) is int and saved[name]>=0 for name in fields)
+        and saved['inode']>0 and 0<saved['bytes']<=16_000_000,
+        'producer core JSON stat identity invalid')
+    require(isinstance(record['path'],str) and isinstance(record['sha256'],str)
+        and re.fullmatch('[0-9a-f]{64}',record['sha256']), 'producer core JSON path/hash identity invalid')
+    path=Path(record['path'])
+    require(path.is_absolute() and path.resolve(strict=True)==path and path.is_relative_to(DATA_ROOT)
+        and path.is_file() and not path.is_symlink(), 'canonical producer core JSON path required')
+    expected=tuple(saved[name] for name in fields)
+    require(bodies.identity(path)==expected,'producer core JSON recorded stat identity differs')
+    value=bound.json({'path':record['path'],'bytes':saved['bytes'],'sha256':record['sha256']})
+    require(bodies.identity(path)==expected,'producer core JSON stat drift during reopen')
+    return value
+
+
 def _rows(con,path,columns='*',where='TRUE'):
     query='SELECT '+columns+' FROM read_parquet('+literal(path)+',hive_partitioning=false) WHERE '+where
     require(con.execute('SELECT count(*) FROM ('+query+')').fetchone()[0]<=MAX_ROWS,'bounded sports metadata/aggregate row ceiling exceeded')
@@ -935,7 +961,7 @@ def audit_scores(con,*,sports_dir,sports_manifest_sha256,sports_sha256,expected_
     binding=summary.get('input_binding',{})
     require(binding==manifest.get('input_binding'),'sports summary/manifest input binding differs')
     core_binding=manifest.get('core_binding',{})
-    core=bound.json(core_binding.get('manifest',{}));core_accepted=bound.json(core_binding.get('acceptance',{}))
+    core=_bound_core_json(bound,core_binding.get('manifest',{}));core_accepted=_bound_core_json(bound,core_binding.get('acceptance',{}))
     require(core.get('schema_version')=='kaushik_kalshi_estimate_stage_v1' and core.get('status')=='estimates_complete'
         and core_accepted.get('schema_version')=='kaushik_kalshi_estimate_acceptance_v1' and core_accepted.get('status')=='estimates_reopened_accepted'
         and core_accepted.get('all_outputs_reopened') is True and core_accepted.get('manifest_sha256')==core_binding['manifest']['sha256']==binding.get('core_manifest_sha256')

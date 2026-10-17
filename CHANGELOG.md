@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-17 - Native sports audit binding compatibility
+
+- Reopened the producer's actual nested-stat core JSON bindings in the
+  independent sports auditor without modifying completed estimates or manifests.
+- Added real-producer integration coverage and strict identity/hash/drift
+  counterexamples; retained immutable failed audit output for the run record.
+
 ## 2026-10-17 - Guarded native Kalshi replication implementation
 
 - Preserved valid internal spaces in opaque native IDs after a legacy event
