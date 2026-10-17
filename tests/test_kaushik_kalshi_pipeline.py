@@ -33,7 +33,7 @@ class KalshiPipelineTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
 
-    def fixture_admission(self, event_category="Sports"):
+    def fixture_admission(self, event_category="Sports", trade_size=.25):
         metadata_path = self.sources / "b1_0.parquet"
         rows = [{"ticker": ticker, "event_ticker": "KXTEST-EVENT", "market_type": "binary", "status": "finalized", "result": "yes",
                  "open_time": "2026-03-01T00:00:00Z", "settlement_ts": "2026-04-01T00:00:00Z", "notional_value": 1.,
@@ -50,7 +50,7 @@ class KalshiPipelineTests(unittest.TestCase):
             pq.write_table(pa.Table.from_pylist(rows), self.admission / (key + ".parquet"))
         for ordinal, day in enumerate(("2026-03-25", "2026-03-26")):
             rows = [{"trade_id": f"00000000-0000-0000-0000-{ordinal*10+index+1:012d}", "ticker": "KXTEST-A",
-                     "created_time": day + "T12:00:00Z", "trade_date": date.fromisoformat(day), "taker_side": "yes", "size": .25,
+                     "created_time": day + "T12:00:00Z", "trade_date": date.fromisoformat(day), "taker_side": "yes", "size": trade_size,
                      "yes_price": price, "no_price": 1-price, "source": "fixture"}
                     for index, price in enumerate((.05, .95, .5))]
             path = self.sources / (day + ".parquet")
@@ -133,6 +133,12 @@ class KalshiPipelineTests(unittest.TestCase):
         self.assertEqual(result["counts"], {"source_rows": 6, "baseline_rows": 6, "duration_tail_rows": 4,
                                             "excluded_rows": 0, "source_days": 2})
         self.assertEqual(result["identity"]["distinct_native_trade_ids"], 6)
+        start=date(2026,3,25).strftime('%Y-%m-%d')+'T12:00:00+00:00'
+        end=date(2026,3,26).strftime('%Y-%m-%d')+'T12:00:00+00:00'
+        from datetime import datetime
+        for cohort in ('baseline','duration_tail'):
+            self.assertEqual(result['sample_metadata'][cohort+'_execution_seconds_min'],datetime.fromisoformat(start).timestamp())
+            self.assertEqual(result['sample_metadata'][cohort+'_execution_seconds_max'],datetime.fromisoformat(end).timestamp())
         self.assertEqual(result["input_cache"]["prepared_metadata_rows"], 1)
         self.assertTrue(result["input_cache"]["released_before_global_id_proof"])
         self.assertFalse((trade_dir / "acceptance.json").exists())
@@ -142,6 +148,19 @@ class KalshiPipelineTests(unittest.TestCase):
             self.assertTrue(record["path"].startswith("cells/final/"))
             self.assertEqual(runner.sha256(trade_dir / record["path"]), record["sha256"])
         self.assertTrue(all(path.exists() for path in self.paths.values()))
+
+    def test_empty_cohort_sample_extrema_remain_null_not_raw(self):
+        self.fixture_admission(trade_size=0.)
+        self.admit_fixture_runtime()
+        metadata_dir=self.root/'empty-metadata'
+        runner.run_production(self.args('metadata',metadata_dir))
+        result=runner.run_production(self.args('trades',self.root/'empty-trades',metadata_dir=metadata_dir,
+            metadata_manifest_sha256=runner.sha256(metadata_dir/'candidate_manifest.json')))
+        self.assertEqual(result['counts']['baseline_rows'],0)
+        for cohort in ('baseline','duration_tail'):
+            for bound in ('min','max'):
+                self.assertIsNone(result['sample_metadata'][cohort+'_execution_seconds_'+bound])
+        self.assertIsNotNone(result['sample_metadata']['execution_seconds_min'])
 
     def test_source_plan_pins_reference_hashes_and_mapping(self):
         plan = self.fixture_admission()

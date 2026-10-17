@@ -178,6 +178,34 @@ class KalshiBuildTests(unittest.TestCase):
         baseline=pq.read_table(self.out/receipt['artifacts']['baseline']['path']).to_pylist()
         self.assertAlmostEqual(sum(row['sum_payoff'] for row in baseline),sum(row['payoff'] for row in kept))
 
+    def test_cohort_execution_extrema_and_tail_only_clock_waterfall(self):
+        missing=prepare(market_raw(ticker='NO-CLOCK',settlement_ts=None))
+        self.metadata([self.market,missing])
+        receipt,_=self.process([trade(created_time='2026-03-25T00:00:00Z',size=0),
+            trade(created_time='2026-03-25T03:00:00Z',yes_price=.5,no_price=.5),
+            trade(created_time='2026-03-25T06:00:00Z'),
+            trade(created_time='2026-03-25T09:00:00Z',ticker='NO-CLOCK'),
+            trade(created_time='2026-03-25T23:59:59Z',size=0)])
+        epoch=lambda hour:k._seconds('2026-03-25T'+hour+'Z','ISO8601_UTC')
+        self.assertEqual((receipt['execution_seconds_min'],receipt['execution_seconds_max']),
+                         (epoch('00:00:00'),epoch('23:59:59')))
+        self.assertEqual((receipt['baseline_execution_seconds_min'],receipt['baseline_execution_seconds_max']),
+                         (epoch('03:00:00'),epoch('09:00:00')))
+        self.assertEqual((receipt['duration_tail_execution_seconds_min'],receipt['duration_tail_execution_seconds_max']),
+                         (epoch('06:00:00'),epoch('06:00:00')))
+        self.assertEqual(receipt['duration_tail_exclusions'],[
+            {'duration_reason':'eligible','rows':1},{'duration_reason':'missing_or_invalid_settlement_ts','rows':1}])
+        self.assertEqual(sum(row['rows'] for row in receipt['duration_exclusions']),3)
+        self.assertEqual(sum(row['rows'] for row in receipt['duration_tail_exclusions']),2)
+
+    def test_empty_baseline_and_duration_execution_extrema_remain_null(self):
+        receipt,_=self.process([trade(size=0)])
+        for cohort in ('baseline','duration_tail'):
+            for bound in ('min','max'):
+                self.assertIsNone(receipt[cohort+'_execution_seconds_'+bound])
+        self.assertEqual(receipt['duration_tail_exclusions'],[])
+        self.assertIsNotNone(receipt['execution_seconds_min'])
+
     def test_partial_groups_survive_global_codes_and_match_estimator_schema(self):
         day1,_=self.process([trade(),trade(created_time='2026-03-25T02:00:00Z')])
         day2,_=self.process([trade(created_time='2026-03-26T01:00:00Z',trade_date=date(2026,3,26)),

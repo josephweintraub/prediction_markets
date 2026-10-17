@@ -413,6 +413,12 @@ def build_trades(con, target, admission, source, *, metadata_dir, metadata_manif
               "excluded_rows": final["excluded_rows"], "source_days": len(day_receipts)}
     minima = [item["execution_seconds_min"] for item in day_receipts if item["execution_seconds_min"] is not None]
     maxima = [item["execution_seconds_max"] for item in day_receipts if item["execution_seconds_max"] is not None]
+    cohort_extrema = {}
+    for cohort in ("baseline", "duration_tail"):
+        for bound, operation in (("min", min), ("max", max)):
+            key = cohort + "_execution_seconds_" + bound
+            values = [item[key] for item in day_receipts if item[key] is not None]
+            cohort_extrema[key] = operation(values) if values else None
     return {"schema_version": "kaushik_kalshi_inputs_v1", "status": "inputs_complete_pending_independent_audit",
         "source": source, "scientific_contract": {"sample_scope": "all_available_dates", "combos": "excluded",
             "duration_endpoint": "settlement_ts", "equal_print_weight": True, "cutoff_utc": None, "cutoff_seconds": None,
@@ -420,7 +426,7 @@ def build_trades(con, target, admission, source, *, metadata_dir, metadata_manif
             "known_compound_prefixes": list(COMPOUND_PREFIXES)}, "counts": counts,
         "sample_metadata": {"baseline_rows": counts["baseline_rows"], "duration_tail_rows": counts["duration_tail_rows"],
             "source_rows": source_rows, "execution_seconds_min": min(minima) if minima else None,
-            "execution_seconds_max": max(maxima) if maxima else None},
+            "execution_seconds_max": max(maxima) if maxima else None, **cohort_extrema},
         "identity": final["identity"], "input_cache": cache, "input_inventory": _inventory_record(target, admission, "trade"),
         "metadata_binding": metadata_binding, "metadata_independent_acceptance": "pending separate audit",
         "daily_receipts": _receipt_index(target, receipt_paths, "daily_receipts.json"),

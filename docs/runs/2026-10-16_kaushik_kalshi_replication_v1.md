@@ -73,6 +73,42 @@ and controls, leaves UUID validation unchanged, and adds Python/SQL regression
 fixtures before a new committed stage is attempted. No source record is dropped
 or rewritten because of that space.
 
+The repaired source was committed as
+`ec1415f0eb17a3bf164fed5d28b8fc3920c7f887`; 78 focused canonical-runtime
+normalization, builder, metadata and guarded-driver tests passed before the
+new immutable metadata stage `2026-10-17_kaushik_kalshi_metadata_v2` began.
+It completed all 80 shards and the exact global proof over 166,961,153 distinct
+non-null ticker keys, with zero invalid keys, duplicate keys or conflicting
+status/result keys. Its candidate manifest is 213,370 bytes, SHA-256
+`dc73df7053700934c3cdf8358cd5341aa5e1c46c90ab94ef9a0c96d19728212d`.
+The noncompound projection retains 14,697,951 records and 41,000 native winner
+market candidates. Structural metadata completion is not yet independent trade
+input acceptance or a scientific result. Local development added a
+separate saved-body audit, bounded eight-day raw replay, non-accepting capacity
+probe and an independent saved-score covariance/contrast audit. Before any full
+trade scan, diagnostic-only builder additions save distinct admitted-cohort
+timestamp bounds and tail-only clock exclusions, preserving raw bounds and
+scientific eligibility. These additions require their own committed-source
+production tests; fixture results do not establish archive findings.
+
+Independent preproduction review caught an audit counter bug: excluded physical
+row ordinals were checked against a shadowed analytic count instead of the raw
+daily row count. The narrow repair separates raw, analytic and cohort counters.
+Counterexamples retain a valid last-row exclusion while rejecting negative or
+out-of-range ordinals; no source rows, eligibility rules or resource caps change.
+
+Further synthetic saved-artifact counterexamples exposed missing-value checks
+and sports-cache multiplicity gaps in the independent audit, not observed
+corruption of the archive. Repairs validate required daily/final fields before
+aggregation, including empty-duration claim counts, and reconcile every daily
+sports claim count plus winner-event/bin totals and global cache counts.
+Raw individual cache price/timestamp replay remains explicitly limited to the
+eight pinned days; it is not described as a second full-tape verification.
+Independent fresh-DAG repair-closure tests passed for the valid and corrupted
+counterexamples, and all 191 installed Kalshi fixtures passed on the canonical
+runtime in 49.266 seconds before the next committed probe. Native sports-map
+production remains separate and awaits its own source review and admission.
+
 Before estimates: admit all source hashes/schemas, complete native ID uniqueness,
 all metadata keys and joins, binary outcome/combination/category rules, clock
 coverage, lossless cell moments and every disjoint exclusion. Preserve the 20 GB

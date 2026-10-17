@@ -11,6 +11,9 @@
   preserving unknown identities, exclusions and original source datasets.
 - Validated the grouped numerical path against independent raw-print fixture
   regressions and joint clustered covariance before production admission.
+- Added independent saved-body/raw-day replay and saved-score release checks,
+  a non-accepting storage probe, and separately labeled admitted-cohort timing
+  diagnostics before the full trade scan.
 
 ## 2026-10-16 - Fresh Kalshi replication contract
 

@@ -324,11 +324,18 @@ def _emit_day(con,writer,folder,info,expected_rows,sports_candidates_relation,li
     """All repeated daily aggregates read the one materialized annotated table."""
     counts = con.execute("""SELECT count(*),count(*) FILTER(WHERE baseline_eligible),
         count(*) FILTER(WHERE duration_eligible),count(*) FILTER(WHERE baseline_eligible AND NOT analytic_outcomes_finite),
-        min(timestamp),max(timestamp) FROM kk_annotated""").fetchone()
+        min(timestamp),max(timestamp),
+        min(timestamp) FILTER(WHERE baseline_eligible),max(timestamp) FILTER(WHERE baseline_eligible),
+        min(timestamp) FILTER(WHERE duration_eligible),max(timestamp) FILTER(WHERE duration_eligible),
+        count(*) FILTER(WHERE baseline_eligible AND bin IN (1,10)) FROM kk_annotated""").fetchone()
     require(counts[0] == expected_rows, "daily annotated source conservation failed")
     require(counts[3] == 0, "nonfinite admitted analytic outcomes block estimation")
     exclusions = _records(con,'SELECT eligibility_reason,count(*)::BIGINT AS "rows" FROM kk_annotated GROUP BY 1 ORDER BY 1')
     duration = _records(con,'SELECT duration_reason,count(*)::BIGINT AS "rows" FROM kk_annotated WHERE baseline_eligible GROUP BY 1 ORDER BY 1')
+    duration_tail = _records(con,'SELECT duration_reason,count(*)::BIGINT AS "rows" FROM kk_annotated WHERE baseline_eligible AND bin IN (1,10) GROUP BY 1 ORDER BY 1')
+    require(sum(row['rows'] for row in duration_tail)==counts[10]
+            and sum(row['rows'] for row in duration_tail if row['duration_reason']=='eligible')==counts[2],
+            "duration tail-only exclusions do not reconcile")
     src_audit = ({"field_present": True, **_records(con,"""SELECT
         count(*) FILTER(WHERE src IS NULL OR src='')::BIGINT missing_src_rows,
         count(*) FILTER(WHERE src IS NOT NULL AND src<>'' AND source IS NOT NULL AND source<>'' AND src<>source)::BIGINT disagreement_rows
@@ -366,7 +373,10 @@ def _emit_day(con,writer,folder,info,expected_rows,sports_candidates_relation,li
     receipt = {"schema_version":"kaushik_kalshi_day_cells_v1","status":"durable_pending_global_admission",
         **info,"baseline_rows":counts[1],"duration_rows":counts[2],"excluded_rows":expected_rows-counts[1],
         "execution_seconds_min":counts[4],"execution_seconds_max":counts[5],
+        "baseline_execution_seconds_min":counts[6],"baseline_execution_seconds_max":counts[7],
+        "duration_tail_execution_seconds_min":counts[8],"duration_tail_execution_seconds_max":counts[9],
         "exclusions":exclusions,"duration_exclusions":duration,"artifacts":artifacts,
+        "duration_tail_exclusions":duration_tail,
         "source_src_audit":src_audit,
         "sports_candidate_rows":sports_rows,"sports_candidate_admission":"unbound candidates only; no game/timing admission",
         "caps":asdict(limits),"partial_cells":"a_i=SUM(feature_i); c_i_j=centered within-partial-cell cross-product sums; do not sum centered cells"}

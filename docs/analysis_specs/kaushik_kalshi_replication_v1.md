@@ -152,6 +152,16 @@ outcomes, clocks, exact-price codes, exclusions and print-count reconciliation
 before accepting the inputs. Independently audit saved coefficients/scores,
 covariance, contrasts, support and every reported number before release.
 
+Save raw-archive, admitted-baseline and duration-tail execution extrema
+separately, including explicit null bounds for empty cohorts. Preserve tail-only
+duration exclusion counts; all-band clock failures cannot substitute for that
+reconciliation. Before the full trade build, a separate eight-day, at-most-2 GB
+native-source probe measures actual cell/cache bytes. Its upstream-count-based
+storage extrapolation is provisional and composition-sensitive, never an input
+acceptance or a completeness claim. Independent release QA reopens all saved
+bodies and separately replays those pinned days; its all-tape UUID evidence is
+the reopened committed builder proof, not a second full-history raw-ID scan.
+
 ## Sports and report boundary
 
 The intended sports counterpart covers the same nine full-game winner sports
