@@ -1,8 +1,20 @@
-> **Status 2026-09-06:** the §7 re-pull was **executed 2026-06-21** → `/mnt/data/learnability/native/native_market_meta.parquet` (1.44M markets, 99.98% coverage — but **closed markets only**, contrary to §6's pull-both-halves advice; open markets are not covered). The tags→category map shipped 2026-07-01 and is retained at `archive/analyses/learnability_v1_v7/tag_taxonomy/final_tag_map_v1.json`. The field inventory remains useful, but the v1-v7 dimension implementation is archived and universe counts ("620K") and request estimates below predate the June data extension.
+> **Historical inventory, navigation reviewed 2026-10-24:** the §7 re-pull was
+> **executed 2026-06-21** → `/mnt/data/learnability/native/native_market_meta.parquet`
+> (1.44M markets, 99.98% coverage, but **closed markets only**, contrary to §6's
+> pull-both-halves advice). The 2026-07-01 tag map is retained at
+> `archive/analyses/learnability_v1_v7/tag_taxonomy/final_tag_map_v1.json`.
+> API counts, requests, examples and dimension proposals below are historical snapshot
+> material, not a newly verified live API contract or current study specification.
+> The v1-v7 dimension implementation is archived. Read [project status](project_status.md),
+> [methods](methods_reference.md) and the [handoff guide](handoff/README.md) first.
 
 # Polymarket Native Data — Inventory & Field Guide
 
-_Companion to `dimension_guide.md`. Purpose: **replace the LLM-derived contract labels** (`event_template`, `event_info_type` regex, subject-list lengths) that drive the current 22 learnability dimensions with **platform-native fields** that Polymarket already publishes. This doc records what native data exists, where it comes from (with clickable links), how clean it is, and which muddy LLM dim each native field retires._
+_Historical companion to the archived [dimension guide](archive/dimension_guide.md).
+Original purpose: compare the LLM-derived contract labels (`event_template`,
+`event_info_type` regex, subject-list lengths) behind the then-current 22 learnability
+dimensions with platform-native fields. The field inventory and proposed dimension
+mapping below are preserved for provenance._
 
 > **Why this exists.** Every current dim is an LLM approximation of something Polymarket labels directly. We dumped 10 columns from Gamma; the live API returns **78 fields per market, 47 per event, 26 per series**. The native fields are cleaner, free, and auditable. This is the basis for ditching the AI labelling.
 
@@ -190,7 +202,12 @@ All read endpoints are public (no auth). Confirmed against the live API + offici
 
 **Encoding gotcha:** on the `/markets` object, `outcomes`, `outcomePrices`, `clobTokenIds`, and `umaResolutionStatuses` come back as **stringified JSON** — `json.loads` each before use.
 
-**Join keys:** `conditionId` (0x 64-hex) = a market (Gamma + Data API); the 77-digit decimal `clobTokenIds` = one outcome token (CLOB price-history keys on this). Matches the EC2 trades-schema convention in `CLAUDE.md`.
+**Join keys:** native Gamma/Data API `conditionId` (0x 64-hex) identifies a market;
+decimal `clobTokenIds` identify outcome tokens. This differs from the canonical EC2
+trade Parquet's overloaded `conditionId` column, which holds the outcome-token ID.
+Join those trades through the documented token spine, not native market condition ID;
+see the [methods reference](methods_reference.md). Local trade samples use a different
+key convention and must not be substituted for canonical joins.
 
 Docs: [list-markets](https://docs.polymarket.com/api-reference/markets/list-markets.md) · [keyset](https://docs.polymarket.com/api-reference/markets/list-markets-keyset-pagination.md) · [list-events](https://docs.polymarket.com/api-reference/events/list-events.md) · [series](https://docs.polymarket.com/api-reference/series/list-series.md) · [prices-history](https://docs.polymarket.com/api-reference/markets/get-prices-history.md) · [rate-limits](https://docs.polymarket.com/api-reference/rate-limits.md) · [neg-risk](https://docs.polymarket.com/developers/neg-risk/overview)
 

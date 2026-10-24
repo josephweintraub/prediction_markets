@@ -1,88 +1,78 @@
 # Prediction-market calibration
 
 Research code for measuring price calibration and favorite-longshot bias (FLB) on
-Polymarket. The current paper asks why calibration varies across markets, with a focus
-on liquidity, market duration, semantic market families, and textual novelty.
+Polymarket and Kalshi. The completed work covers fixed-price-bin calibration,
+duration regressions, sport-specific game dynamics, and focused investigations of
+terminal trading and wallet actions. Analyses are descriptive unless their own
+frozen specification establishes otherwise.
 
 The canonical repository is `/home/ubuntu/prediction_markets` on the project EC2
-instance. Large data and generated artifacts live on the attached EBS volume under
-`/mnt/data`; they are never committed to Git. A local Mac copy may be used as a viewer,
-but it is not a data-compatible execution environment.
+instance. Large private inputs and production artifacts remain under `/mnt/data`,
+outside Git. The Mac copy supports editing, small fixtures and saved-summary review,
+not production trade scans or data-compatible joins.
 
 ## Start here
 
-1. Read [`docs/project_status.md`](docs/project_status.md) for the current research state,
-   data vintage, and known limitations.
-2. Read [`docs/methods_reference.md`](docs/methods_reference.md) before interpreting or
-   changing an analysis.
-3. Follow [`docs/workflow.md`](docs/workflow.md) for branches, run artifacts, validation,
-   reporting, and archival rules.
-4. Use [`docs/repository_map.md`](docs/repository_map.md) to distinguish active,
-   supporting, and historical code.
+1. Read the [handoff guide](docs/handoff/README.md) for the organized code/results
+   package, release inventory, reproduction boundaries and continuation workflow.
+2. Read [project status](docs/project_status.md) to distinguish current accepted
+   studies from historical exploration.
+3. Read the [methods reference](docs/methods_reference.md), then the selected study's
+   frozen specification and run record. Study-specific rules must not be replaced
+   with another workstream's defaults.
+4. Use the [repository map](docs/repository_map.md) to locate modules and entrypoints;
+   follow the [workflow](docs/workflow.md) for new work.
+
+## Current accepted studies
+
+| Study | Current reference | Source module |
+|---|---|---|
+| Polymarket Kaushik-style replication | [14 October exchange-wallet-excluded full-date rerun](docs/runs/2026-10-14_kaushik_exchange_filtered_rerun_v1.md) | `analysis/kaushik_polymarket_replication/` |
+| Native Kalshi replication | [17 October accepted report, recorded in the 16 October run](docs/runs/2026-10-16_kaushik_kalshi_replication_v1.md) | `analysis/kaushik_kalshi_replication/` |
+| Corrected-wallet nine-sport dynamics | [10 October wallet-filter adoption](docs/runs/2026-10-10_sports_wallet_adoption_v1.md) | `analysis/multisport_game_dynamics/` and adoption scripts |
+| Tennis timing, profit-taking and terminal-pattern diagnostics | [2 October tennis](docs/runs/2026-10-02_tennis_wallet_investigation_v1.md), [2 October two-grain profit-taking](docs/runs/2026-10-02_sports_profit_taking_two_grain_v1.md), [3 October diagnostics](docs/runs/2026-10-03_terminal_pattern_diagnostics_v1.md) | `analysis/diagnostics/` |
+
+The mechanism investigations retain their own frozen cohorts; they were not silently
+reflagged by the later nine-sport adoption. Earlier cutoff and unexcluded full-date
+Polymarket replications remain immutable comparison releases. Calibration-heterogeneity
+and learnability work is retained for provenance, not represented as adopted on the
+repaired-wallet generation.
 
 ## Repository layout
 
-| Path | Status | Purpose |
-|---|---|---|
-| `analysis/calibration_heterogeneity/` | **Active** | Current liquidity, duration, semantic-family, novelty, and FLB workstream. |
-| `analysis/{mlb,nfl,nba,sports}_game_dynamics/` | Active exploratory | Sport moneyline timing, exact-trade phases, closing calibration, and fixed-bin FLB reports. |
-| `analysis/stage0_v2/` | Supporting | Polymarket and Kalshi contract-normalization pipelines and regression harnesses. |
-| `pipeline/` | Active but infrequent | Builds and refreshes the canonical on-chain trade dataset. |
-| `scripts/` | Supporting operations | Data cleaning, flags, and Telonex acquisition utilities. |
-| `docs/` | Source of record | Current methods, status, workflow, decisions, and archived findings. |
-| `archive/` | Historical | Superseded code retained with status and provenance. |
+| Path | Purpose |
+|---|---|
+| `analysis/kaushik_{polymarket,kalshi}_replication/` | Separate venue input contracts, estimators, saved evidence and report consumers. |
+| `analysis/multisport_game_dynamics/` | Shared nine-sport timing, exact-trade analysis, time regressions and renderers. |
+| `analysis/{mlb,nfl,nba,sports}_game_dynamics/` | Sport adapters and supporting stages retained by versioned studies. |
+| `analysis/diagnostics/` | Own-action recovery, FIFO/accounting, tennis clocks and terminal-pattern investigations. |
+| `pipeline/` | Native on-chain trade construction and refresh code; legacy stages are labeled separately. |
+| `scripts/` | Guarded builds, repairs, independent audits, adoption and report entrypoints. |
+| `analysis/calibration_heterogeneity/`, `analysis/stage0_v2/`, `archive/` | Retained earlier workstreams, classification support and historical exploration. |
+| `docs/` | Current navigation, frozen methods/specifications, run records and historical documentation. |
 
-The earlier learnability, broad FLB, and May 2026 paper branches are under `archive/`.
-They are retained for provenance and are not the current paper specification.
+Source modules remain in their original import locations. The handoff groups releases
+and documents dependencies without rewriting pinned historical code or manifests.
 
-## Environment
+## Reproduction and continuation
 
-Python dependencies are declared in `pyproject.toml`. On EC2, the currently provisioned
-environment remains `/home/ubuntu/venv` until a clean environment has reproduced the
-paper outputs.
+Use each release's source identity, saved inputs, environment record and acceptance
+receipts. Rendering a supplied report from accepted summaries is distinct from
+rebuilding its inputs or repeating production estimation. Private raw/provider data,
+historical source revisions and guarded EC2 access may be required for the latter.
 
-```bash
-python -m pip install -e '.[analysis,embeddings,pipeline,classification,telonex,dev]'
-python -m compileall -q analysis pipeline scripts
-python -m pytest
-```
+`pyproject.toml` declares project dependencies; recorded production environments and
+the selected study's fixtures remain the reproduction reference. A dependency
+declaration alone is not evidence of a successful clean-install reconstruction.
+Run focused fixture tests before broader tests or production work. Never bypass the
+production host guard to analyze real trades locally.
 
-The compilation and test commands are safe locally, but full-data analysis must run on
-EC2. Never run local joins against the local trade sample: its identifiers do not match
-the canonical EC2 data convention.
+New work receives a new immutable run and an explicit specification. Do not overwrite
+an accepted release or reinterpret older results as if they used newly repaired data.
 
-## Current analysis
+## Secrets and operations
 
-The current computation flow is:
-
-```text
-canonical trades + market metadata + wallet flags
-                         |
-                         v
-             universe and compact trade bases
-                         |
-                         v
-              market-to-slice specifications
-                         |
-                         v
-       decile calibration + three-way clustered inference
-                         |
-                         v
-          immutable artifacts -> rendered reports -> paper
-```
-
-No result is publication-ready unless it identifies its Git commit, data vintage,
-configuration, producing command, and source artifacts.
-
-The completed exploratory NFL and NBA production runs and their immutable report
-fingerprints are recorded in
-[`docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](docs/runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
-
-## Secrets
-
-Set sensitive values through environment variables or private key files. In particular,
-the Polygon pipeline reads `POLYGON_RPC_URL` or `~/.polygon_rpc_url`. Never place a live
-credential in source, documentation, logs, or committed configuration.
-
-Operational EC2 instructions are in [`CLAUDE.md`](CLAUDE.md) and
-[`docs/EC2_SETUP.md`](docs/EC2_SETUP.md).
+Use environment variables or private key files, never committed credentials. Read
+[EC2 setup](docs/EC2_SETUP.md) for compute, transfer and lifecycle procedures. Only the
+root orchestrator manages the shared instance, and any task that uses it must finish
+with a verified stopped state after all workloads and transfers release their holds.

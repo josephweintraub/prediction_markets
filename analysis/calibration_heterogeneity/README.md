@@ -1,8 +1,12 @@
 # Calibration-heterogeneity analysis
 
-**Status:** active workstream as of 2026-09-06.
+**Status, 2026-10-24:** retained earlier workstream. Its wallet flags and positional
+features have not been adopted on the later repaired-wallet generation. Start at
+the [current handoff](../../docs/handoff/README.md) for accepted cross-venue and
+nine-sport releases. The flow below describes the historical study, not a default
+instruction to run it or promote its claims.
 
-This directory began as an embedding-based difficulty study and now contains the active
+This directory began as an embedding-based difficulty study and contains the earlier
 analysis of calibration heterogeneity across liquidity, duration, semantic market family,
 and textual novelty.
 
@@ -13,7 +17,7 @@ Read, in order:
 3. `../../docs/workflow.md`
 4. `RESEARCH_LOG.md` only when historical detail is needed
 
-## Active flow
+## Historical study flow
 
 - `build_universe.py`: construct market and token universes.
 - `build_flb_base.py`: construct compact standard-filtered trade bases by lifecycle window.

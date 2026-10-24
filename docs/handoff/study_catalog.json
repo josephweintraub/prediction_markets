@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "catalog_date": "2026-10-24",
+  "path_base": "handoff_bundle_root",
+  "scope": "Bundle-root navigation, not new estimation or whole-history certification. Consult each study manifest for filenames.",
+  "studies": [
+    {
+      "id": "polymarket_exchange_excluded",
+      "status": "current_replication",
+      "package_path": "releases/01_polymarket_exchange_excluded",
+      "source_modules": ["code/analysis/kaushik_polymarket_replication"],
+      "spec": "code/docs/analysis_specs/kaushik_exchange_wallet_exclusion_v1.md",
+      "run_record": "code/docs/runs/2026-10-14_kaushik_exchange_filtered_rerun_v1.md",
+      "qualification": "Full-date archive records, excluding either-source-wallet matches to four exchange addresses. Equal record weights, complemented taker SELLs; not certified unique fills. Resolution-vintage, duration-proxy and influence qualifications remain.",
+      "report_note": "Intact original capsule: LaTeX, vector assets, checked PDF."
+    },
+    {
+      "id": "kalshi_native",
+      "status": "current_replication",
+      "package_path": "releases/02_kalshi_native",
+      "source_modules": ["code/analysis/kaushik_kalshi_replication"],
+      "spec": "code/docs/analysis_specs/kaushik_kalshi_replication_v1.md",
+      "run_record": "code/docs/runs/2026-10-16_kaushik_kalshi_replication_v1.md",
+      "qualification": "Unique native trade_id prints; no combinations. Baseline, duration and provider-matched sports coverage differ. Public tape lacks wallet/maker roles; ATP timing remains qualified. Preserve historical producer/auditor identities.",
+      "report_note": "Intact original capsule: LaTeX, vector assets, checked PDF."
+    },
+    {
+      "id": "nine_sport_corrected",
+      "status": "current_sports_adoption",
+      "package_path": "releases/03_nine_sport_corrected",
+      "source_modules": ["code/analysis/multisport_game_dynamics", "code/scripts/estimate_sports_wallet_adoption.py", "code/scripts/render_sports_wallet_adoption.py"],
+      "spec": "code/docs/analysis_specs/sports_wallet_adoption_v1.md",
+      "run_record": "code/docs/runs/2026-10-10_sports_wallet_adoption_v1.md",
+      "qualification": "Restored MLB and flags rebuilt on repaired CLEAN. Current cases: restored_repaired (filtered), restored_all (unfiltered). Other cases isolate historical differences. Unrelated older studies are not adopted.",
+      "report_note": "Eight-page adoption-comparison LaTeX/PDF, not a new full regression paper; complete compact estimates included."
+    },
+    {
+      "id": "tennis_timing_wallet_exits",
+      "status": "frozen_focused_study",
+      "package_path": "releases/04_tennis_timing_wallet_exits",
+      "source_modules": ["code/analysis/diagnostics/tennis_timing_cohort.py", "code/analysis/diagnostics/wallet_exit_audit.py", "code/analysis/diagnostics/render_tennis_wallet_investigation.py"],
+      "spec": "code/docs/analysis_specs/tennis_timing_wallet_exits_v1.md",
+      "run_record": "code/docs/runs/2026-10-02_tennis_wallet_investigation_v1.md",
+      "qualification": "Frozen cohorts, audited Australian Open timing and verified own-maker actions. Prior-action links are not holdings or causal effects. Not rerun on later repaired flags.",
+      "report_note": "Accepted report v3, three vector figures and PDF. Provider caches/wallet sequences remain external."
+    },
+    {
+      "id": "profit_taking_two_grains",
+      "status": "frozen_focused_study",
+      "package_path": "releases/05_profit_taking_two_grains",
+      "source_modules": ["code/analysis/diagnostics/build_profit_taking_source.py", "code/analysis/diagnostics/build_profit_taking_ledger.py", "code/analysis/diagnostics/build_profit_taking_contribution.py", "code/analysis/diagnostics/render_profit_taking_comparison.py"],
+      "spec": "code/docs/analysis_specs/sports_profit_taking_v1.md",
+      "run_record": "code/docs/runs/2026-10-02_sports_profit_taking_two_grain_v1.md",
+      "qualification": "Matched BUY executions versus own OrderFilled BUY events, sharing FIFO/profit labels and native-proof gates. Observed accounting, not a causal counterfactual. Original flags frozen.",
+      "report_note": "Six-page standalone LaTeX/inline PGFPlots; compile/visual QA recorded, no saved local PDF. Original October02 upload transferred zero files."
+    },
+    {
+      "id": "terminal_pattern_diagnostics",
+      "status": "frozen_focused_study",
+      "package_path": "releases/06_terminal_pattern_diagnostics",
+      "source_modules": ["code/analysis/diagnostics/build_terminal_pattern_diagnostics.py"],
+      "spec": "code/docs/analysis_specs/terminal_pattern_diagnostics_v1.md",
+      "run_record": "code/docs/runs/2026-10-03_terminal_pattern_diagnostics_v1.md",
+      "qualification": "Frozen own-action/FIFO baseline; terminal-window, composition, price/filter diagnostics. No new uncertainty estimates or causal interpretation. Private membership tables external.",
+      "report_note": "No standalone report/PDF. Findings in run record; profit-taking report unchanged."
+    },
+    {
+      "id": "polymarket_full_date",
+      "status": "preserved_comparison",
+      "package_path": "comparisons/polymarket_full_date",
+      "source_modules": ["code/analysis/kaushik_polymarket_replication"],
+      "spec": "code/docs/analysis_specs/kaushik_polymarket_full_sample_v1.md",
+      "run_record": "code/docs/runs/2026-10-10_kaushik_polymarket_full_sample_v1.md",
+      "qualification": "Original full-date archive records before exchange exclusion; not bot-filtered or certified unique fills. Descriptive comparison, not current convention.",
+      "report_note": "Intact capsule: accepted report v1, assets/PDF and QA."
+    },
+    {
+      "id": "polymarket_cutoff",
+      "status": "preserved_comparison",
+      "package_path": "comparisons/polymarket_cutoff",
+      "source_modules": ["code/analysis/kaushik_polymarket_replication"],
+      "spec": "code/docs/analysis_specs/kaushik_polymarket_replication_v1.md",
+      "run_record": "code/docs/runs/2026-10-10_kaushik_polymarket_replication_v1.md",
+      "qualification": "March25 cutoff; no eligible exchange removals, so not refitted. Estimates v5 correct the final-hour clock error; invalid v4 drafts excluded.",
+      "report_note": "Intact capsule: accepted report v2, assets/PDF and QA."
+    },
+    {
+      "id": "sports_regressions_2026-09-20",
+      "status": "historical_legacy",
+      "package_path": "historical/sports_regressions_2026-09-20",
+      "source_modules": ["code/analysis/multisport_game_dynamics/estimate_flb_decay.py", "code/analysis/multisport_game_dynamics/render_flb_decay.py"],
+      "spec": "code/docs/analysis_specs/flb_time_regressions_v3.md",
+      "run_record": "code/docs/runs/2026-09-20_flb_time_regressions_filtered_all_v1.md",
+      "qualification": "LEGACY: predates MLB coverage rebuild and wallet adoption. Original samples/source bindings are historical, not corrected-data findings.",
+      "report_note": "Original sixteen-page LaTeX/PDF, four vector figures and compact estimates."
+    },
+    {
+      "id": "mlb_rebuild",
+      "status": "accepted_data_validation",
+      "package_path": "audits/mlb_rebuild",
+      "source_modules": ["code/scripts/rebuild_mlb_unfiltered_samples.py", "code/scripts/render_mlb_unfiltered_rebuild.py"],
+      "spec": "code/docs/analysis_specs/mlb_unfiltered_rebuild_v1.md",
+      "run_record": "code/docs/runs/2026-10-09_mlb_unfiltered_rebuild_v1.md",
+      "qualification": "MLB coverage repair with count/support, native-identity and timing gates; not whole-history certification or a scientific rerun.",
+      "report_note": "One-page count-report source/QA; temporary PDF no longer exists locally."
+    },
+    {
+      "id": "wallet_attribution_repair",
+      "status": "accepted_data_validation",
+      "package_path": "audits/wallet_attribution_repair",
+      "source_modules": ["code/scripts/repair_polymarket_wallet_attribution.py", "code/scripts/audit_polymarket_wallet_repair_manifest.py"],
+      "spec": null,
+      "run_record": "code/docs/runs/2026-10-09_wallet_attribution_repair_v1.md",
+      "qualification": "ROOT/CLEAN synthetic-wallet identity correction with saved-evidence QA; contract in run record. Does not establish direction, inventory, replay or collection completeness. Adoption is study-specific.",
+      "report_note": "No standalone report/PDF; manifests, summaries, QA and run record. Historical adoption_pending predates later nine-sport adoption."
+    },
+    {
+      "id": "exchange_wallet_counts",
+      "status": "accepted_data_validation",
+      "package_path": "audits/exchange_wallet_counts",
+      "source_modules": ["code/scripts/audit_kaushik_exchange_wallets.py", "code/scripts/report_kaushik_exchange_wallet_audit.py"],
+      "spec": "code/docs/analysis_specs/kaushik_exchange_wallet_exclusion_v1.md",
+      "run_record": "code/docs/runs/2026-10-14_kaushik_exchange_wallet_audit_v2.md",
+      "qualification": "Count-only address audit before full-date refit. Pending-refit wording is historical; later coefficient release is separate.",
+      "report_note": "One-page LaTeX/PDF, audit JSON and QA; original six-file publication verified separately."
+    }
+  ],
+  "external_historical_indexes": [
+    {
+      "id": "learnability_paper_v1",
+      "location": "dropbox:Polymarket Data and Code/learnability_paper_v1",
+      "status": "historical_not_readmitted_or_remote_reverified",
+      "note": "Earlier July paper/code/data package. Local mirror README/metadata inspected only; closure and remote completeness not reverified. Not current repaired-data results."
+    }
+  ]
+}

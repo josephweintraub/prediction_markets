@@ -1,0 +1,28 @@
+JOSEPH_CODE — RESEARCH HANDOFF — 2026-10-24 v1
+
+Start with code/README.md and code/docs/handoff/README.md.
+
+code/          One canonical source tree: venue modules, shared sports code,
+               pipeline/repair/audit tools, tests, frozen specs and run records.
+releases/      Current cross-venue reports and corrected nine-sport summaries;
+               frozen tennis/profit-taking/terminal diagnostics labeled separately.
+comparisons/   Original full-date and cutoff Polymarket replication releases.
+historical/    Earlier sports report, before later MLB and wallet-filter repairs.
+audits/        Finished compact data-repair/count evidence.
+records/       Explicit selection, source/environment identity and packaging QA.
+
+Reports: portable LaTeX plus figures, with existing PDF previews where supplied.
+Source layout is preserved so imports and pinned historical runs are not broken.
+Original study capsules/manifests remain unchanged; their recorded private paths
+and original publication checkpoints are provenance, not portable defaults.
+
+Python 3.12+ is required. Read code/docs/handoff/reproduce.md for the three routes:
+inspect delivered reports; run small fixtures; rebuild with private production data.
+Raw tapes, wallet records, provider/score caches and credentials are not included.
+Current source and exact historical producer revisions are not interchangeable.
+
+From this release root, verify all delivered bytes with:
+  python code/scripts/build_research_handoff.py verify --bundle .
+
+Future work: create a new run and release version, never overwrite this one.
+The external publication receipt records verified Dropbox delivery separately.

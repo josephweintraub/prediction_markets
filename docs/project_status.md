@@ -1,105 +1,70 @@
 # Project status
 
-**Status date:** 2026-09-12
+**Status date:** 2026-10-24
 
-**Current stage:** repository stabilized; corrected candidate and exploratory sport
-game-dynamics production results regenerated
+**Current stage:** completed research studies are being organized for handoff and
+possible final extensions. This navigation update does not rerun an analysis, certify
+whole-history data completeness, or assert that the new handoff has already been
+published to Dropbox.
 
-**Active workstream:** `analysis/calibration_heterogeneity/`
+Start with the [handoff guide](handoff/README.md), [repository map](repository_map.md)
+and [methods reference](methods_reference.md). Exact scientific definitions belong to
+the selected study's frozen specification; exact execution and acceptance evidence
+belong to its run record and saved receipts. The prior
+[12 September status](archive/project_status_2026-09-12.md) is historical.
 
-This document is the short source of truth for where the project stands. Durable methods
-belong in `methods_reference.md`; methodological choices and reversals belong in
-`decisions.md`; superseded findings belong in `archive/`.
+## Current accepted studies
 
-## Research question
+| Workstream | Accepted current reference | Boundary |
+|---|---|---|
+| Polymarket Kaushik-style replication | [Exchange-wallet-excluded full-date rerun, 14 October](runs/2026-10-14_kaushik_exchange_filtered_rerun_v1.md), with the [exchange exclusion specification](analysis_specs/kaushik_exchange_wallet_exclusion_v1.md) | Current comparison convention excludes either-source-wallet exchange matches. The [cutoff](runs/2026-10-10_kaushik_polymarket_replication_v1.md) and [original full-date](runs/2026-10-10_kaushik_polymarket_full_sample_v1.md) releases remain distinct references. |
+| Native Kalshi replication | [Accepted 17 October report in the 16 October run record](runs/2026-10-16_kaushik_kalshi_replication_v1.md), [specification](analysis_specs/kaushik_kalshi_replication_v1.md), [reproduction guide](analysis_specs/kaushik_kalshi_reproduce_v1.md) | Native public-trade prints, not wallet fills. Baseline, duration and provider-matched sports have different coverage. Public tape does not support the Polymarket wallet/maker comparison. |
+| Repaired nine-sport dynamics | [10 October wallet-filter adoption](runs/2026-10-10_sports_wallet_adoption_v1.md), [adoption specification](analysis_specs/sports_wallet_adoption_v1.md) | Corrected wallet flags and coherent samples are versioned; shared historical input paths are not redirected. |
+| Tennis timing and terminal wallet sequences | [2 October investigation](runs/2026-10-02_tennis_wallet_investigation_v1.md) | Frozen investigation cohort and separately verified own-maker actions; no full-inventory or causal claim. |
+| Profit-taking and terminal-pattern mechanisms | [2 October two-grain study](runs/2026-10-02_sports_profit_taking_two_grain_v1.md), [3 October alternative diagnostics](runs/2026-10-03_terminal_pattern_diagnostics_v1.md) | Preserved own-action sources and accounting definitions. These studies were not rerun on the later repaired-nine-sport flag generation. |
 
-How does prediction-market calibration vary with characteristics that may make pricing
-easier or harder? The current candidate explanations are liquidity, market duration,
-semantic market family, and textual novelty or precedent. Direction is measured rather
-than assumed.
+Acceptance is scoped to each recorded set of gates, not a general guarantee that every
+data issue has been eliminated. Reports, audit receipts, source identities and private
+input dependencies must travel together in the handoff inventory.
 
-## Current data vintage
+## Data and interpretation boundaries
 
-- Canonical trade set: `/mnt/data/pipeline_output/trades_clean.parquet`
-- Refreshed row count: **2,036,128,538**
-- Last underlying trade date: **2026-06-23**
-- Canonical market/token spine: `/mnt/data/pipeline_output/market_flags.parquet`
-- Bot-wallet flags: `/mnt/data/learnability/cache/wallet_flags.parquet`
-- Bot-wallet build used for the current rebaseline: **333,676 flagged wallets**
-- Non-up/down analysis universe: **857,468 markets**
-- Markets with at least one standard-filtered trade: **517,963**
-- Standard-filtered non-up/down BUY observations: **99,744,791**
+- Polymarket's preserved CLEAN generation contains 2,036,128,538 published rows.
+  The [wallet-attribution repair](runs/2026-10-09_wallet_attribution_repair_v1.md)
+  and [MLB input rebuild](runs/2026-10-09_mlb_unfiltered_rebuild_v1.md) are separately
+  accepted changes. Row count equality does not establish native-action, replay or
+  complete-collection correctness.
+- Historical inferred counterparty identities/actions are not a holdings ledger.
+  Current downstream adoption is study-specific. Do not combine repaired identities
+  with old flags, wallet codes or encoded bases without an explicit new build.
+- Polymarket's resolved-source construction creates end-of-sample censoring. Sports
+  clocks and provider overlap retain the qualifications in their own releases,
+  including the original ATP timing qualification.
+- Kalshi's archive begins earlier than its usable estimation sample. Its duration
+  cohort requires admitted native settlement clocks, and its sports cohort requires
+  an accepted provider map. Neither cohort should be described as the whole archive
+  or a census of games.
+- Observation grain, prices, filters, weights, support and clustering differ between
+  workstreams. Compare results only after checking those contracts; do not apply the
+  historical heterogeneity defaults automatically to the newer replications.
 
-The trade set contains resolved markets only. Recent observations are therefore censored
-toward faster-resolving markets. Any recency or horizon result must address this directly.
+## Retained earlier research
 
-## Current measurement specification
+`analysis/calibration_heterogeneity/` retains liquidity, duration, semantic-family and
+textual-novelty exploration. Its older wallet-filtered bases and positional embedding
+artifacts have not been adopted by the repaired-nine-sport run. Historical findings
+remain tied to their original vintages and qualifications, rather than being promoted
+as current repaired-data results. The earlier learnability, broad FLB and May paper
+branches remain under `archive/`; use the [repository map](repository_map.md).
 
-- BUY-side rows; `0.01 < price < 0.99`; timestamp on or after 2020-06-01.
-- Exclude bots and exclude up/down markets at market level via `market_flags.parquet`.
-- Minimum 5,000 trades per reported slice.
-- Full-lifecycle window is primary for the current liquidity/maturity analysis; mature
-  (25-80%) and closing (80-100%) windows are diagnostic.
-- Primary diagnostic: full ten-decile calibration profile.
-- Headline summaries: D1, D10, and D10-D1; classic FLB requires D1 < 0 and D10 > 0.
-- Signed calibration slope is auxiliary.
-- Report count- and dollar-weighted estimates. Equal-market weighting is required as a
-  robustness check before publication-level claims about markets.
-- Standard inference: Cameron-Gelbach-Miller three-way clustering by day, wallet, and
-  market.
+## Handoff and any final work
 
-## Standing descriptive findings
+The [handoff guide](handoff/README.md) is the entrypoint for organized source, accepted
+releases, reproducibility instructions and the private-data inventory. Publication
+status must come from actual verified transfer receipts, not this planning statement.
 
-These are working findings, not finalized causal claims:
-
-1. Aggregate full-lifecycle calibration is close to flat, with a positive favorite tail.
-2. The lowest liquidity-rate equal-dollar group exhibits two-tail classic FLB when trades
-   are weighted equally, but this is not robust to equal-market weighting: both market-
-   weighted tails are positive and the spread reverses sign. The old generic “bottom
-   quarter” claim is therefore a trade-composition result.
-3. Standalone binary markets lasting at least 90 days exhibit classic FLB under count and
-   equal-market weighting. The full-profile result survives the exploratory Bonferroni
-   correction; shorter bins are not stable across weighting schemes.
-4. Fine semantic market families show much more heterogeneity than broad categories.
-5. Markets with no close textual precedent appear to exhibit FLB, but the embedding
-   artifacts predate the latest refresh and omit 7,453 newly resolved markets.
-6. Some sub-day markets change tail signs between mature and closing windows, so a
-   full-lifecycle average can conceal opposing within-market phases.
-
-The regenerated values and validation record are in
-[`runs/2026-09-06_headline_corrected_v1.md`](runs/2026-09-06_headline_corrected_v1.md).
-
-## Completed exploratory sport extension
-
-The audited NFL and NBA moneyline game-dynamics pipelines have completed immutable
-Stage 01--10 production runs at
-`/mnt/data/runs/2026-09-12_nfl_game_dynamics_v3` and
-`/mnt/data/runs/2026-09-12_nba_game_dynamics_v3`. Both use exact Polygon block
-timestamps with zero missing scoped blocks and zero fallback rows. The NFL timing source
-is ESPN's third-party undocumented site API; NBA timing uses official NBA historical
-schedule and LiveData sources. Results, support, exclusions, provider-vintage limits,
-report paths, and hashes are recorded in
-[`runs/2026-09-12_nfl_nba_game_dynamics_v3.md`](runs/2026-09-12_nfl_nba_game_dynamics_v3.md).
-These estimates remain exploratory and do not change the primary paper workstream or
-constitute confirmatory evidence.
-
-## Remaining publication work
-
-- Full-window headline schemes have been regenerated, but mature and closing lifecycle
-  diagnostics still use historical artifacts and must be rerun before a final report.
-- Existing renderers read the old mutable output namespace and show raw significance stars;
-  they must be changed to require an immutable run and adjusted values.
-- Pre-refresh and post-refresh reusable inputs still coexist in the EBS analysis namespace;
-  the active driver guards its declared inputs, but older scripts do not.
-- Embedding-derived novelty features remain aligned to the older 850,015-market ordering
-  and must be refreshed before novelty findings can be promoted.
-- The current liquidity measure is realized volume per day and must not be interpreted as
-  exogenous or causal.
-
-## Next research step after stabilization
-
-Construct and run the pre-specified cross of standalone binary markets, duration of at
-least 90 days, and liquidity-rate tier, with count-, dollar-, and equal-market-weighted
-estimates. The manifest, vintage checks, estimand, and multiplicity machinery now exist;
-the current `hor_x_liqrate` scheme is descriptive across all market structures and is not
-a substitute for that standalone-binary cross.
+Any final research change must identify the affected study and preserve its accepted
+reference release. Freeze the smallest new contract, run focused fixtures, use a fresh
+versioned output directory, and independently reconcile affected sample counts and
+reported results. Follow [workflow](workflow.md) and [EC2 setup](EC2_SETUP.md); only the
+root orchestrator controls infrastructure and verifies shutdown.

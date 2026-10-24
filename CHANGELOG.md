@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-24 - Research handoff organization
+
+- Added a study-oriented handoff index separating current cross-venue results,
+  corrected-wallet sports results, frozen diagnostics and historical comparisons.
+- Updated live navigation and agent guidance without moving pinned analysis
+  modules, changing estimators or rewriting completed scientific manifests.
+- Added explicit-inventory, hash-bound handoff planning/build/verification tools
+  and fixtures, with private-input and environment reproduction boundaries.
+- Corrected the documented instance type and replaced guessed mount-device
+  instructions with the verified data-volume UUID.
+- Raised the declared Python minimum to 3.12 to match syntax already used by
+  existing timing modules; documented source-checkout rather than library use.
+- Preserve existing Dropbox releases; publish new versioned handoffs only after
+  inventory, reference, fixture and content-readback verification.
+
 ## 2026-10-17 - Accepted native Kalshi replication report
 
 - Completed independent input, native-map, core-score and sports-cache/score

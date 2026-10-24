@@ -7,14 +7,33 @@ superseded claims annotated) live in `docs/archive/`.
 
 ## The project, stated neutrally
 
-We study **price calibration on prediction markets** (Polymarket trade-level data; a parallel
-Kalshi contract classification exists for comparison work). The focal object is the
-**favorite-longshot bias (FLB)**: a miscalibration pattern in which low-priced contracts win
-less often than their price implies and high-priced contracts win more often. The current
-question is **how calibration varies with market characteristics** derived from native
-Polymarket metadata — recurrence/series structure, resolution mechanics, anchorability,
-feedback speed ("learnability" dimensions). Direction is measured, not presumed: dimensions
-are built and run without encoding an expected sign.
+We study **price calibration and favorite-longshot bias (FLB)** on Polymarket and
+Kalshi, including duration, sport-game time and terminal-trading mechanisms. Classic
+FLB is a pattern in which low-priced contracts win less often than their price implies
+and high-priced contracts win more often. Direction is measured, not presumed.
+Earlier market-characteristic, learnability and textual-novelty studies remain
+preserved workstreams, not the sole current analysis.
+
+## Scope and study-specific contracts
+
+The data trust, identity, censoring and reproducibility rules below remain shared.
+The filter and inference sections explicitly labeled **frozen heterogeneity defaults**
+preserve that earlier workstream's specification. They do not silently override a
+later approved study's observation grain, filters, support, weighting or uncertainty.
+Use the selected frozen specification together with its accepted run and saved
+manifest. A new change requires a new versioned run, not reinterpretation of an old one.
+
+| Study | Governing current reference |
+|---|---|
+| Polymarket Kaushik-style replication | [Exchange-wallet exclusion specification](analysis_specs/kaushik_exchange_wallet_exclusion_v1.md), inherited [full-date specification](analysis_specs/kaushik_polymarket_full_sample_v1.md), [accepted rerun](runs/2026-10-14_kaushik_exchange_filtered_rerun_v1.md) |
+| Native Kalshi replication | [Kalshi specification](analysis_specs/kaushik_kalshi_replication_v1.md), [accepted run](runs/2026-10-16_kaushik_kalshi_replication_v1.md) |
+| Repaired nine-sport dynamics | [Wallet-filter adoption specification](analysis_specs/sports_wallet_adoption_v1.md), [accepted adoption](runs/2026-10-10_sports_wallet_adoption_v1.md) |
+| Own-action and terminal mechanisms | [Profit-taking](analysis_specs/sports_profit_taking_v1.md), [tennis timing](analysis_specs/tennis_timing_wallet_exits_v1.md), [terminal diagnostics](analysis_specs/terminal_pattern_diagnostics_v1.md), each with its original frozen cohort |
+
+The [project status](project_status.md), [repository map](repository_map.md) and
+[handoff guide](handoff/README.md) distinguish current releases, legacy wallet
+generations and private-input dependencies. These links are navigation, not new
+scientific specifications.
 
 ## Data canon
 
@@ -103,7 +122,11 @@ are built and run without encoding an expected sign.
   [surplus calculation](https://github.com/Polymarket/ctf-exchange/blob/main/src/exchange/mixins/Trading.sol#L338-L342)
   reads the receiving-asset balance, not just the matched-leg amounts.
 
-## Standard trade filters (defaults for every calibration run)
+## Standard trade filters (frozen heterogeneity defaults)
+
+This subsection preserves the earlier calibration-heterogeneity specification.
+Approved study-specific contracts above define any differing sample; these defaults
+must not be applied to a saved later replication merely because it shares utilities.
 
 - **BUY-side trades only**; per-trade return `ret = (1 − price)` if the outcome resolved YES
   for the bought side, else `−price`.
@@ -121,7 +144,7 @@ are built and run without encoding an expected sign.
 - **Lifecycle windows:** trades at 25–80% of contract lifetime ("mature"), 80–100%
   ("closing"), and 0–100% ("full"); report at least mature and closing separately.
 
-## Calibration measurement
+## Calibration measurement (frozen heterogeneity specification)
 
 - **10 price-decile bins** per slice; realized win rate vs. price per decile.
 - **Primary diagnostic (amended 2026-08-24, JW+KV decision): the full decile
@@ -155,8 +178,10 @@ are built and run without encoding an expected sign.
   output is inspected.
 - **Grain:** trade-level calibration is the default; equal-market VWAP is the required
   market-composition robustness variant.
-- **Active engine:** `analysis/calibration_heterogeneity/flb_engine.py`; driver
-  `analysis/calibration_heterogeneity/run_schemes.py`. The older learnability engine and
+- **Retained heterogeneity engine:** `analysis/calibration_heterogeneity/flb_engine.py`;
+  driver `analysis/calibration_heterogeneity/run_schemes.py`. Its existing wallet-filtered
+  bases and studies remain legacy and were not adopted by the repaired-nine-sport run.
+  It is not the current cross-venue replication entrypoint. The older learnability engine and
   its v6/v7 drivers are retained under `archive/analyses/learnability_v1_v7/` for
   historical reproduction. Reusable bases and scheme maps live in
   `/mnt/data/embedding_difficulty/`; run outputs belong only in immutable directories

@@ -83,7 +83,8 @@ confirmatory run must fail loudly.
 ## 5. Separate computation from presentation
 
 - Computation scripts write machine-readable Parquet or JSON artifacts.
-- Renderers read those artifacts and produce figures, tables, and HTML.
+- Renderers read those artifacts and produce figures, native LaTeX tables and
+  portable `.tex` reports. Compiled PDFs are previews, not the primary source.
 - Reports never contain hand-entered headline values.
 - Every report names its producing script, configuration, run ID, and source artifacts.
 - Publication figures and tables are copied from a validated immutable run, not regenerated
@@ -122,3 +123,13 @@ When a direction is no longer active:
 A result is publication-ready only if a clean environment can reproduce it from the
 documented inputs and command, all headline cells pass their sample-size rules, statistical
 tests match the current methods specification, and the report identifies an immutable run.
+
+## 9. Handoff and further work
+
+Use the [handoff guide](handoff/README.md) to find accepted study releases and
+their exact reproduction contracts. The source layout is shared once; do not
+move modules referenced by frozen runs merely to reorganize a release.
+New work receives a new run and release version. Update the study catalog and
+validate the complete selected file inventory before private Dropbox publication.
+Keep raw data, credentials, provider caches and failed/draft stages out of the
+handoff; record required private inputs instead of pretending they are bundled.
