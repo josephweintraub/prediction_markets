@@ -8,10 +8,14 @@
   modules, changing estimators or rewriting completed scientific manifests.
 - Added explicit-inventory, hash-bound handoff planning/build/verification tools
   and fixtures, with private-input and environment reproduction boundaries.
+- Kept original replication capsules in verified frozen archives, with directly
+  accessible reports/summaries and current documentation replacing stale live links.
 - Corrected the documented instance type and replaced guessed mount-device
   instructions with the verified data-volume UUID.
 - Raised the declared Python minimum to 3.12 to match syntax already used by
   existing timing modules; documented source-checkout rather than library use.
+- Made the older synthetic workflow fixture create its own temporary Git
+  provenance, preserving strict production provenance while supporting exports.
 - Preserve existing Dropbox releases; publish new versioned handoffs only after
   inventory, reference, fixture and content-readback verification.
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -90,7 +91,35 @@ def _fixture_vintage(tmp_path: Path) -> Path:
     return vintage_path
 
 
-def test_small_fixture_runs_end_to_end_and_writes_immutable_manifest(tmp_path: Path) -> None:
+def test_small_fixture_runs_end_to_end_and_writes_immutable_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Exercise real provenance capture without depending on an exported .git
+    # directory or attributing this synthetic run to a historical producer.
+    repository = tmp_path / "synthetic_repository"
+    repository.mkdir()
+    (repository / "FIXTURE.txt").write_text(
+        "Synthetic test-only repository, not original analysis provenance.\n",
+        encoding="utf-8",
+    )
+    commands = [
+        ["git", "init", "-q"],
+        ["git", "add", "FIXTURE.txt"],
+        [
+            "git", "-c", "user.name=Synthetic Fixture",
+            "-c", "user.email=fixture@example.test",
+            "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+            "commit", "-qm", "Create synthetic workflow fixture",
+        ],
+    ]
+    for command in commands:
+        subprocess.run(command, cwd=repository, check=True, capture_output=True, text=True)
+    fixture_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repository,
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    monkeypatch.setattr("run_schemes.REPOSITORY", repository)
+
     vintage = _fixture_vintage(tmp_path)
     run_root = tmp_path / "runs"
     args = parse_args(
@@ -111,6 +140,9 @@ def test_small_fixture_runs_end_to_end_and_writes_immutable_manifest(tmp_path: P
     deciles = pd.read_parquet(run_dir / "tables" / "flb_deciles_all_full.parquet")
 
     assert manifest["status"] == "completed"
+    assert manifest["git"]["commit"] == fixture_commit
+    assert manifest["git"]["dirty"] is False
+    assert manifest["git"]["status_porcelain"] == []
     assert manifest["validations"]["data_vintage"]["status"] == "passed"
     assert manifest["validations"]["result_tables"]["all"]["status"] == "passed"
     assert {item["kind"] for item in manifest["outputs"]} == {

@@ -28,9 +28,12 @@ the next version, not a reason to overwrite an old one.
 The release has one current `code/` tree with the existing import layout. Study
 folders under `releases/` hold accepted reports, figures, aggregate summaries,
 bounded event/clock/exclusion metadata and receipts. `comparisons/` and `historical/`
-are explicitly noncurrent. Frozen prior
-source capsules preserve exact bytes where supplied; their original absolute
-paths and as-of-publication wording are provenance, not portable defaults.
+are explicitly noncurrent. The four original replication capsules are preserved
+as `records/original_release_capsule.zip` inside their study folders. Their reports
+and summaries are also directly accessible, but their old source/docs are not
+presented as live navigation. Original absolute paths and as-of-publication wording
+are provenance, not portable defaults; use the [historical-reference map](frozen_references.md)
+to locate current documentation without rewriting sealed capsule bodies.
 `records/` contains the selected inventory, checks and source/environment identity.
 
 Raw trade tapes, per-wallet histories, FIFO records, trade-level/wallet-level

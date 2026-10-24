@@ -14,7 +14,9 @@ saved QA record states which fixtures and references were actually checked.
 
 Reports can be read immediately. Portable LaTeX source and companion figures are
 primary; use the existing PDF previews where supplied. Compile from the report's
-own directory so relative figure paths resolve. A missing private provenance path
+own directory so relative figure paths resolve, but direct build outputs to a
+separate temporary directory or work on a copy. Do not add compiler debris to the
+sealed bundle. A missing private provenance path
 inside an old manifest is not an instruction to fabricate that input.
 
 ## 2. Run small code fixtures
@@ -23,6 +25,7 @@ Work from `code/`, not from an arbitrary installed-package location. The reposit
 is a source checkout with runnable scripts, not a promised pip-importable library.
 
 Python **3.12+** is required by existing modules that use PEP 701 f-string syntax.
+Git is required for provenance-related code and the synthetic Git fixture tests.
 The production interpreter used by the latest studies is Python 3.12. Existing
 dependency declarations are in `pyproject.toml`; the handoff also records installed
 production versions. Those versions describe the observed environment, not proof

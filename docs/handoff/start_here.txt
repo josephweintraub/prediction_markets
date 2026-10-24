@@ -13,8 +13,11 @@ records/       Explicit selection, source/environment identity and packaging QA.
 
 Reports: portable LaTeX plus figures, with existing PDF previews where supplied.
 Source layout is preserved so imports and pinned historical runs are not broken.
-Original study capsules/manifests remain unchanged; their recorded private paths
-and original publication checkpoints are provenance, not portable defaults.
+Original study capsules are preserved as records/original_release_capsule.zip in
+the four replication study folders; ready reports and summaries are also unpacked.
+Their recorded private paths and original publication checkpoints are provenance,
+not portable defaults. Current documentation and a historical-reference map live
+under code/docs/handoff/; use that navigation rather than old archive-relative links.
 
 Python 3.12+ is required. Read code/docs/handoff/reproduce.md for the three routes:
 inspect delivered reports; run small fixtures; rebuild with private production data.
