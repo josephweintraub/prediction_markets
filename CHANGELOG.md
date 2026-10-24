@@ -16,6 +16,8 @@
   existing timing modules; documented source-checkout rather than library use.
 - Made the older synthetic workflow fixture create its own temporary Git
   provenance, preserving strict production provenance while supporting exports.
+- Fixed a saved-summary reader that mistook access-time updates for content
+  changes; retain identity/size/nanosecond modification checks and hash admission.
 - Preserve existing Dropbox releases; publish new versioned handoffs only after
   inventory, reference, fixture and content-readback verification.
 

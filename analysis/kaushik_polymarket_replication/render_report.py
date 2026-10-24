@@ -142,7 +142,13 @@ def _read_json(path: Path):
     before = path.stat()
     require(0 < before.st_size <= MAX_JSON_BYTES, "JSON size cap exceeded before read")
     raw = path.read_bytes()
-    require(path.stat() == before, "JSON changed during read")
+    after = path.stat()
+    # Reading may itself update access time; retain identity, permissions and
+    # nanosecond content-change metadata rather than comparing access time.
+    stable_fields = ("st_dev", "st_ino", "st_mode", "st_nlink", "st_uid", "st_gid",
+                     "st_size", "st_mtime_ns", "st_ctime_ns")
+    require(all(getattr(after, field) == getattr(before, field) for field in stable_fields),
+            "JSON changed during read")
     value = json.loads(raw, object_pairs_hook=_unique_object,
                        parse_constant=lambda value: (_ for _ in ()).throw(ReportBlocked(value)))
     require(type(value) is dict, "JSON object required")

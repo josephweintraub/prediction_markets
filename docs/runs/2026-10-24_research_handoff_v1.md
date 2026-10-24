@@ -1,8 +1,9 @@
 # Research handoff, 24 October 2026
 
 Scope: organize the existing code and completed research for collaborator handoff
-and further final work. This task changes navigation, packaging and declared runtime
-compatibility only. It does not estimate a new result or revise a completed cohort,
+and further final work. This task changes navigation, packaging, declared runtime
+compatibility, synthetic-fixture portability and read-consistency robustness.
+It does not estimate a new result or revise a completed cohort,
 estimator, table, figure or scientific manifest.
 
 ## Source and selection
@@ -42,6 +43,17 @@ in machine-facing records. Old capsule bodies/manifests are kept unchanged.
   historical producer/auditor revisions and omitted data remain dependencies.
 
 ## Validation and publication protocol
+
+The source-only broad baseline exposed a synthetic workflow's dependence on the
+surrounding Git checkout. Its test now creates a private temporary repository and
+asserts that actual fixture provenance, without weakening production checks.
+A subsequent full run exposed an intermittent saved-JSON reader failure. A tiny
+filesystem probe confirmed that reading unchanged bytes can update only access
+time. The reader now compares device/inode, ownership/mode/link count, size and
+nanosecond modification/change times, excluding access time; accepted-content
+hashes and legacy-clock rejection remain enforced. Deterministic tests cover
+access-only changes, every retained identity field and same-size content drift.
+These are runtime/fixture fixes, not changes to the reported empirical results.
 
 1. Check the canonical clean source and exact file selection; screen credentials
    without displaying secret values. Validate compact Parquet schemas/row counts

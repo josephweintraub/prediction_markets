@@ -6,8 +6,9 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from analysis.kaushik_polymarket_replication import render_report as report
 
@@ -225,6 +226,55 @@ def fixture_review_report(report_dir):
 
 
 class ReportTests(unittest.TestCase):
+    def test_json_read_allows_only_access_time_metadata_to_change(self):
+        raw = b'{"fixture": true}\n'
+        before = SimpleNamespace(st_dev=1, st_ino=2, st_mode=0o100600, st_nlink=1,
+            st_uid=1000, st_gid=1000, st_size=len(raw), st_mtime_ns=10, st_ctime_ns=20,
+            st_atime=0.0, st_atime_ns=0)
+        after = SimpleNamespace(**vars(before))
+        after.st_atime = 1.0
+        after.st_atime_ns = 1_000_000_000
+        path = Mock(spec=Path)
+        path.is_file.return_value = True
+        path.is_symlink.return_value = False
+        path.stat.side_effect = [before, after]
+        path.read_bytes.return_value = raw
+
+        value, digest = report._read_json(path)
+        self.assertEqual(value, {"fixture": True})
+        self.assertEqual(digest, hashlib.sha256(raw).hexdigest())
+
+    def test_json_read_rejects_identity_or_content_change_metadata(self):
+        raw = b'{"fixture": true}\n'
+        fields = ("st_dev", "st_ino", "st_mode", "st_nlink", "st_uid", "st_gid",
+                  "st_size", "st_mtime_ns", "st_ctime_ns")
+        before = SimpleNamespace(**dict.fromkeys(fields, 1))
+        before.st_size = len(raw)
+        for field in fields:
+            with self.subTest(field=field):
+                after = SimpleNamespace(**vars(before))
+                setattr(after, field, getattr(after, field) + 1)
+                path = Mock(spec=Path)
+                path.is_file.return_value = True
+                path.is_symlink.return_value = False
+                path.stat.side_effect = [before, after]
+                path.read_bytes.return_value = raw
+                with self.assertRaisesRegex(report.ReportBlocked, "JSON changed during read"):
+                    report._read_json(path)
+
+    def test_same_size_estimate_content_drift_still_fails_receipt_hash_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory) / "accepted"
+            save_stage(stage, synthetic_estimates())
+            path = stage / "estimates.json"
+            raw = path.read_bytes()
+            changed = raw.replace(b'"2026-03-25T00:00:00Z"', b'"2025-03-25T00:00:00Z"', 1)
+            self.assertEqual(len(changed), len(raw))
+            self.assertNotEqual(changed, raw)
+            path.write_bytes(changed)
+            with self.assertRaisesRegex(report.ReportBlocked, "fingerprint"):
+                report.load_accepted_estimates(stage)
+
     def test_filtered_v2_source_retains_grid_and_truthful_effective_waterfall(self):
         data = synthetic_filtered_estimates()
         source = report.render_source(data)
