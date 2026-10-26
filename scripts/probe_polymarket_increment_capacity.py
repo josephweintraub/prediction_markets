@@ -37,6 +37,7 @@ MAX_OUTPUT_BYTES = 64 * 1024**2
 MANIFEST_RESERVE = 1024**2
 LOG_FIELDS = {"address", "blockHash", "blockNumber", "data", "logIndex", "removed",
               "topics", "transactionHash", "transactionIndex"}
+PROVENANCE_FIELDS = {"blockTimestamp"}
 
 
 class PilotBlocked(ValueError):
@@ -183,7 +184,14 @@ def validate_logs(logs: Any, window: dict, headers: dict[int, dict], request_id:
     shared_transactions = {} if shared_transactions is None else shared_transactions
     counts = Counter()
     for log in logs:
-        require(type(log) is dict and set(log) == LOG_FIELDS, "native_log_schema_differs")
+        require(type(log) is dict and set(log) in (LOG_FIELDS, LOG_FIELDS | PROVENANCE_FIELDS),
+                "native_log_schema_differs")
+        provenance_present = "blockTimestamp" in log
+        provenance = log.get("blockTimestamp")
+        if provenance_present:
+            require(type(provenance) is str and 0 < len(provenance) <= 128
+                    and all(32 <= ord(character) <= 126 for character in provenance),
+                    "invalid_provider_block_timestamp_provenance")
         require(log["removed"] is False, "removed_or_unconfirmed_log")
         block, index, tx_index = (_uint64(log[key]) for key in ("blockNumber", "logIndex", "transactionIndex"))
         require(window["first_block"] <= block <= window["last_block"], "log_outside_requested_window")
@@ -231,7 +239,9 @@ def validate_logs(logs: Any, window: dict, headers: dict[int, dict], request_id:
         position = (block, index)
         require(position not in block_positions, "conflicting_block_log_position")
         block_positions[position] = key
-        rows.append({**log, "block_number": block, "log_index": index, "transaction_index": tx_index,
+        rows.append({**log, "blockTimestamp": provenance,
+                     "provider_block_timestamp_present": provenance_present,
+                     "block_number": block, "log_index": index, "transaction_index": tx_index,
                      "exchange_address": address, "window": window["window"], "source_request_id": request_id})
         counts[(address, topic)] += 1
     rows.sort(key=lambda row: (row["block_number"], row["transaction_index"], row["log_index"]))
@@ -239,6 +249,8 @@ def validate_logs(logs: Any, window: dict, headers: dict[int, dict], request_id:
                   "occupied_blocks": len(block_hashes), "zero_log_window": not bool(rows),
                   "counts": [{"address": address, "topic": EXPECTED_TOPICS[address],
                               "rows": counts[(address, EXPECTED_TOPICS[address])]} for address in ADDRESSES],
+                  "provider_block_timestamp_rows": sum(row["provider_block_timestamp_present"] for row in rows),
+                  "provider_block_timestamp_used_as_clock": False,
                   "interior_block_headers_verified": False, "interior_exact_timestamps_collected": False}
 
 
@@ -246,9 +258,10 @@ def parquet_payload(rows: list[dict]) -> bytes:
     import pyarrow as pa
     import pyarrow.parquet as pq
     schema = pa.schema([(key, pa.bool_() if key == "removed" else pa.list_(pa.string()) if key == "topics"
-                         else pa.string()) for key in sorted(LOG_FIELDS)] +
+                         else pa.string()) for key in sorted(LOG_FIELDS | PROVENANCE_FIELDS)] +
                        [("block_number", pa.uint64()), ("log_index", pa.uint64()), ("transaction_index", pa.uint64()),
-                        ("exchange_address", pa.string()), ("window", pa.string()), ("source_request_id", pa.uint8())])
+                        ("exchange_address", pa.string()), ("window", pa.string()), ("source_request_id", pa.uint8()),
+                        ("provider_block_timestamp_present", pa.bool_())])
     sink = pa.BufferOutputStream()
     pq.write_table(pa.Table.from_pylist(rows, schema=schema), sink, compression="zstd", row_group_size=10_000)
     payload = sink.getvalue().to_pybytes()
@@ -315,6 +328,10 @@ def run_pilot(plan_path: Path, plan_sha256: str, plan_source_head: str, expected
                    "rows_per_window": MAX_WINDOW_ROWS, "total_output_bytes": MAX_OUTPUT_BYTES, "spill_bytes": 0},
         "known_address_topic_policy": EXPECTED_TOPICS, "planned_windows": windows, "windows": [], "request_ledger": [],
         "native_payload_only": True, "economic_deduplication": False, "resolution_join": False,
+        "optional_provider_provenance": {"blockTimestamp": {
+            "validation": "Original nonempty printable ASCII string of at most128 characters; nullable only when absent.",
+            "interpretation": "Uninterpreted provider provenance, not an admitted timestamp source.",
+            "used_for_clock_identity_or_eligibility": False}},
         "collection_complete": False, "analysis_admitted": False, "endpoint_disclosed": False,
         "limitations": ["Three fixed windows are not full-range collection, complete activity detection or capacity certification.",
                         "Only window endpoint headers are independently fetched; interior hashes have format/within-window consistency checks only.",

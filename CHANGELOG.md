@@ -16,6 +16,12 @@
   rechecked them before removing only the 88 manifest-listed local files.
 - Kept native events, repaired-wallet copies and completed paper runs unchanged;
   document restoration before workflows that still depend on the old shared paths.
+- Added source-bound, budgeted protocol-activity, raw-address coverage and
+  increment-capacity diagnostics without granting final-sample admission.
+- Retain optional provider log timestamps as uninterpreted provenance only;
+  exact execution clocks must still come from independently validated headers.
+- Recorded approval to reconstruct the unrecoverable category-scoring rule,
+  preserve accepted labels and validate a separately versioned candidate.
 
 ## 2026-10-24 - Research handoff organization
 

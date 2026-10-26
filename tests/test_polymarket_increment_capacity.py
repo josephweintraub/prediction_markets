@@ -157,6 +157,37 @@ class IncrementCapacityTests(unittest.TestCase):
         for window in result["windows"]:
             self.assertEqual(pq.read_table(self.output / window["parquet_path"]).num_rows, 0)
 
+    def test_optional_provider_provenance_presence_absence_and_header_independence(self):
+        raw_value = "not a verified block clock"
+        def mutate(payload, reply):
+            if payload["method"] == "eth_getLogs":
+                reply["result"][0]["blockTimestamp"] = raw_value
+            return reply
+        self.rpc.mutate = mutate
+        result = self.execute()
+        self.assertEqual(result["status"], "bounded_pilot_complete")
+        self.assertFalse(result["optional_provider_provenance"]["blockTimestamp"]["used_for_clock_identity_or_eligibility"])
+        for window in result["windows"]:
+            rows = pq.read_table(self.output / window["parquet_path"]).to_pylist()
+            self.assertEqual(rows[0]["blockTimestamp"], raw_value)
+            self.assertTrue(rows[0]["provider_block_timestamp_present"])
+            self.assertIsNone(rows[1]["blockTimestamp"])
+            self.assertFalse(rows[1]["provider_block_timestamp_present"])
+            self.assertEqual(window["provider_block_timestamp_rows"], 1)
+            self.assertFalse(window["provider_block_timestamp_used_as_clock"])
+            self.assertFalse(window["interior_exact_timestamps_collected"])
+            self.assertEqual(window["first_header"]["timestamp"], header(window["first_block"])["timestamp"])
+            self.assertNotIn("timestamp", rows[0])
+
+    def test_provider_provenance_has_explicit_bounded_string_gate(self):
+        window = pilot.fixed_windows(1000, 2999)[0]
+        original = native_log(pilot.ADDRESSES[0], window["first_block"])
+        for bad in (None, 1, True, b"bytes", "", "a" * 129, "clock\n", "\t", "\x00", "\x7f", "é"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(pilot.PilotBlocked, "invalid_provider_block_timestamp_provenance"):
+                pilot.validate_logs([{**original, "blockTimestamp": bad}], window, {}, 1)
+        with self.assertRaisesRegex(pilot.PilotBlocked, "native_log_schema_differs"):
+            pilot.validate_logs([{**original, "unreviewedProviderField": "anything"}], window, {}, 1)
+
     def test_existing_output_is_not_overwritten(self):
         self.output.mkdir()
         keep = self.output / "keep"

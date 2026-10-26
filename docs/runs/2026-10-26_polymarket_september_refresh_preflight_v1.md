@@ -147,3 +147,28 @@ current accepted Kaushik bases and repaired CLEAN remain intact. A restored
 copy recovers bytes, not old filesystem inodes, so strict identity-based stages
 need a new restoration/re-admission receipt. Do not disguise that boundary
 with a symlink. No new final sample or empirical estimates are implied.
+
+## Category reconstruction authorization and diagnostic boundary
+
+The saved category labels and frozen tag map are available, but bounded source
+and history searches did not recover the original v1 scoring program, soft tag
+probabilities or IDF weights. The user explicitly approved reconstruction and
+validation on 26 October. Keep accepted labels unchanged. Freeze the simplest
+transparent candidate for new/unmatched markets before inspecting parity;
+report disagreement against the saved labels and do not claim exact recovery
+of the lost scorer. Categories do not determine baseline trade eligibility.
+
+The first increment-capacity pilot failed closed because the RPC provider
+adds a `blockTimestamp` field to log objects. Preserve that failed run. A
+bounded one-call replay established only the additional field's string type;
+it did not validate its encoding, units or clock accuracy. The revised pilot
+retains the optional bounded printable-ASCII value and its presence flag as
+uninterpreted provenance, never as an exact timestamp or native identity key.
+All other unexpected fields remain blocked. A subsequent pilot must use a
+fresh run directory and independently validated header clocks.
+
+The raw exchange-coverage diagnostic projects only emitting address and block
+number, binds the saved source/positive activity window, and reconciles counts
+to the immutable footer inventory. Its completion is not source admission;
+positive count agreement is not native-identity agreement. Missing known
+observations must block final admission until repaired and reconciled.
