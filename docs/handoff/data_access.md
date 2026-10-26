@@ -13,6 +13,7 @@ expected to exist in the portable code folder. Access must be granted separately
 | FIFO, own-action and execution proofs | [Profit-taking run](../runs/2026-10-02_sports_profit_taking_two_grain_v1.md) | Full market/wallet/native receipt and opening-inventory dependencies are not included. Aggregate attribution is not causal identification. |
 | Historical embedding/learnability inputs | `/mnt/data/embedding_difficulty/`, `/mnt/data/learnability/`, original historical run records | Legacy flags and positional embeddings are not repaired-generation inputs. |
 | Archived trade backups and quote ticks | [Storage handling in the repair run](../runs/2026-10-09_wallet_attribution_repair_v1.md) | Restore from the verified private Dropbox archive before a dependent quote/history workflow. Do not assume old EBS paths remain populated. |
+| Original June ROOT/CLEAN trees, archived 26 October | Private Dropbox `Polymarket Data and Code/Archives/2026-10-26_final_sample_storage_archive_v1`; [refresh readiness record](../runs/2026-10-26_polymarket_september_refresh_preflight_v1.md) | The 88 verified original files were removed locally with approval. Repaired copies/raw events/paper runs remain. Restore exact original bytes before legacy shared-path workflows; filesystem-identity admission needs a new restoration receipt. |
 
 An original manifest may bind files intentionally omitted from a compact summary
 export, including score arrays, market memberships or source exclusions. The handoff

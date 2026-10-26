@@ -94,3 +94,56 @@ Actual saved footer evidence and shutdown must be recorded after execution;
 they are not asserted in advance here. Root must confirm no worker
 or process still needs EC2, stop it and verify stopped even while scope choices
 remain unadmitted. No handoff/current-release pointer is changed by preflight.
+
+## Verified endpoint and approved storage handling
+
+The committed inventory at `29cae389eb5a9c09319a363434f9c4868aff7358`
+inspected six source footers, 59,427,658 metadata bytes and 21,233 row groups,
+with no trade-body reads. The expected absent `deduped_events.parquet` makes
+its status incomplete; that status is not evidence of a missing final-trade
+count. The other input identities reopened unchanged. The native raw footer
+declares 1,541,318,092 rows and maximum block 88,978,537; the exact cache declares
+27,117,476 rows. Footer declarations are not independent body completeness.
+
+The source-bound planner at `fd3dd32a315f0f13cc126c83eaaadc9fbc4fc076`
+used 38 RPC calls and verified adjacent headers: block **94,796,039** has UTC
+second **1790899199**, and its child **94,796,040** has second **1790899200**.
+Thus the inclusive collection end is 94,796,039. The provisional missing
+interval has 5,817,502 blocks, not a certified missing-trade count. All five
+known exchange addresses have code at the cutoff, including V3. Presence of
+code does not admit trading activity, historical implementation or ABI.
+
+After an explicit user approval and a correction of the initial parent-folder
+estimate, root archived exactly these two targets:
+
+| Original tree | Files | Directories | File bytes |
+|---|---:|---:|---:|
+| `/mnt/data/pipeline_root_output/trades.parquet` | 44 | 45 | 41,335,439,747 |
+| `/mnt/data/pipeline_output/trades_clean.parquet` | 44 | 45 | 23,800,759,225 |
+
+`scripts/archive_final_sample_storage.py` is a separate fixed profile of the
+previously tested archive safety kernel. Its 26 non-restoration function bodies
+are unchanged. The combined canonical fixture suite passed **105 tests and
+73 subtests**, exit zero, in 2.64 seconds before execution; its receipt/log are
+`runtime_fixture_receipt_v4.json` and `runtime_fixtures_v4.log`.
+
+Archive producer `042c6e744be92312a40b874711605dc6b89ecf0a` uploaded to
+`dropbox:Polymarket Data and Code/Archives/2026-10-26_final_sample_storage_archive_v1`.
+Every one of 88 paths, byte sizes and nonempty Dropbox content hashes matched,
+as did both restoration controls and the unchanged source inventory. The
+verified manifest SHA256 is
+`9088776d52ea4b8f54d3914f8fb72ad177a20baef93409d9fc70c305fd971046`.
+
+Root's privileged consumer check at `2026-10-26T16:01:10.539113Z` found no open
+target handles, no uninspected process permissions and no surviving archive
+producer. The separate removal phase rechecked current remote controls and
+hashes and removed only the manifest-listed 88 files/90 directories. It
+completed at `2026-10-26T16:01:50.967169Z`, exit zero, with all other bound
+native/metadata/repair inputs unchanged. Free bytes rose from 52,617,736,192 to
+117,754,662,912. `archive_removal_receipt_v1.json` records the actual result.
+
+Historical readers of those shared original paths now require restoration;
+current accepted Kaushik bases and repaired CLEAN remain intact. A restored
+copy recovers bytes, not old filesystem inodes, so strict identity-based stages
+need a new restoration/re-admission receipt. Do not disguise that boundary
+with a symlink. No new final sample or empirical estimates are implied.

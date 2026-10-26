@@ -37,6 +37,17 @@ scientific specifications.
 
 ## Data canon
 
+**Storage update, 26 October 2026:** the original ROOT and CLEAN trees at the
+historical shared paths below were archived and their verified local copies
+removed with explicit user approval. They remain recoverable under private
+Dropbox `Polymarket Data and Code/Archives/2026-10-26_final_sample_storage_archive_v1`,
+with `RESTORE.txt` and the complete content-hash inventory. Restore and re-admit
+them before running a historical shared-path workflow; do not redirect those
+paths silently to repaired/new data. The repaired October 9 copies and current
+accepted paper inputs remain on EC2. The new exact-timestamp final sample is
+still unadmitted; see the [refresh contract](analysis_specs/polymarket_final_sample_refresh_v1.md)
+and [readiness record](runs/2026-10-26_polymarket_september_refresh_preflight_v1.md).
+
 - **Canonical trade set:** `/mnt/data/pipeline_output/trades_clean.parquet` (EC2) —
   **2,036,128,538 rows through 2026-06-23** (resolution refresh completed 2026-07-04).
   Cleaning applies full-row value DISTINCT within each month, removing roughly 4% of

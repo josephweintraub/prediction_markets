@@ -2,6 +2,8 @@
 
 ## 2026-10-26 - September Polymarket refresh readiness
 
+- Confirmed the final Polymarket execution cutoff is exclusive 2 October UTC,
+  matching existing Kalshi coverage through 1 October, including full sports refresh.
 - Added an EC2-only, bounded footer/resource/RPC inventory for the requested
   new exact-timestamp Polymarket source generation; no trade-body scans or
   source replacement are part of this inventory.
@@ -9,6 +11,11 @@
   coverage requirements and storage admission boundary before collection.
 - Preserve the June scientific releases and the published handoff until a new
   sample passes collection, identity, exact-clock, metadata and result gates.
+- Archived the two explicitly approved original ROOT/CLEAN trees with exact
+  per-file Dropbox content hashes and restoration controls, then independently
+  rechecked them before removing only the 88 manifest-listed local files.
+- Kept native events, repaired-wallet copies and completed paper runs unchanged;
+  document restoration before workflows that still depend on the old shared paths.
 
 ## 2026-10-24 - Research handoff organization
 
