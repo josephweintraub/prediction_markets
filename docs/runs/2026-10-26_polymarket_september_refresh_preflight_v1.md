@@ -172,3 +172,40 @@ number, binds the saved source/positive activity window, and reconciles counts
 to the immutable footer inventory. Its completion is not source admission;
 positive count agreement is not native-identity agreement. Missing known
 observations must block final admission until repaired and reconciled.
+
+## Executed raw coverage audit and capacity pilot
+
+Producer `894524f354b496e095f5b2223e3b6ba7984598c9` passed **157 tests and
+137 subtests**, exit zero, in 3.78 seconds on the canonical EC2 runtime before
+these serialized diagnostics. The saved command and source hashes are in
+`runtime_fixture_receipt_v6.json` and `runtime_fixtures_v6.log`.
+
+`exchange_coverage_v1.json` completed one two-column aggregate over all
+1,541,318,092 raw rows, with 216,573,422 projected compressed bytes and no RPC
+calls. The four legacy/V2 buckets reconcile exactly to that total; there are
+zero V3, unsupported-address, null-address, malformed-address, null-block or
+invalid-block rows. In the bound 100-block June window, the archive has zero
+V3 rows while the independent native probe observed 44 unique matching logs.
+Thus known historical V3 activity is absent from this source. This establishes
+neither its complete missing quantity nor how many observations would pass
+the paper's eventual eligibility rules. The diagnostic completed with failed
+admission checks (intentional exit 2), not with a collection certificate.
+Its JSON SHA256 is
+`43c5827cc588213c176397613dc94492677be86b7e5e261b4ede16152f4aec92`.
+
+The revised pilot in
+`/mnt/data/runs/2026-10-26_polymarket_increment_capacity_v2` completed all three
+fixed 100-block windows with 15 RPC calls, exit zero. They contain respectively
+11,000, 11,214 and 11,598 distinct native log keys and occupy 815,321, 826,329
+and 893,687 Parquet bytes. Each includes V3 activity. The manifest SHA256 is
+`0f7c1f0a72599ae4990336d80eb31c677c4f8805de5aac2978ea4b029dbf182b`.
+The failed v1 pilot remains intact without a completion marker.
+
+Extending the observed mean and densest-window storage densities over the
+provisional append interval gives illustrative scenarios of 49.16 GB and
+51.99 GB; twice the observed maximum gives 103.98 GB. These selected windows
+are not a random sample, confidence interval or upper bound, and do not cover
+historical V3 backfill, exact header acquisition, metadata, provider caches or
+analysis-stage storage. No full-range collection or new final sample has
+been admitted. Storage must pass a fresh stage-by-stage resource gate before
+the affected production work begins.

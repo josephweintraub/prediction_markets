@@ -66,6 +66,13 @@ API request limits and restart behavior from fresh measurements. No automatic
 dataset deletion, volume expansion or instance resizing is authorized here.
 If capacity cannot be admitted, stop before the affected production stage.
 
+Subsequent approved archival freed the two superseded original ROOT/CLEAN
+trees; measured free space is now approximately 117.75 GB. The completed
+bounded pilot still does not admit the complete workflow at that capacity.
+See the [stage-capacity assessment](polymarket_refresh_capacity_v1.md) and
+[executed readiness record](../runs/2026-10-26_polymarket_september_refresh_preflight_v1.md).
+Any expansion or additional archival requires separate explicit authority.
+
 ## Stage 1: freeze the endpoint and protocol map
 
 Determine the first Polygon block whose authoritative header timestamp is
@@ -132,6 +139,15 @@ change taxonomy or substitute a new LLM classifier. Resolution availability is
 as of the declared refresh vintage, not necessarily the execution cutoff;
 retain the resolved-market censoring qualification and quantify the affected
 population. Do not guess payouts from a near-one trading price.
+
+The original v1 scoring program and soft/IDF weights could not be recovered.
+The user approved a separately versioned reconstruction and comparison against
+the saved labels on 26 October. Preserve every accepted label, including null
+and Unclassified; apply a reconstructed rule only to absent saved keys. Freeze
+the [candidate and metadata-only validation](polymarket_category_reconstruction_v1.md)
+before inspecting empirical agreement, report disagreements and abstentions,
+and require independent review before admitting new labels. This is not exact
+recovery of the lost scorer and must not change baseline trade eligibility.
 
 Build corrected maker/counterparty identities with the known DuckDB runtime
 safeguard and independently reopen the wallet-pair reconciliation. Do not
