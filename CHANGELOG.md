@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-26 - September Polymarket refresh readiness
+
+- Added an EC2-only, bounded footer/resource/RPC inventory for the requested
+  new exact-timestamp Polymarket source generation; no trade-body scans or
+  source replacement are part of this inventory.
+- Recorded the September-versus-October-1 cutoff discrepancy, separate sports
+  coverage requirements and storage admission boundary before collection.
+- Preserve the June scientific releases and the published handoff until a new
+  sample passes collection, identity, exact-clock, metadata and result gates.
+
 ## 2026-10-24 - Research handoff organization
 
 - Added a study-oriented handoff index separating current cross-venue results,
