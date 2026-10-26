@@ -2,6 +2,12 @@
 
 ## 2026-10-26 - September Polymarket refresh readiness
 
+- Verified the administrator-expanded 750 GiB data volume, extended its
+  existing ext4 filesystem and rechecked the six bound native-source inputs.
+- Added a proposed aggregate storage envelope and bounded raw-staging contract;
+  extra capacity alone does not admit a new sample or full collection campaign.
+- Added a small, source-bound V3 upgrade-receipt/implementation diagnostic;
+  its observations do not certify deployment history or economic semantics.
 - Confirmed the final Polymarket execution cutoff is exclusive 2 October UTC,
   matching existing Kalshi coverage through 1 October, including full sports refresh.
 - Added an EC2-only, bounded footer/resource/RPC inventory for the requested

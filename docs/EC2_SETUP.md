@@ -32,11 +32,17 @@ Device names can alternate. Never try successive guessed device names.
 On 26 October 2026, the mounted ext4 data device's NVMe serial mapped to EBS
 `vol-0acbba4565a64f792`, attached as `/dev/sdf`; the separate root volume is
 `vol-07df25624f23fd0b7`. Reverify this mapping before storage operations rather
-than relying on the NVMe device name. The user approved growing only the data
-volume from 500 to 650 GiB, but the current IAM user lacks `ec2:ModifyVolume`,
-`ec2:DescribeVolumes` and `ec2:DescribeVolumesModifications`. The permission
-checks made no disk change; 650 GiB must not be recorded as the actual size
-until AWS and the mounted filesystem independently confirm it.
+than relying on the NVMe device name. After the initial 650 GiB request was
+blocked by IAM permissions, the user reported an administrator modification
+to **750 GiB**. Root independently verified the same volume serial/UUID and
+an 805,306,368,000-byte device, then extended its existing ext4 filesystem on
+26 October. The measured available space was 371,217,793,024 bytes; all six
+checked native-source file identities remained unchanged. The receipt is
+`/mnt/data/runs/2026-10-26_polymarket_750gib_resume_v1/filesystem_expansion_v1.json`.
+The current IAM user still lacks volume modification/read/monitor permissions;
+device and filesystem checks establish the observed capacity, not the AWS
+control-plane modification state. Do not request another size change or
+assume that available space remains constant.
 
 ```bash
 ssh -i ~/Downloads/polymarket-key.pem \

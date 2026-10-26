@@ -69,9 +69,14 @@ If capacity cannot be admitted, stop before the affected production stage.
 Subsequent approved archival freed the two superseded original ROOT/CLEAN
 trees; measured free space is now approximately 117.75 GB. The completed
 bounded pilot still does not admit the complete workflow at that capacity.
-See the [stage-capacity assessment](polymarket_refresh_capacity_v1.md) and
+The user subsequently expanded the device to 750 GiB; root verified it and
+extended the filesystem, measuring approximately 371.22 GB available. See the
+[current proposed hard-cap contract](polymarket_refresh_capacity_v2.md), the
+[historical stage-capacity assessment](polymarket_refresh_capacity_v1.md) and
 [executed readiness record](../runs/2026-10-26_polymarket_september_refresh_preflight_v1.md).
-Any expansion or additional archival requires separate explicit authority.
+This permits fresh bounded-stage admission, not automatic full-campaign
+approval. Any further expansion or additional archival requires separate
+explicit authority.
 
 ## Stage 1: freeze the endpoint and protocol map
 
