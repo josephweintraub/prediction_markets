@@ -22,6 +22,9 @@
   exact execution clocks must still come from independently validated headers.
 - Recorded approval to reconstruct the unrecoverable category-scoring rule,
   preserve accepted labels and validate a separately versioned candidate.
+- Added a production-guarded, metadata-only shadow validator with frozen rule
+  bindings, explicit read/memory caps and immutable diagnostics; it publishes
+  neither replacement labels nor changes to baseline sample membership.
 
 ## 2026-10-24 - Research handoff organization
 
