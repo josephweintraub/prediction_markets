@@ -29,6 +29,15 @@ After a restart, identify the data volume with `lsblk -f` and `findmnt /mnt/data
 The verified data-volume UUID is `d0cd087b-94c4-428c-bae9-ae28929059f6` (2026-10-24).
 Device names can alternate. Never try successive guessed device names.
 
+On 26 October 2026, the mounted ext4 data device's NVMe serial mapped to EBS
+`vol-0acbba4565a64f792`, attached as `/dev/sdf`; the separate root volume is
+`vol-07df25624f23fd0b7`. Reverify this mapping before storage operations rather
+than relying on the NVMe device name. The user approved growing only the data
+volume from 500 to 650 GiB, but the current IAM user lacks `ec2:ModifyVolume`,
+`ec2:DescribeVolumes` and `ec2:DescribeVolumesModifications`. The permission
+checks made no disk change; 650 GiB must not be recorded as the actual size
+until AWS and the mounted filesystem independently confirm it.
+
 ```bash
 ssh -i ~/Downloads/polymarket-key.pem \
   -o StrictHostKeyChecking=no -o LogLevel=ERROR ubuntu@$INSTANCE_DNS \

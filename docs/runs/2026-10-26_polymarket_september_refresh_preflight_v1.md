@@ -209,3 +209,56 @@ historical V3 backfill, exact header acquisition, metadata, provider caches or
 analysis-stage storage. No full-range collection or new final sample has
 been admitted. Storage must pass a fresh stage-by-stage resource gate before
 the affected production work begins.
+
+## Historical category comparison and expansion permission boundary
+
+The category candidate was frozen at
+`ce31de0c9b20176f92eb42d88965233857bee599` before any empirical comparison.
+The independently reviewed adapter at
+`5b8701c05a50600a4aa9c852bcbe5e5a95caeb25` completed the metadata-only run in
+`category_reconstruction_parity_v1`, exit zero. Its combined canonical fixture
+suite passed **185 tests and 174 subtests** in 4.20 seconds, exit zero
+(`runtime_fixture_receipt_v7.json`). An external 900-second timeout supplemented
+the process's internal alarm; no labels or trading-data outputs were published.
+
+The inputs are the documented 21 June native metadata generation (date only;
+exact retrieval instant unknown), the frozen hard tag map, and accepted category
+labels. The source contains 1,440,352 unique metadata conditions and 1,418,926
+unique saved-label conditions, all overlapping. Each Gamma condition receives
+equal weight in this diagnostic; trades, outcomes, prices and volume never
+enter scoring. Tag-only candidate prediction is independent of the label
+preservation path. SHA bindings and source/input identities were rechecked.
+
+The candidate matches 1,410,287 of 1,418,926 saved labels (**99.3912%**).
+It assigns a category to 1,411,182 overlap conditions (**99.4542%**); agreement
+among assigned candidates is **99.9366%**. The 8,639 disagreements consist of
+7,744 abstentions (7,605 ties, 74 without voting evidence, 65 conflicting
+overrides) and 895 different assigned categories. Every saved label is
+preserved unchanged, with no duplicate keys, fanout or unaccounted rows.
+The historical input has no null labels; null preservation is fixture-tested,
+not an observed-null empirical check. All 21,426 metadata keys without a saved
+label lack voting evidence and would remain Unclassified.
+
+Independent QA reconciled all 169 confusion cells, margins, evidence strata,
+manifest sizes/hashes and the reviewed rule/source bindings. Overall agreement
+is dominated by large Crypto, Sports and Esports categories. Agreement including
+abstentions is lower for Culture (75.93%), Tech (76.82%), Geopolitics (80.51%)
+and Economy (87.13%), mainly because conservative voting abstains. The result
+supports a documented fallback, not recovery of the original soft scorer or
+proof of classification quality on newly collected markets. Fresh-market
+coverage and disagreement review remain gates for category-controlled results;
+category uncertainty must not exclude baseline observations.
+
+The user explicitly approved expanding the existing data disk from 500 to
+650 GiB. Root identified its serial as `vol0acbba4565a64f792`, corresponding
+to attached EBS volume `vol-0acbba4565a64f792` on instance
+`i-0f5b31a268af53938`; it is the unpartitioned ext4 device currently mounted
+at `/mnt/data`, UUID `d0cd087b-94c4-428c-bae9-ae28929059f6`.
+AWS denied `ec2:DescribeVolumes`, a non-mutating `ec2:ModifyVolume --dry-run`
+for the exact approved target, and `ec2:DescribeVolumesModifications` for IAM
+user `claude-ec2-control`. No size or filesystem change occurred. An authorized
+administrator must either modify this exact volume to 650 GiB or grant the
+required scoped modification and read/monitor permissions before root can
+complete and verify expansion. Do not try alternative credentials or another
+volume. The full collection remains unadmitted; no final sample, refreshed
+estimates or replacement Dropbox release has been produced.

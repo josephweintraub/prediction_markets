@@ -2,8 +2,10 @@
 
 Status: candidate frozen on 26 October 2026, before real-data validation.
 The user approved reconstruction and validation of the existing category scheme.
-This specification admits a rule and synthetic fixtures, not refreshed labels or
-a production sample. The [methods reference](../methods_reference.md) and
+The historical metadata-only comparison has since completed and passed
+independent result QA; see the [executed run record](../runs/2026-10-26_polymarket_september_refresh_preflight_v1.md).
+This specification admits a rule and its validation contract, not refreshed
+labels or a production sample. The [methods reference](../methods_reference.md) and
 [final-sample refresh contract](polymarket_final_sample_refresh_v1.md) still apply.
 
 ## Purpose and evidence
@@ -93,7 +95,7 @@ a separately reviewed, production-guarded, bounded EC2 adapter is required for
 real metadata validation/materialization. Do not read production metadata or
 trade bodies from the Mac or add a CLI guard bypass.
 
-## Proposed metadata-only validation, not yet executed
+## Frozen metadata-only validation contract
 
 Freeze source/map/rule hashes and explicitly inventory fresh metadata and the
 saved `/mnt/data/learnability/native/market_native_categories.parquet` labels.
