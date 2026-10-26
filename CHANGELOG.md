@@ -8,6 +8,9 @@
   extra capacity alone does not admit a new sample or full collection campaign.
 - Added a small, source-bound V3 upgrade-receipt/implementation diagnostic;
   its observations do not certify deployment history or economic semantics.
+- Added a bounded resumable native-log collector with durable attempt/byte
+  accounting and immutable zero-log/interval evidence; initial admission is
+  limited to reviewed overlap and append subruns, not the full campaign.
 - Confirmed the final Polymarket execution cutoff is exclusive 2 October UTC,
   matching existing Kalshi coverage through 1 October, including full sports refresh.
 - Added an EC2-only, bounded footer/resource/RPC inventory for the requested
