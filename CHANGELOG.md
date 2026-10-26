@@ -14,6 +14,9 @@
 - Added an independent endpoint-overlap auditor that budgets footer-selected
   raw row groups before reading, preserves physical multiplicity and keeps
   newly recovered V3 records separate from legacy/V2 payload comparisons.
+- Added a source-bound append campaign controller with disjoint bounded
+  children, aggregate retained/in-flight reservations, durable process receipts
+  and fail-closed manual resume; quiet completion monitoring is user-authorized.
 - Confirmed the final Polymarket execution cutoff is exclusive 2 October UTC,
   matching existing Kalshi coverage through 1 October, including full sports refresh.
 - Added an EC2-only, bounded footer/resource/RPC inventory for the requested

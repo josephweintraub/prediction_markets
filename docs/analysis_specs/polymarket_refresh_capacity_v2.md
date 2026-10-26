@@ -1,7 +1,8 @@
 # Polymarket refresh capacity contract v2
 
-Status: **proposed hard-cap envelope; full campaign not admitted**, 26 October
-2026. This document replaces neither the historical [v1 assessment](polymarket_refresh_capacity_v1.md)
+Status: **append-only controller admitted under the recorded invocation;
+downstream stages not admitted**, 26 October 2026. This document replaces
+neither the historical [v1 assessment](polymarket_refresh_capacity_v1.md)
 nor its measurements. The [final-sample contract](polymarket_final_sample_refresh_v1.md)
 still governs sample membership, the exclusive `2026-10-02T00:00:00Z` cutoff,
 exact execution timestamps and the full nine-sport refresh.
@@ -92,10 +93,11 @@ Before each affected stage, its reviewed implementation must:
    artifact deletion, overwrite, timestamp fallback or relaxed cohort gates.
    Any cap revision needs a new reviewed version and fresh resource admission.
 
-**Enforcement is not yet complete.** This document alone installs no quotas.
+**Downstream enforcement is not yet complete.** This document alone installs no quotas.
 The existing pilot has small fixed request/response/output limits, but is not a
-full collector. There is no admitted campaign-wide 128 GB collector accounting,
-nor admitted 8 GB header/metadata/sports adapters or 80 GB native bridge. The
+full collector. The reviewed append controller described below enforces its
+128 GB aggregate reservation, but there are no admitted 8 GB
+header/metadata/sports adapters or 80 GB native bridge. The
 existing input and estimator enforce some local resource caps but remain
 source-bound to old repair/input/sports generations; do not simply change
 constants or execute them against the refresh. A new exact-clock input adapter
@@ -104,7 +106,50 @@ its actual safeguards with fixtures and bounded execution before campaign
 approval. A strict cap can safely stop an incomplete stage; it is not evidence
 that the stage will complete.
 
-## Immediate bounded raw-staging subrun
+## Reviewed append campaign invocation
+
+The successful bounded overlap/append and source checks are recorded in the
+[750 GiB resume run](../runs/2026-10-26_polymarket_750gib_resume_v1.md).
+The separately reviewed `run_polymarket_native_collection_campaign.py`
+controller covers only remaining append blocks 88,979,538–94,796,039. It
+does not cover the missing historical V3 population or admit economic trades.
+The accepted first 1,000-block append remains a separate immutable source.
+
+Its frozen invocation permits four independent 10,000-block children, serial
+50-block requests within each child, 900,000 aggregate RPC attempts, 3 TB
+aggregate response bodies, 172,800 cumulative seconds and 128 GB aggregate
+retained raw/control bytes. Each child reserves 2 GB including controls,
+1,200 attempts, 4 GiB response bodies, 3 million rows, 8 GiB address space and
+3,600 seconds. Parent launch admission reserves all in-flight ceilings and
+the 20 GB untouched floor. The 64 MiB parent-control reservation also covers
+the root's separately bounded, at-most-1-MiB launch/checkpoint receipts.
+
+The three native overlap/append probe directories are charged from their
+bound OWNER/session/request receipts, including the failed append probe.
+The original preflight and two capacity-pilot directories are additionally
+inventoried and charged their full retained bytes. Each of those three older
+diagnostic directories also receives a deliberately conservative reservation
+of 10,000 RPC calls, 16 GiB response bodies and 21,600 seconds, rather than
+assuming zero use because its receipt format differs. These are reservations,
+not observed use or additional allowances. The saved diagnostics' finite
+tool/request caps are much smaller; the large combined charge also avoids
+claiming an exact elapsed-runtime reconstruction for mixed preflight tools.
+All charges are inside, not added to, the campaign totals above.
+
+Independent review accepted the controller after adversarial resume tests and
+127 focused fixtures. Canonical-runtime testing passed 272 tests and 233
+subtests. Resume reopens immutable plans, completed payloads, range proofs,
+birth identities and durable request charges; it never overwrites failed
+attempts or automatically retries them. A failed child halts new launches and
+drains owned children. Unknown/live recovered children block resume. The
+controller's `children_still_running` field only describes children owned by
+that invocation, not independently recovered processes or host idleness.
+Root monitoring must independently inspect every saved process birth proof
+and other active consumers before shutdown. No source/HEAD edits are permitted
+during collection. Background monitoring and verified EC2 shutdown are part
+of the user's explicit authorization.
+
+## Initial bounded raw-staging subrun
 
 After root accepts the filesystem/source checks and independently reviewed
 code enforces the following ceilings, the envelope permits **only a bounded
