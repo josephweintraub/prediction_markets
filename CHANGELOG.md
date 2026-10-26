@@ -11,6 +11,9 @@
 - Added a bounded resumable native-log collector with durable attempt/byte
   accounting and immutable zero-log/interval evidence; initial admission is
   limited to reviewed overlap and append subruns, not the full campaign.
+- Added an independent endpoint-overlap auditor that budgets footer-selected
+  raw row groups before reading, preserves physical multiplicity and keeps
+  newly recovered V3 records separate from legacy/V2 payload comparisons.
 - Confirmed the final Polymarket execution cutoff is exclusive 2 October UTC,
   matching existing Kalshi coverage through 1 October, including full sports refresh.
 - Added an EC2-only, bounded footer/resource/RPC inventory for the requested
