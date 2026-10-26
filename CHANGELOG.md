@@ -2,6 +2,14 @@
 
 ## 2026-10-26 - September Polymarket refresh readiness
 
+- Added separately versioned adaptive native collection and campaign entrypoints,
+  retaining accepted old chunks by reference and splitting only proven oversized
+  requests within the original aggregate ceilings.
+- Added an explicit same-volume reboot equivalence gate and fresh strict source
+  plan, without weakening historical identity checks or altering old receipts.
+- Preserved the first append campaign after a response-size failure, drained
+  its active children and verified EC2 stopped; retained all 19 accepted chunks
+  and the failed chunk's partial evidence for a separately reviewed adaptive resume.
 - Verified the administrator-expanded 750 GiB data volume, extended its
   existing ext4 filesystem and rechecked the six bound native-source inputs.
 - Added a proposed aggregate storage envelope and bounded raw-staging contract;

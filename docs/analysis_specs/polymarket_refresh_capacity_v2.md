@@ -108,6 +108,13 @@ that the stage will complete.
 
 ## Reviewed append campaign invocation
 
+The fixed-window attempt subsequently failed safely on one oversized
+response. The user approved the separate
+[adaptive resume contract](polymarket_adaptive_append_resume_v2.md); its new
+entrypoints and reuse validation require independent admission. The original
+invocation and its receipts below remain historical execution evidence, not
+authorization to resume that source-bound directory under changed code.
+
 The successful bounded overlap/append and source checks are recorded in the
 [750 GiB resume run](../runs/2026-10-26_polymarket_750gib_resume_v1.md).
 The separately reviewed `run_polymarket_native_collection_campaign.py`

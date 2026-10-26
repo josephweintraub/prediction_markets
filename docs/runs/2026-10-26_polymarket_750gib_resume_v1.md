@@ -122,6 +122,51 @@ EC2, verifies stopped and pauses the heartbeat. Desktop monitoring requires
 the user's computer and app to remain running. The durable launch receipt and
 small local task state distinguish preparation from a launched job.
 
+## Append v1 terminal state and approved follow-up
+
+The append campaign launched at `2026-10-26T17:59:02.150037Z` from clean,
+pushed revision `19202a820bef569f449a34fc731107f16470e155`. Its frozen plan
+SHA256 is `364a81171cb31f098e1876832ad9a703c6ead963862fc56cd2084a44a1ac6682`.
+The launch and terminal receipts remain under this resume run directory.
+
+Chunk `c000018`, blocks 89,149,538–89,159,537, failed on
+`rpc_response_byte_limit`. Its 76th 50-block request exceeded the 16 MiB
+response-body ceiling. The saved 16,777,217-byte charge is the limit plus one
+detection byte, not the full response size. The preceding 75 successful
+windows and 436,508 records remain partial, unaccepted staging. No oversized
+response was accepted or silently truncated into a successful shard.
+
+The parent stopped new launches and drained its other three children. It
+finished with 19 accepted chunks: `c000001`–`c000017`, `c000019`, `c000020`.
+They are not a contiguous 19-chunk prefix. The failed chunk is still a gap;
+the campaign has no COMPLETE marker. No old release or final sample changed.
+
+Root reopened every saved child birth identity and checked host compute and
+transfer consumers. With no remaining holds, it stopped EC2 and independently
+verified `stopped` at `2026-10-26T18:24:57Z`, then paused the heartbeat. See
+`native_append_campaign_shutdown_check_v1.json` and
+`native_append_campaign_result_v1.json` in the small local receipt mirror.
+
+The user subsequently approved smaller requests and resuming preserved work.
+Implement and independently review a new versioned adaptive contract before
+execution. Preserve the old collector/campaign entrypoints and all outputs;
+reference the 19 accepted chunks read-only and recollect the entire failed
+chunk into fresh output. Split only oversized requests; retain the original
+roster, endpoint, safety limits and scientific gates. Do not resume the old
+fixed-width/source-bound directory under changed code.
+
+The reviewed successor is specified in
+[`polymarket_adaptive_append_resume_v2.md`](../analysis_specs/polymarket_adaptive_append_resume_v2.md).
+Its small local handoff is
+`output/polymarket_adaptive_resume_2026-10-26_v2/task_state.json`; launch and
+runtime receipts belong to
+`/mnt/data/runs/2026-10-26_polymarket_adaptive_resume_v2`.
+The reboot changed only the witnessed transient Linux device number. A separate
+bounded admission must regenerate strict inventory/plan bindings and verify
+device-only equivalence before launching the successor. Canonical fixtures,
+source revision, bridge result and actual launch state are recorded in those
+receipts, not inferred from this preparation record.
+
 The historical V3 gap, metadata/token-family/outcome admission, exact-clock
 coverage, archive-retention bridge, fresh classification coverage and refreshed
 nine-sport clocks remain required. Root must finish all required data handling,
