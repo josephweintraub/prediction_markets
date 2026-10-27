@@ -2,6 +2,16 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Prepared independently reviewed compact-header, raw-source-lookup and full
+  raw-metadata collectors; preserve literal diagnostic scope and require fresh
+  cumulative resource admission before production execution.
+- Recorded the accepted positive historical probe and separate full raw launch;
+  keep canonical source frozen until all owned production processes exit.
+- Reopened the full historical V3 raw repair after its successful exit; preserve
+  separate economic, exact-timestamp, final-sample and publication gates.
+- Kept the header inventory within its read ceilings using cached admitted
+  footer metadata, and repaired final input/output binding checks at staged
+  completion; canonical downstream verification passed 241 synthetic tests.
 - Added an independently checked parent acceptance wrapper for one fresh V3
   historical child, including birth-failure/descendant-drain fixtures and inherited
   campaign accounting; child completion alone cannot admit repaired raw history.

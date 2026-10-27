@@ -141,3 +141,73 @@ The v2 terminal aggregate already includes its inherited/failed raw roots;
 those roots are not re-added. New profile reservations remain inside the
 unchanged global ceilings. Full historical admission must additionally account
 for the probe's charged use and independently reopen its positive-row acceptance.
+
+## Historical collection and downstream preparation
+
+The separately versioned metadata continuation completed its ten-page probe at
+clean revision `2ae681f0df162fa96c2988860a43ba312b208b8f`. It retained 2,080 raw
+rows across five streams, with 10 HTTP attempts and 4,080,344 charged response
+bytes. All five streams remain nonterminal at the probe's two-page limit. Its
+manifest SHA256 is `20f91af26c4690f77b0a1fed83954439f135caa82a891222a8eb79e8cbdc52d1`;
+this accepts the bounded raw probe, not full market coverage or payout mappings.
+
+Root independently reopened the historical positive probe: 384 distinct native
+records across ten 100-block windows. The accepted parent completion SHA256 is
+`7ba3cedafff5569474da56148ea406b60b4c5d1143634767f2a5406d0ce04c5b`.
+Its retained bytes, RPC/response charges and full runtime reservation were added
+before admitting the full historical raw child. The separate full admission is
+`v3_historical_global_admission_full_v1.json`, SHA256
+`c82018677c88db8a32d494d3a43b368da5f4aae408746353395e074967bb780e`.
+
+Root launched `v3_historical_full_v1` at 14:48:47 UTC. Its parent PID/birth ticks
+are 20318/541599, and its child PID/birth ticks are 20332/541618, on boot
+`b9008fdc-0b94-4daf-b498-13403e96c475`. At 15:45:36 UTC all 14,991 requested
+windows had successful receipts and the child had exited with a saved drain
+receipt. The parent was still independently validating outputs; no parent
+acceptance was yet present. Source and canonical HEAD remain frozen at the
+revision above until the parent and all owned consumers exit.
+
+The parent subsequently accepted 398,285 raw records across all 14,991 windows
+and exited zero at 15:46:35 UTC. Parent completion SHA256 is
+`ebed5d73293f09c6979b5e522c4da66b4ac0765f24789fa9840031561ad1e56d`;
+the result SHA256 is `ee20282b39fb4ae3c1edcbeb2b66e5bb63096ffd8319e1063c5072586c0106fa`.
+Root independently reopened the committed native validator against the saved
+payloads, range proofs, request ledgers and controls. It reconciled the same
+398,285 records and 14,991 windows, confirmed the caller's exit zero and both
+owned births absent, and saved `v3_historical_full_root_acceptance_v1.json`
+(SHA256 `a26a2c5fd6d9e9bb716f24ed8e52556be8ccd82d4e4fec9b73f96ce85463d750`).
+The raw stage charges 59,967 RPC attempts, 960,401,873 response bytes,
+305,702,649 retained bytes including terminal reserve, and its full 7,200-second
+runtime reservation. The root recheck separately reserves 600 diagnostic seconds,
+uses no API calls and writes only the small acceptance receipt. Raw acceptance
+does not admit economic decoding, exact interior clocks or the final sample.
+
+Independent local review accepted a compact 1,000-key exact-header scale pilot,
+a two-address raw source lookup and a terminal-pagination metadata collector.
+None has yet been executed in production. The metadata review repaired three
+reproduced faults before launch: a late cumulative-deadline check, retained
+prefix accounting after interrupted reads, and rejection of prior collection
+roots with unreconciled request charges. Those changes do not normalize raw
+metadata, verify deployed source equivalence or admit an analysis sample.
+
+The sealed source-roster preflight is bound by SHA256
+`acb848a8866959dd6fcaf5a8c5d62800c14b1b29cbed250be8fa2994bd71561e`.
+It found 116,364 declared native payload files in the accepted append/probe
+sources, plus one legacy file. It did not read trade bodies or adopt the active
+historical run. A reviewed literal-roster builder must add the independently
+accepted historical full result, and the subsequent inventory must rehash the
+native payloads and project their actual block keys before full timestamp
+collection can be admitted. The historical probe is diagnostic overlap and
+must not be counted again as an authoritative source.
+
+The first canonical downstream fixture invocation passed the executed checks
+but ended with a test-runner import error from a misspelled metadata test-module
+name. Its failed receipt/log are retained as `downstream_collectors_runtime_fixture_v1.*`.
+The corrected invocation uses the verified existing module name and a fresh v2
+receipt; no API collection is authorized by a failed fixture invocation.
+The corrected canonical run passed 241 tests in 127.943 seconds, exit zero.
+The saved v2 fixture log SHA256 is
+`e02d6b72f8149a76d5c77ad00bd282c50771b1bf40953f00ad57b1bcaadd4b79`.
+The header inventory retains two dedicated footer passes and one native-payload
+hash pass; its repaired staged-completion gate rechecks source identities,
+roster/source bindings, outputs and deadline after marker staging.
