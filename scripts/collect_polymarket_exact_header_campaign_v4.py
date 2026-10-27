@@ -105,7 +105,7 @@ def validate_reboot(certificate_ref, prior_value, inputs, private_ref):
     """One SHA-bound root-approved reboot, not a general identity relaxation."""
     certificate,binding=read_json(certificate_ref)
     require(set(certificate)=={"schema_version","status","old_boot_id","current_boot_id","data_volume",
-        "old_owner","old_drain","inputs","private_authority"} and
+        "old_owner","old_drain","inputs","private_authority","original_pilot_request"} and
         certificate["schema_version"]=="polymarket_header_reboot_equivalence_v4" and
         certificate["status"]=="root_verified_same_volume_device_reassignment" and
         certificate["old_boot_id"]==OLD_BOOT_ID and certificate["current_boot_id"]==CURRENT_BOOT_ID,
@@ -149,12 +149,33 @@ def validate_reboot(certificate_ref, prior_value, inputs, private_ref):
         require(reference(ref(current),CAPS["baseline_bytes"])==current,"reboot_input_rehash_differs")
         old_inputs[name]=old
     require(encode(owner.get("inputs"))==encode(old_inputs),"reboot_old_owner_inputs_differs")
+    original=certificate["original_pilot_request"]
+    require(type(original) is dict and set(original)=={"reference","old","current"} and
+        original["reference"]==legacy.ORIGINAL_PILOT_INPUT and
+        prior_value.get("original_pilot_input")==original["reference"],"reboot_original_request_reference_differs")
+    original_reference=reference(original["reference"],MAX_JSON)
+    original_keys,current_request=pilot.read_requests(Path(original_reference["path"]),original_reference["sha256"])
+    scale_contract=read_json(ref(inputs["scale_contract"]))[0]
+    old_request=original["old"]
+    require(type(old_request) is dict and set(old_request)=={"identity","sha256","keys","normalized_keys_sha256"} and
+        type(old_request["identity"]) is dict and set(old_request["identity"])==set(current_request["identity"]) and
+        encode(old_request)==encode(scale_contract.get("request")) and
+        encode(original["current"])==encode(current_request) and len(original_keys)==1000 and
+        type(old_request["keys"]) is int and old_request["keys"]==1000,
+        "reboot_original_request_binding_differs")
+    changed=decode(encode(old_request));changed["identity"]["device"]=CURRENT_DATA_DEVICE
+    require(type(old_request["identity"].get("device")) is int and
+        old_request["identity"]["device"]==OLD_DATA_DEVICE and
+        type(current_request["identity"].get("device")) is int and
+        current_request["identity"]["device"]==CURRENT_DATA_DEVICE and
+        encode(changed)==encode(current_request) and
+        all(current_request["identity"].get(key)==part for key,part in original_reference["identity"].items()),
+        "reboot_original_request_nondevice_identity_differs")
     authority=certificate["private_authority"]
     require(type(authority) is dict and set(authority)=={"reference","old","current","root_uuid"} and
         authority["reference"]==private_ref and type(authority["root_uuid"]) is str and
         authority["root_uuid"]==env["root_uuid"]==ROOT_UUID,"reboot_private_authority_schema")
     actual_private=reference(private_ref);current_private=pilot.identity(Path(private_ref["path"]))
-    scale_contract=read_json(ref(inputs["scale_contract"]))[0]
     require(encode(authority["old"])==encode(scale_contract.get("rpc_authority_private_file_identity")) and
         encode(authority["current"])==encode(current_private),"reboot_private_identity_differs")
     changed=dict(authority["old"]);changed["device"]=current_private["device"]
@@ -165,7 +186,234 @@ def validate_reboot(certificate_ref, prior_value, inputs, private_ref):
     previous_admission=read_json(ref(owner["admission"]),MAX_LEDGER)[0]
     require(previous_admission.get("private_file")==private_ref,"reboot_old_private_reference_differs")
     return {"binding":binding,"old_inputs":old_inputs,"private_binding":actual_private,
-        "private_current":current_private,"environment":env}
+        "private_current":current_private,"environment":env,"original_request":original,
+        "original_reference":original_reference}
+
+
+# Frozen v3 validator: only the certified original-request comparison differs.
+# Explicit legacy qualification preserves its helper and source-file semantics.
+def validate_legacy_prior(value, output, source, inputs, original_request):
+    legacy.require(type(value) is dict and set(value) == {"complete_roster", "baseline_cache_excluded", "roots",
+            "standalone_control_files", "original_pilot_input", "files", "rpc", "campaigns"} and value["complete_roster"] is True
+            and value["baseline_cache_excluded"] is True, "prior_ledger_schema")
+    legacy.require(value["original_pilot_input"] == legacy.ORIGINAL_PILOT_INPUT, "original_pilot_input_not_pinned")
+    original = legacy.reference(value["original_pilot_input"], legacy.MAX_JSON)
+    original_keys, original_binding = legacy.pilot.read_requests(legacy.Path(original["path"]), original["sha256"])
+    ct = legacy.read_json(legacy.ref(inputs["scale_contract"]))[0]
+    legacy.require(len(original_keys) == 1000 and ct.get("request") == original_request["old"] and
+            original_binding == original_request["current"], "original_pilot_scale_binding_differs")
+    legacy.read_headers(legacy.Path(inputs["scale_headers"]["path"]), original_keys)
+    roots, standalone, entries = value["roots"], value["standalone_control_files"], value["files"]
+    legacy.require(type(roots) is list and len(roots) <= 512 and type(standalone) is list and
+            type(entries) is list and 0 < len(entries) <= legacy.MAX_FILES, "prior_roster_size")
+    actual, directories = set(), []
+    for name in roots:
+        path = legacy.Path(name)
+        legacy.require(path.is_absolute() and path.resolve() == path and path.is_dir() and legacy.RUN_ROOT in path.parents
+                and not path.is_symlink() and output not in path.parents and path not in output.parents and output != path
+                and all(path != old and path not in old.parents and old not in path.parents for old in directories), "prior_root_invalid")
+        directories.append(path)
+        for item in path.rglob("*"):
+            legacy.require(not item.is_symlink() and (item.is_dir() or item.is_file()), "prior_tree_invalid")
+            if item.is_file(): actual.add(str(item))
+            legacy.require(len(actual) <= legacy.MAX_FILES, "prior_roster_size")
+    roster_echo = None
+    for name in standalone:
+        path = legacy.Path(name)
+        legacy.require(str(path) not in actual and path.is_absolute() and path.resolve() == path and legacy.RUN_ROOT in path.parents
+                and output not in path.parents and path not in output.parents and path != output, "standalone_control_invalid")
+        legacy.require(path.name not in {"OWNER.json", "manifest.json", "RESULT.json", "FAILED.json", "FAILURE.json",
+                "COMPLETE.json", "CONTRACT.json", "artifact_inventory.json", "rpc.jsonl", "REQUESTS.jsonl", "roster.json"}
+                and not path.name.endswith((".START.json", ".FINISH.json", ".parquet", ".raw", ".body", ".body.gz"))
+                and not {"chunks", "responses"}.intersection(path.parts), "standalone_protocol_artifact_forbidden")
+        if str(path) == legacy.SCALE_STDOUT_ECHO["path"]:
+            # One immutable, known CLI manifest echo is control evidence, not
+            # another collection root. Its accepted producer root must still
+            # be fully inventoried and charged through the ordinary gates.
+            echoed, _ = legacy.read_json(legacy.SCALE_STDOUT_ECHO)
+            legacy.require(legacy.Path(inputs["scale_manifest"]["path"]).parent in directories,
+                    "fixed_scale_stdout_scale_root_missing")
+            legacy.require(echoed == legacy.read_json(legacy.ref(inputs["scale_manifest"]))[0],
+                    "fixed_scale_stdout_manifest_differs")
+        elif str(path) == legacy.ROSTER_STDOUT_ECHO["path"]:
+            roster_echo, _ = legacy.read_json(legacy.ROSTER_STDOUT_ECHO)
+            legacy.require(type(roster_echo) is dict and legacy.Path(inputs["roster"]["path"]).parent in directories,
+                    "fixed_roster_stdout_roster_root_missing")
+        else:
+            legacy.standalone_operational_control(path)
+        actual.add(str(path))
+    legacy.require(original["path"] not in standalone and legacy.RUN_ROOT in legacy.Path(original["path"]).parents,
+            "original_pilot_input_misclassified_or_outside_run_root")
+    actual.add(original["path"])
+    files, totals = {}, dict.fromkeys(("baseline", "accepted", "control", "failed"), 0)
+    for item in entries:
+        legacy.require(type(item) is dict and set(item) == {"path", "bytes", "sha256", "category", "chunk"}
+                and item["category"] in totals and (item["chunk"] is None or type(item["chunk"]) is int and 0 <= item["chunk"] < 400),
+                "prior_file_schema")
+        legacy.require(item["path"] in actual and item["path"] not in files, "prior_file_duplicate_or_missing")
+        legacy.require(item["path"] not in standalone or item["category"] == "control", "standalone_control_category")
+        legacy.require(item["path"] != legacy.SCALE_STDOUT_ECHO["path"] or
+                item["category"] == "control" and item["chunk"] is None, "fixed_scale_stdout_category_invalid")
+        legacy.require(item["path"] != legacy.ROSTER_STDOUT_ECHO["path"] or
+                item["category"] == "control" and item["chunk"] is None, "fixed_roster_stdout_category_invalid")
+        legacy.require(item["path"] != original["path"] or item["category"] == "baseline" and item["chunk"] is None,
+                "original_pilot_input_misclassified_or_outside_run_root")
+        capture = legacy.reference(legacy.ref(item), legacy.CAPS["global_header_bytes"])
+        files[item["path"]] = capture | {"category": item["category"], "chunk": item["chunk"]}
+        totals[item["category"]] += item["bytes"]
+    legacy.require(set(files) == actual and len(standalone) == len(set(standalone)), "prior_roster_incomplete")
+    if roster_echo is not None:
+        manifest_path = str(legacy.Path(inputs["roster"]["path"]).parent / "manifest.json")
+        legacy.require(manifest_path in files and roster_echo == legacy.read_json(legacy.ref(files[manifest_path]))[0],
+                "fixed_roster_stdout_manifest_differs")
+    legacy.require(all(totals[key] <= legacy.CAPS[key + "_bytes"] for key in totals)
+            and sum(totals.values()) <= legacy.CAPS["global_header_bytes"], "prior_disk_allocation")
+    rpc = value["rpc"]
+    legacy.require(type(rpc) is dict and set(rpc) == {"http_attempts", "method_items", "response_bytes", "elapsed_seconds"}, "prior_rpc_schema")
+    for key in ("http_attempts", "method_items", "response_bytes"): legacy.integer(rpc[key], legacy.CAPS[key])
+    legacy.elapsed(rpc["elapsed_seconds"])
+    minima = dict.fromkeys(rpc, 0)
+    chunk_usage, sealed, attempts = {}, {}, {}
+    campaigns = value["campaigns"]
+    legacy.require(type(campaigns) is list and len(campaigns) <= 1200, "prior_campaign_count")
+    campaign_roots = set()
+    for campaign in campaigns:
+        legacy.require(type(campaign) is dict and set(campaign) == {"run_dir", "drain"}, "prior_campaign_schema")
+        root = legacy.Path(campaign["run_dir"])
+        legacy.require(root in directories and str(root) not in campaign_roots, "prior_campaign_not_rostered")
+        campaign_roots.add(str(root))
+        owner_path = str(root / "OWNER.json")
+        legacy.require(owner_path in files, "prior_owner_missing")
+        owner = legacy.read_json(legacy.ref(files[owner_path]))[0]
+        legacy.require(owner.get("schema_version") == "polymarket_exact_header_owner_v3" and owner.get("run_dir") == str(root)
+                and owner.get("caps") == legacy.CAPS and owner.get("inputs") == inputs and owner.get("raw_clocks_only") is True
+                and owner.get("final_sample_admitted") is False, "prior_owner_schema_or_inputs")
+        previous_admission = owner.get("admission", {})
+        legacy.require(type(previous_admission) is dict and previous_admission.get("path") in files and
+                legacy.ref(previous_admission) == legacy.ref(files[previous_admission["path"]]), "prior_root_admission_missing")
+        legacy.require(legacy.owner_state(owner.get("process", {})) == "dead", "prior_owner_live_or_unknown")
+        legacy.require(owner.get("source", {}).get("files") == source["files"], "prior_campaign_source_drift")
+        legacy.producer_source(owner["source"], source, legacy.SOURCE_FILES)
+        drain, drainage = legacy.read_json(campaign["drain"])
+        legacy.require(drainage["path"] in files and drain.get("schema_version") == "polymarket_exact_header_drain_v3"
+                and drain.get("run_dir") == str(root) and drain.get("owner_sha256") == files[owner_path]["sha256"]
+                and drain.get("owner_identity_verified_dead") is True and drain.get("no_owned_workers_or_transfers") is True,
+                "prior_drain_not_accepted")
+        minima["elapsed_seconds"] += legacy.elapsed(drain.get("runtime_charge_seconds"))
+        times = drain.get("chunk_runtime_seconds")
+        legacy.require(type(times) is dict and all(type(key) is str and key.isdecimal() for key in times), "prior_chunk_drain_times_missing")
+        root_chunks = set()
+        for path, file in files.items():
+            if root not in legacy.Path(path).parents: continue
+            if legacy.Path(path).name == "rpc.jsonl":
+                chunk = file["chunk"]
+                keys = legacy.key_chunk_at(inputs["keys"]["path"], chunk) if chunk is not None else None
+                usage, starts, finishes = legacy.journal_usage(path, (chunk * legacy.CAPS["keys_per_chunk"], keys) if keys is not None else None)
+                for key, count in usage.items(): minima[key] += count
+                if chunk is not None:
+                    root_chunks.add(chunk)
+                    aggregate = chunk_usage.setdefault(chunk, dict.fromkeys(("http_attempts", "method_items", "response_bytes", "elapsed_seconds"), 0))
+                    for key, count in usage.items(): aggregate[key] += count
+                    minimum_time = max(0, max(item["t"] for item in [*starts.values(), *finishes.values()]) - min(item["t"] for item in starts.values())) / 1000 if starts else 0
+                    legacy.require(str(chunk) in times and legacy.elapsed(times[str(chunk)], legacy.CAPS["chunk_runtime_seconds"]) >= minimum_time,
+                            "prior_chunk_drain_time_understated")
+                    aggregate["elapsed_seconds"] += times[str(chunk)]
+                    attempts.setdefault(chunk, set()).add(str(legacy.Path(path).parent))
+                    marker = legacy.Path(path).parent / "COMPLETE.json"
+                    if str(marker) in files:
+                        legacy.require(chunk not in sealed and len(starts) == len(finishes), "sealed_chunk_duplicate_or_open_call")
+                        manifest_file = str(marker.parent / "manifest.json")
+                        legacy.require(manifest_file in files, "prior_chunk_manifest_missing")
+                        chunk_manifest = legacy.read_json(legacy.ref(files[manifest_file]))[0]
+                        legacy.require(aggregate["elapsed_seconds"] >= legacy.elapsed(chunk_manifest.get("active_seconds_charged"),
+                                legacy.CAPS["chunk_runtime_seconds"]), "prior_chunk_drain_time_understated")
+                        sealed[chunk] = {"root": str(legacy.Path(path).parent), "journal": path, "source_root": str(root)}
+        legacy.require(set(times) == {str(chunk) for chunk in root_chunks} and
+                sum(times.values()) <= drain["runtime_charge_seconds"], "prior_chunk_drain_time_roster")
+    for root in directories:
+        owner = str(root / "OWNER.json")
+        if owner in files:
+            value_owner = legacy.read_json(legacy.ref(files[owner]))[0]
+            if value_owner.get("schema_version") == "polymarket_exact_header_owner_v3":
+                legacy.require(str(root) in campaign_roots, "prior_campaign_drain_missing")
+        if str(root) in campaign_roots: continue
+        summaries = [files[str(root / name)] for name in ("RESULT.json", "manifest.json", "FAILED.json") if str(root / name) in files]
+        recognized = False
+        root_minima = dict.fromkeys(rpc, 0)
+        for item in summaries:
+            summary = legacy.read_json(legacy.ref(item))[0]
+            schema = summary.get("schema_version")
+            if schema == "polymarket_exact_header_pilot_result_v1":
+                u = summary.get("usage", {}); values = {"http_attempts": u.get("rpc_batch_attempts"),
+                    "method_items": u.get("rpc_method_items"), "response_bytes": u.get("charged_response_bytes"), "elapsed_seconds": u.get("elapsed_seconds")}
+            elif schema == "polymarket_exact_header_scale_pilot_v2":
+                u = summary.get("usage", {}); inherited = u.get("inherited_rpc", {})
+                values = {key: u.get(key, -1) - inherited.get(key, 0) for key in rpc}
+            elif schema == "polymarket_exact_header_key_inventory_v1":
+                legacy.producer_source(summary.get("source"), source, ("production_guard.py", "scripts/inventory_polymarket_refresh.py",
+                    "scripts/inventory_polymarket_exact_header_keys_v1.py", "tests/test_inventory_polymarket_exact_header_keys_v1.py"))
+                legacy.require(all(file["category"] == "baseline" and file["chunk"] is None
+                    for path, file in files.items() if root in legacy.Path(path).parents), "inventory_profile_category_invalid")
+                root_minima["elapsed_seconds"] = max(root_minima["elapsed_seconds"], 2400,
+                    legacy.elapsed(summary.get("usage", {}).get("elapsed_seconds", 0)))
+                continue  # Projection inventory performs no RPC, but costs runtime.
+            elif schema == "polymarket_exact_header_roster_build_v1":
+                legacy.require(summary.get("status") == "sealed_source_roster_complete_not_inventory_admission"
+                        and summary.get("caps") == legacy.roster_profile.CAPS and summary.get("literal_source_generation_only") is True
+                        and summary.get("final_universe_admitted") is False and summary.get("analysis_admitted") is False,
+                        "roster_profile_not_sealed")
+                legacy.producer_source(summary.get("source"), source, legacy.roster_profile.SOURCE_FILES, hashes_only=True)
+                expected = {str(root / name) for name in ("START.json", "roster.json", "manifest.json", "COMPLETE.json")}
+                legacy.require({path for path in files if root in legacy.Path(path).parents} == expected and
+                        all(files[path]["category"] == "baseline" and files[path]["chunk"] is None for path in expected),
+                        "roster_profile_artifact_roster_or_category")
+                marker = legacy.read_json(legacy.ref(files[str(root / "COMPLETE.json")]))[0]
+                start = legacy.read_json(legacy.ref(files[str(root / "START.json")]))[0]
+                legacy.require(marker.get("status") == summary["status"] and marker.get("manifest") ==
+                    {"path": "manifest.json", **{key: item[key] for key in ("bytes", "sha256")}}
+                    and marker.get("final_universe_admitted") is False and marker.get("analysis_admitted") is False
+                    and start.get("schema_version") == schema and start.get("source") == summary["source"]
+                    and start.get("caps") == legacy.roster_profile.CAPS, "roster_profile_marker_or_start_differs")
+                roster_item = files[str(root / "roster.json")]
+                legacy.require(summary.get("roster") == {"path": "roster.json", **{key: roster_item[key] for key in ("bytes", "sha256")}},
+                        "roster_profile_output_hash_differs")
+                roster_value = legacy.read_json(legacy.ref(roster_item), MAX_LEDGER)[0]
+                legacy.require(type(roster_value) is dict and set(roster_value) == {"schema_version", "files"}
+                        and roster_value["schema_version"] == "polymarket_exact_header_key_roster_v1"
+                        and type(roster_value["files"]) is list and 0 < len(roster_value["files"]) <= legacy.MAX_FILES
+                        and summary.get("source_files") == len(roster_value["files"]), "roster_profile_output_schema")
+                root_minima["elapsed_seconds"] = max(root_minima["elapsed_seconds"], 1800)
+                continue  # Exact reviewed profile has no HTTP/RPC; no payload is adopted.
+            else:
+                raise legacy.Blocked("prior_summary_schema_unknown")
+            recognized = True
+            for key, count in values.items():
+                root_minima[key] = max(root_minima[key], legacy.elapsed(count) if key == "elapsed_seconds" else legacy.integer(count, legacy.CAPS[key]))
+        for key in minima: minima[key] += root_minima[key]
+        if any((legacy.Path(path).name in {"rpc.jsonl", "REQUESTS.jsonl"} or
+                legacy.Path(path).name.endswith((".START.json", ".FINISH.json"))) and root in legacy.Path(path).parents for path in files):
+            legacy.require(recognized, "prior_rpc_summary_missing")
+    legacy.require(all(rpc[key] >= minima[key] for key in rpc), "prior_rpc_below_durable_minima")
+    accepted_paths = {str(legacy.Path(item["root"]) / "headers.parquet"): chunk for chunk, item in sealed.items()}
+    for path, item in files.items():
+        if item["category"] == "accepted":
+            legacy.require(path in accepted_paths and item["chunk"] == accepted_paths[path], "accepted_header_not_sealed")
+        for root in campaign_roots:
+            if legacy.Path(root) not in legacy.Path(path).parents: continue
+            parts = legacy.Path(path).relative_to(root).parts
+            if parts[0] == "chunks":
+                legacy.require(len(parts) == 4 and len(parts[1]) == 7 and parts[1][0] == "c" and parts[1][1:].isdecimal()
+                        and len(parts[2]) == 3 and parts[2][0] == "a" and parts[2][1:].isdecimal()
+                        and item["chunk"] == int(parts[1][1:]), "prior_chunk_path_or_category")
+                legacy.require(item["category"] == ("accepted" if path in accepted_paths else "failed")
+                        if parts[-1] == "headers.parquet" else item["category"] == "control", "prior_chunk_path_or_category")
+            else:
+                legacy.require(item["chunk"] is None and item["category"] == "control", "prior_campaign_control_category")
+    for chunk, usage in chunk_usage.items():
+        legacy.require(len(attempts[chunk]) <= legacy.CAPS["attempts_per_chunk"] and all(usage[key] <= legacy.CAPS["chunk_" + key]
+                for key in ("http_attempts", "method_items", "response_bytes")) and usage["elapsed_seconds"] <= legacy.CAPS["chunk_runtime_seconds"]
+                and sum(item["bytes"] for item in files.values() if item["chunk"] == chunk) <= legacy.CAPS["chunk_artifact_bytes"], "prior_chunk_cap")
+    return {"files": files, "bytes": totals, "rpc": rpc, "sealed": sealed, "attempts": attempts, "chunk_usage": chunk_usage}
 
 
 def validate_prior(value, output, source, inputs, reboot):
@@ -263,7 +511,7 @@ def validate_prior(value, output, source, inputs, reboot):
     base_value["standalone_control_files"]=[path for path in value["standalone_control_files"] if path!=echo_path]
     # The unchanged validator receives the exact old OWNER inputs only after
     # full-byte, same-volume equivalence. Actual collection uses fresh inputs.
-    prior = legacy.validate_prior(base_value, output, legacy_source(source), reboot["old_inputs"])
+    prior = validate_legacy_prior(base_value, output, legacy_source(source), reboot["old_inputs"],reboot["original_request"])
     require(bool(value["campaigns"]), "failed_v3_campaign_missing")
     for campaign in value["campaigns"]:
         owner = read_json(ref(prior["files"][str(Path(campaign["run_dir"])/"OWNER.json")]))[0]
@@ -547,7 +795,7 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
     b = Budget(output, prior, admission_binding["bytes"], started)
     source_identities = {name: identity(REPO / name) for name in SOURCE_FILES}
     def before_request():
-        for value in (admission_binding, private_binding, inputs["keys"],reboot["binding"]):
+        for value in (admission_binding, private_binding, inputs["keys"],reboot["binding"],reboot["original_reference"]):
             require(identity(Path(value["path"])) == value["identity"], "request_input_changed")
         require(all(identity(REPO / name) == value for name, value in source_identities.items()), "request_source_changed")
     b.before_request = before_request

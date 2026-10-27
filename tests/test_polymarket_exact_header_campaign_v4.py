@@ -1,7 +1,9 @@
 """Synthetic source-versioned recovery fixtures; no real API/data access."""
 from contextlib import ExitStack, nullcontext
+import ast
 import copy
 import http.client
+import inspect
 import json
 import os
 from pathlib import Path
@@ -63,7 +65,21 @@ class RecoveryTests(unittest.TestCase):
 
     def make_reboot(self):
         prior=self.admission["prior"];owner_path=self.old_root/"OWNER.json"
-        owner=json.loads(owner_path.read_bytes());current=copy.deepcopy(owner["inputs"])
+        contract=json.loads((self.scale/"CONTRACT.json").read_bytes())
+        contract["request"]["identity"]["device"]=recovery.OLD_DATA_DEVICE
+        self.inputs["scale_contract"]=self.save(self.scale/"CONTRACT.json",contract)
+        manifest=json.loads((self.scale/"manifest.json").read_bytes())
+        manifest["contract"]=self.inputs["scale_contract"]|{"path":"CONTRACT.json"}
+        self.inputs["scale_manifest"]=self.save(self.scale/"manifest.json",manifest)
+        marker=json.loads((self.scale/"COMPLETE.json").read_bytes())
+        marker["manifest"]=self.inputs["scale_manifest"]|{"path":"manifest.json"}
+        self.inputs["scale_complete"]=self.save(self.scale/"COMPLETE.json",marker)
+        for item in prior["files"]:
+            if item["path"] in {self.inputs[name]["path"] for name in ("scale_contract","scale_manifest","scale_complete")}:
+                item.update(self.ref(Path(item["path"])))
+        owner=json.loads(owner_path.read_bytes())
+        owner["inputs"]={name:recovery.reference(item,recovery.CAPS["baseline_bytes"]) for name,item in self.inputs.items()}
+        current=copy.deepcopy(owner["inputs"])
         self.current_data_device=current["keys"]["identity"]["device"]
         for item in owner["inputs"].values():item["identity"]["device"]=recovery.OLD_DATA_DEVICE
         owner_ref=self.save(owner_path,owner)
@@ -83,6 +99,8 @@ class RecoveryTests(unittest.TestCase):
                 "old_device":recovery.OLD_DATA_DEVICE,"current_device":self.current_data_device},
             "old_owner":owner_ref,"old_drain":drain_ref,
             "inputs":{name:{"old":old,"current":current[name]} for name,old in owner["inputs"].items()},
+            "original_pilot_request":{"reference":self.original_ref,"old":contract["request"],
+                "current":recovery.pilot.read_requests(self.original,self.original_ref["sha256"])[1]},
             "private_authority":{"reference":self.admission["private_file"],"old":private_identity,
                 "current":private_identity,"root_uuid":self.reboot_env["root_uuid"]}}
         self.certificate_path=self.root/"header_reboot_equivalence.json"
@@ -167,6 +185,28 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(result["status"],"blocked",result);self.assertEqual(result["error_code"],code)
         self.assertFalse((self.output/"COMPLETE.json").exists())
 
+    def test_frozen_legacy_prior_copy_changes_only_certified_original_request_comparison(self):
+        original=ast.parse(inspect.getsource(recovery.legacy.validate_prior)).body[0]
+        actual=ast.parse(inspect.getsource(recovery.validate_legacy_prior)).body[0]
+        class UnqualifyLegacy(ast.NodeTransformer):
+            def visit_Attribute(self,node):
+                node=self.generic_visit(node)
+                if isinstance(node.value,ast.Name) and node.value.id=="legacy":
+                    return ast.Name(id=node.attr,ctx=node.ctx)
+                return node
+        actual=UnqualifyLegacy().visit(actual)
+        original.name=actual.name
+        original.args.args.append(ast.arg(arg="original_request"))
+        comparison=ast.parse('len(original_keys)==1000 and ct.get("request")==original_request["old"] '
+            'and original_binding==original_request["current"]',mode="eval").body
+        changed=0
+        for item in original.body:
+            if isinstance(item,ast.Expr) and isinstance(item.value,ast.Call) and len(item.value.args)==2 and \
+                    isinstance(item.value.args[1],ast.Constant) and item.value.args[1].value=="original_pilot_scale_binding_differs":
+                item.value.args[0]=comparison;changed+=1
+        self.assertEqual(changed,1)
+        self.assertEqual(ast.dump(actual),ast.dump(original))
+
     def test_same_full_inventory_is_fetched_without_adopting_unsealed_or_diagnostic_headers(self):
         result=self.execute();self.assertEqual(result["status"],recovery.SUCCESS,result)
         batches=[payload for payload in self.calls if isinstance(payload,list)]
@@ -219,6 +259,73 @@ class RecoveryTests(unittest.TestCase):
             self.certificate["inputs"][name]["old"]["sha256"]="0"*64;self.refresh_certificate()
             with self.assertRaisesRegex(recovery.Blocked,"reboot_input_binding_differs"):self.execute()
             self.assertFalse(self.calls)
+
+    def test_original_pilot_request_certifies_only_literal_device_reassignment(self):
+        pair=self.certificate["original_pilot_request"]
+        self.assertEqual(pair["old"]["identity"]["device"],recovery.OLD_DATA_DEVICE)
+        self.assertEqual(pair["current"]["identity"]["device"],self.current_data_device)
+        expected=copy.deepcopy(pair["old"]);expected["identity"]["device"]=self.current_data_device
+        self.assertEqual(expected,pair["current"])
+        result=self.execute();self.assertEqual(result["status"],recovery.SUCCESS,result)
+        owner=json.loads((self.output/"OWNER.json").read_bytes())
+        self.assertEqual(owner["inputs"]["scale_contract"],self.certificate["inputs"]["scale_contract"]["current"])
+
+    def test_original_pilot_request_pair_fields_and_hashes_fail_before_dispatch(self):
+        original=copy.deepcopy(self.certificate)
+        for side in ("old","current"):
+            for field in ("path","device","inode","bytes","mtime_ns","ctime_ns","mode","uid","gid"):
+                self.certificate=copy.deepcopy(original)
+                item=self.certificate["original_pilot_request"][side]["identity"]
+                item[field]=item[field]+".different" if field=="path" else item[field]+1
+                self.refresh_certificate()
+                with self.assertRaises(recovery.Blocked):self.execute()
+                self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+            for field,value in (("sha256","0"*64),("keys",999),("keys",True),("normalized_keys_sha256","0"*64)):
+                self.certificate=copy.deepcopy(original)
+                self.certificate["original_pilot_request"][side][field]=value
+                self.refresh_certificate()
+                with self.assertRaises(recovery.Blocked):self.execute()
+                self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_original_pilot_request_reference_and_schema_are_exact(self):
+        original=copy.deepcopy(self.certificate)
+        mutations=(lambda c:c.pop("original_pilot_request"),
+            lambda c:c["original_pilot_request"].update(extra=True),
+            lambda c:c["original_pilot_request"]["old"].update(extra=True),
+            lambda c:c["original_pilot_request"]["old"]["identity"].update(extra=True),
+            lambda c:c["original_pilot_request"]["old"]["identity"].update(device=True),
+            lambda c:c["original_pilot_request"]["reference"].update(sha256="0"*64),
+            lambda c:c["original_pilot_request"]["reference"].update(bytes=1))
+        for mutate in mutations:
+            self.certificate=copy.deepcopy(original);mutate(self.certificate);self.refresh_certificate()
+            with self.assertRaises(recovery.Blocked):self.execute()
+            self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_original_pilot_request_is_rehashed_after_earlier_input_validation(self):
+        original=recovery.validate_inputs
+        def changed(*args):
+            value=original(*args);raw=self.original.read_bytes()
+            self.original.write_bytes(raw[:-1]+b"\n");return value
+        with patch.object(recovery,"validate_inputs",side_effect=changed):
+            with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_current_original_pilot_request_checked_before_next_dispatch(self):
+        original=self.transport
+        def transport(*args,**kwargs):
+            value=original(*args,**kwargs)
+            if len(self.calls)==1:
+                raw=self.original.read_bytes();self.original.write_bytes(raw[:-1]+b"\n")
+            return value
+        self.assert_blocked(self.execute(transport=transport),"request_input_changed")
+        self.assertEqual(len(self.calls),1)
+
+    def test_late_original_pilot_request_mutation_withholds_completion(self):
+        def source(_):
+            if (self.output/".COMPLETE.json.pending").exists():
+                raw=self.original.read_bytes();self.original.write_bytes(raw[:-1]+b"\n")
+            return self.source
+        self.assert_blocked(self.execute(source_effect=source),"input_identity_changed")
 
     def test_reboot_owner_drain_and_certificate_roster_bindings_are_mandatory(self):
         original=copy.deepcopy(self.certificate)
