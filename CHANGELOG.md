@@ -2,6 +2,24 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Verify the compact metadata pilot and its saved pages, then prepare fresh full
+  acquisition from its own initial cursor; preserve the failed full-market prefix
+  as supplemental evidence rather than splicing endpoint cursors.
+- Bind timestamp recovery to a fully rehashed same-volume reboot certificate;
+  permit only the observed device-number substitutions and retain fresh physical
+  identities for collection and publication.
+- Authenticate the fixed compiler binary in a separately admitted EC2 acquisition
+  without executing it, and adopt the reviewed pure binary-claim normalizer after
+  canonical fixtures; keep source-build and global metadata admission separate.
+- Continue the authorized finalization without routine approval requests; prepare
+  separately versioned compact-metadata, exact-header recovery and independent
+  compiler-acquisition units under unchanged sample and resource ceilings.
+- Preserved the terminal metadata failure and single approved header-diagnostic
+  receipts; audited saved process identities and transfers, verified EC2 stopped,
+  and paused monitoring without promoting data or restarting collection.
+- Added independently checked local-only CLOB binary-claim candidate normalization;
+  preserve literal winner evidence and quarantines, with no price, clock or slug
+  inference. Canonical synchronization waits for the active metadata worker to drain.
 - Added a lossless seven-word V3 decoder and native-schema fixtures; preserve
   opaque provider timestamps as provenance rather than an execution-clock fallback.
 - Sealed the literal source-key inventory with every declared raw record

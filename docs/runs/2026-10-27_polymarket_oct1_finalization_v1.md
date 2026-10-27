@@ -399,3 +399,311 @@ integration of the final ledger delta, decoder and unchanged related units
 passed 185 tests in 31.808 seconds, exit zero; its v3 log SHA256 is
 `0ae68d5bf677ed9189d6a45b29f625c62619996bcd5000689562585143e391e7`.
 No data decoding or final sample is admitted by these pure-core fixtures.
+
+## Live acquisition checkpoint (local operational addendum)
+
+The reviewed source continuation is clean, committed and pushed at
+`1bbeac146d22b2ca0ec290180f6dc7bf89318b6c`; its source-commit receipt SHA256 is
+`e493f7c6d86a0c233451b635ad9782c582a115111b715ccf043aed2d54099c20`.
+Do not synchronize this local operational addendum into canonical source while
+either campaign runs. Keep that HEAD and all source bytes frozen until both
+workers and their owned children exit.
+
+Root admitted and launched exactly one of each independent campaign:
+
+- Exact headers: `/mnt/data/runs/2026-10-27_polymarket_exact_header_campaign_v3`,
+  at 18:13:41 UTC, PID 37847, birth ticks 1771023. Admission is
+  `full_header_admission_v1.json`, 114,157 bytes, SHA256
+  `60d13a5afb93968371a49c0d6b567d9d2d5a4a9cb80331377c74d8d067236519`.
+  The complete prior ledger has 466 files: 374,921,850 baseline and 544,613
+  control bytes. Actual K is 32,901,442; the conservative new runtime projection
+  is 143,905 seconds and the accepted-output size projection is 2,991,974,882
+  bytes, both within the unchanged ceilings. Launch is not completed coverage.
+- Raw metadata: `/mnt/data/runs/2026-10-27_polymarket_market_metadata_full_v3`,
+  at 18:13:43 UTC, PID 37980, birth ticks 1771282. Admission is
+  `full_metadata_admission_v2.json`, 20,604 bytes, SHA256
+  `c310cc43f4ee68bb7713808b34fdc245f55efaccf707e98f1679a872628bff56`.
+  The prior ledger has 83 files: 4,765,476 raw and 578,085 control bytes.
+  All five terminal pagination walks remain required before raw acquisition
+  acceptance; no normalized market/outcome universe is admitted by launch.
+
+Both launches bind boot `b9008fdc-0b94-4daf-b498-13403e96c475`. Root independently
+observed matching live birth identities and the metadata START receipt.
+Launch/exit/log controls use prefixes `full_header_v1` and `full_metadata_v1`
+under the operational run. Workers have independent process sessions so an SSH
+interruption alone is not evidence of worker failure. No retries, duplicate
+campaigns, source changes, higher caps, promotion, estimation or Dropbox upload
+are authorized by a monitoring check. The existing heartbeat must monitor both
+explicit births and durable controls, preserve small checkpoints, and leave
+EC2 running while either bounded stage still needs it. After both drain, root
+alone verifies all process/agent/transfer holds, stops EC2 and verifies stopped
+when no separately admitted next stage remains. Raw collection completion is
+not the final-data or Dropbox-release completion.
+
+The header worker then exited one at 18:14:52 UTC, before sealing its first
+chunk. `FAILED.json` is 558 bytes, SHA256
+`c4b06c4ce038f6a4a581c51e6cad789f0051eda191b4629ec1adb44f310911f0`;
+the root exit receipt SHA256 is
+`3a2b7bc09f4a5a02fd3ee6c18deff71b7ac7f4d9171ba3faf5244570f26cddb3`.
+It reports `rpc_reply_shape`, zero accepted keys, and cumulative 219 HTTP
+attempts, 12,209 method items, 100,653,201 response bytes and 7,271.485 seconds
+including inherited usage. The failed request covers key offset 10,100,
+100 keys, first RPC ID 12,110, request SHA256
+`8bccba52eb4055dde5c65cc47bf69b679abba6ee7d28b3c42c672f0467f8a21d`.
+Its HTTP response was 200 with a complete hashed body, but that body was not
+retained. The exact provider error therefore remains unresolved; do not infer
+rate limiting, missing blocks or missing trades from this generic code.
+
+The metadata worker remains healthy. Its active source lock still applies,
+even though the header process exited. A proposed single read-only provider
+observation was blocked by automatic safety review before any diagnostic RPC
+or remote artifact was created. Root requested new explicit human approval;
+do not bypass the rejection, restart collection, or treat a later diagnostic
+as an admitted timestamp source. Keep every failed-attempt charge for a future
+reviewed continuation. Local compiler-acquisition code passed independent QA
+but remains outside canonical source while metadata runs.
+
+Root subsequently confirmed the failed header process, its process group and
+session were absent, every saved request had a FINISH record, and no owned
+chunk/header output was sealed. The scoped drain receipt is
+`full_header_drain_v1.json`, SHA256
+`fefe1c46202384e490ca0fe13004f858555f15bfb46ad52545cfdf953a93f893`.
+It reserves 120 new failed-run seconds and 60 seconds for chunk zero, compared
+with observed 71.668 caller seconds and 10.404 journal seconds. New durable
+usage reconciles to 103 HTTP attempts, 10,201 method items and 76,806,534
+response bytes. This proves only that this failed worker drained, not that the
+host is idle: metadata remains active. At 18:20 UTC its CLOB stream had 715
+successful page calls and no failure marker. No timestamp diagnostic was sent.
+
+A local-only one-call diagnostic draft is retained at
+`/private/tmp/polymarket-header-observation.hmhvL8/observe_once.py`, SHA256
+`6f44ef39d781d122df6199d8eaa5795a4dc6b048ebce7f482225533e93293c41`.
+It still requires root's full artifact/resource review and explicit human
+approval after the safety rejection. Do not execute it from a routine monitor
+or infer approval from its prepared code or fixture checks.
+
+Root's local review found that the prepared diagnostic draft rounds the saved
+elapsed counter, so its exact comparison would fail before RPC. A corrected,
+separately reviewed admission must also retain the conservative scoped-drain
+runtime charge and review deadline propagation and endpoint-echo handling.
+The draft remains unapproved and unexecuted; this record does not grant a retry.
+
+The local-only pure CLOB claim normalizer passed independent scoped QA:
+`pipeline/normalize_polymarket_clob_claims_v1.py`, SHA256
+`87f0aebf133aa950c687b623c6b623ed54686f9c14edcaf96fcebae21858b8bc`,
+and its fixture file SHA256
+`ff8033ef372fd7b367c00ae941a0ab066a981d4f078fe71c627a74b612686a8a`.
+The author reports 25 focused and 127 related passing synthetic tests;
+independent QA passed the 25 focused fixtures and 19 additional adversarial
+cases with no blocker. It
+retains exact full token identities, explicit Boolean winner evidence and
+quarantined contradictions without price, clock or slug inference. Complete
+page lineage, global uniqueness and cross-provider consistency remain separate
+production-publisher gates. No metadata universe or sample is admitted, no
+production scan ran, and canonical source remains untouched while metadata runs.
+
+The human subsequently explicitly approved exactly one read-only, 100-block
+diagnostic request to the same provider, saving its response without restarting
+collection. This supersedes only the pending human-approval gate. The old draft
+remains unexecuted; its corrected version, exact evidence/resource preflight and
+independent review are still required. A routine monitor must not dispatch the
+diagnostic. No campaign continuation, timestamp adoption or source change is
+authorized by this one-request approval.
+
+## Single diagnostic completed; metadata terminal handoff
+
+Root executed exactly one approved provider request after final independent
+review and 22 native Linux fixtures. The final one-off source is retained in
+`/mnt/data/runs/2026-10-27_polymarket_header_error_observation_review_v4`,
+SHA256 `b8570efa53decad170f129af500a499c3810b29a91018d8058751c287a9aa286`.
+Its fixture SHA256 is
+`65a95fb8520d1ab0a7d46e07dd261ea2192b79204760d59f3907f6b45fd93c67`;
+the accepted Linux log SHA256 is
+`91b040d6eab0126381fccc3ff0cad5b22f503061a14a2e67b888a1218cd575e3`.
+The actual source/fixtures/log are also mirrored beneath local
+`output/polymarket_oct1_finalization_2026-10-27_v1/header_diagnostic_observation_review_v4`.
+
+Earlier drafts and failed fixture logs remain unchanged. One real script
+invocation failed at a disk-space helper reference before output creation or
+any HTTP dispatch. Root independently proved its process/group drained and
+zero requests; its failure/drain receipt SHA256 is
+`3a4a206c7a1c8cba9f6868d1cbee45f4cf92aed89d67300c19a5a6597a799fdd`.
+The corrected version imports its own disk-space helper and adds a real-module
+dependency-contract fixture. These were diagnostic implementation issues, not
+observations about missing blocks, trades or the scientific sample.
+
+The single consumed HTTP request reproduces the original failed 100-key
+payload exactly: request SHA256
+`8bccba52eb4055dde5c65cc47bf69b679abba6ee7d28b3c42c672f0467f8a21d`.
+It returned 100 result envelopes, zero errors/missing/duplicate IDs, and all
+100 header objects passed independent number/hash/clock-shape checks. The raw
+response is 782,156 bytes, SHA256
+`98a80b96f982eb2b2448310dd2476a0234d5e392be6238be0a70d5697d460677`,
+at `/mnt/data/runs/2026-10-27_polymarket_header_error_observation_v1/response.raw`.
+The result SHA256 is
+`d0abd0d56bfd9735bd35277a233c9b1f8e8fe71254c8ace0e03f98d039ebb1f1`.
+Root acceptance SHA256 is
+`f3cf41e30d6bf6bbeba35c8e276d4de42fc9a286376250a0e256a2b7298e15af`.
+The original provider error was not reproduced and its cause remains unknown.
+This is neither missing-trade evidence nor accepted whole-history clocks.
+No timestamp was adopted, no header Parquet/COMPLETE was created, and neither
+collection was restarted. The one-request approval is consumed; never repeat it
+from a monitor. Cumulative header charges are 220 HTTP attempts, 12,309 method
+items and 101,435,357 response bytes. Root's authoritative 7,680-second runtime
+reservation also carries the failed zero-HTTP invocation and root controls;
+the diagnostic program's narrower 7,440-second profile is not the whole ledger.
+
+Meanwhile, raw metadata acquisition exited one at 19:02:26 UTC with
+`response_byte_limit` on its 4,810th call, CLOB page index 4,809. It retained
+4,809 accepted but nonterminal pages and 4,809,000 raw market records. These
+are metadata records, not trade/fill counts. CLOB never reached its terminal
+cursor and no Gamma walk completed. The last accepted cursor is saved in
+FAILURE; the final partial response is preserved unchanged. FAILURE SHA256 is
+`e8c215008efe90a593fa848003581458a6d2909bf7befe13e7bcf1736fea70ad`;
+EXIT SHA256 is
+`9607851c2e1d6b7444c4f2423ba2c70854318f6209876a891dec9bbc5f8d77b3`.
+
+Root reopened its final FINISH receipt and independently rehashed the retained
+250,591-byte gzip (SHA256
+`3a212e3d93ce4e175dca7e62a6fef8a0aca89275652301c3f2050ab3b64e46d3`)
+and 4,194,304-byte incomplete response prefix (SHA256
+`14087e2bd309477b1b9e7e9f9156e9abc4019e0c4e836a32c7f531430ca9b53f`).
+The failed stage charges 4,859 HTTP attempts including 49 inherited attempts,
+11,970,589,082 response bytes, 1,223,425,859 retained raw bytes and 14,293,757
+control bytes including the explicit external reservation. Its saved runtime
+is 7,122.942 seconds including inherited use; the terminal handoff carries
+7,800 seconds conservatively after root checks. No final universe, resolved
+claim spine, analysis sample or Dropbox release is admitted.
+
+Root verified 603 saved PROCESS/launch birth records across the bound campaign
+and control roots, every current owned birth/group/session, all agent holds,
+and relevant host compute/notebook/transfer consumers. There were no unknown or
+live owned births and no remaining relevant consumers. The drain receipt is
+232,044 bytes, SHA256
+`188c8153f91eada372fe52b678d985976a1216bae4978e5d8c2342e13c13b795`.
+Canonical source stayed clean and unchanged at
+`1bbeac146d22b2ca0ec290180f6dc7bf89318b6c`. Root then stopped EC2 and independently
+verified `stopped` at 19:16:46 UTC on 27 October 2026. Data and the volume were
+not deleted or changed. The same heartbeat monitor is now paused.
+
+A new reviewed, versioned metadata continuation must preserve every prior and
+failed charge and validate full coverage. Smaller requests are already
+authorized within unchanged resource ceilings; this handoff does not admit a
+new stage or higher caps. Full exact clocks, independent source-build proof,
+metadata/spine/category/sports gates, estimates and the verified Dropbox release
+remain outstanding. Do not restart anything from this terminal monitor alone.
+
+## Authorized continuation after terminal review
+
+The user asked root to keep working toward the complete release without routine
+approval requests. The existing sample, resource ceilings, source-validation and
+publication gates remain unchanged. Smaller requests are already authorized;
+ordinary reviewed implementation and fresh, bounded stage launches do not need
+another human decision. New spending limits, access grants or research choices
+would still require explicit authority.
+
+Root delegated three disjoint local implementation/review units before further
+production: a compact-metadata continuation, exact-header recovery and an
+independent compiler-acquisition admission. Old source versions and failed runs
+remain immutable. The compact route must use the documented, non-sampling
+`/simplified-markets` endpoint, beginning its own cursor walk at `MA==`; the
+4,809 accepted full-market pages are supplemental evidence, not a certified
+prefix of that different walk. Gamma's documented keyset limit remains 100.
+The compiler's authenticated toolchain download need not depend on successful
+market pagination, but its metadata storage and request charges must still
+reconcile to the shared unchanged ceilings. Exact-header recovery must preserve
+the failed run and consumed single diagnostic, retain bounded failure evidence
+and require complete validated results before admitting any clocks.
+
+The instance remains stopped during local implementation and fixtures. No new
+production stage, timestamp cache, normalized universe, sample or release is
+admitted by this continuation record alone.
+
+Root restarted EC2 and at 19:47 UTC verified the same volume UUID/serial,
+750 GiB device, 324,027,625,472 available bytes, clean prior source and no
+relevant compute/transfer consumers. The new boot is
+`1ad746ce-103e-4e8f-a2f5-ba4df810e899`; the restart receipt SHA256 is
+`5cba8e854ffcecaa80db8d777669105e4c216234e134a03fb8dec285a5e43ff3`.
+
+The independently reviewed compiler-acquisition v2 passed 53 Linux fixtures
+and was committed and pushed at
+`07b881577a77baa3fa25b4f13efccd3c50c406ea`. Its separate root admission binds
+4,906 prior files, the failed metadata terminal evidence and unchanged resource
+ceilings. Admission SHA256 is
+`4ed49d6645ca840c1e3adccfd168c1b91b9c4ff5723843dee13f27bb129059d1`.
+Root launched one bounded acquisition at 19:50:06 UTC; it exited zero at
+19:50:08 UTC. The 16,865,544-byte nonexecutable binary matches the fixed official
+SHA256 `d40adc6f9fdbb22a97d32a02fa05688bf2ee7886affc48c9851b0afd4a726b39`.
+Root independently reopened completion, result, binary, source and owned-process
+evidence. Acceptance SHA256 is
+`dd43c90be3cde023db8621e67ff92e51173e2c1b7a21ab804d592f4bf0c30146`.
+The first root recheck used full stat equality, which includes access time, and
+stopped before acceptance; its corrected check excludes only access time while
+preserving identity/change fields and exact content authentication. No download
+was repeated. The acquisition used one HTTP request and 16,865,544 charged
+response bytes, with the full 300-second stage reservation retained. Cumulative
+metadata charges are now 4,860 HTTP attempts, 11,987,454,626 response bytes and
+8,700 reserved seconds before subsequent root checks. The producer PID/group
+drained. The compiler has not been executed and source-build proof remains open.
+
+Canonical Linux verification of the accepted pure claim normalizer and unchanged
+V3 decoder/archive cores passed 66 tests, exit zero, in 2.218 seconds. Log SHA256
+is `11bcd31338ca447c86f1abdefccaea1fdca4650ce55b62a335a1c8c33f1f2474`.
+The normalizer was committed and pushed at
+`d83da557050d49fa555e976351bdd935fd8e8d0f`; no production metadata scan or global
+claim spine was created. Root is integrating the reviewed header/metadata
+continuations before the next source freeze, not rerunning the old failed roots.
+
+## Recovery integration and compact pilot
+
+The reviewed compact-metadata v4 source passed independent local QA and 132
+canonical Linux fixtures, including compiler-profile integration and hard
+request/receipt deadlines. Its source/test SHA256 values are
+`ea075e230166ec2538f3982678eb435eb9a70e1e3f240770dddbff201615e94c` and
+`7817da0839ea8d4c543f909753b2ac5dafecad4fc25a419e7770baeead7c3e6d`.
+It was committed and pushed at `754d8730a7356730c3ac66ba231d588c0d1781c6`.
+Independent review corrected the actual compiler source-map shape and recorded
+versus actual request headers before any v4 request.
+
+Root admitted the three-observation pilot against 4,924 prior files and the
+unchanged cumulative caps. The admission SHA256 is
+`c32ab846ae9e27565d1f67334cc17900847f027418daefdb15d43b81dd5b2c73`;
+its external 1,009,507-byte prior inventory SHA256 is
+`f832c98287903b25dcbef25007acf70677310b5d9f9f676f073b662cccd7a69b`.
+PID 4071/birth 115069 ran from 20:04:39 to 20:05:00 UTC and exited zero.
+All three responses were complete: 495,662 and 494,350 bytes for the fresh
+prefix, and 506,299 bytes for the separately labeled old-cursor diagnostic.
+Each contained 1,000 raw metadata records. The diagnostic is not fresh-walk
+coverage. Completion SHA256 is
+`e0d9b8c45c76ee15b56767eba049b9b20926b17559e1ad76433a3b4fe2abd9bc`;
+root replay/drain acceptance SHA256 is
+`cee6c87aa7545910fe911a388df0e94ae03563c1356bacdcefffcaaebc8b7285`.
+Three new HTTP attempts charged 1,496,311 response bytes. Cumulative use is
+4,863 attempts and 11,988,950,937 bytes. Preserve the full 300-second pilot
+reservation rather than refunding its shorter observed runtime. Raw pagination
+and the final universe remain incomplete.
+
+The reboot changed Linux device numbers only. Root fully rehashed all nine
+timestamp input artifacts (359,346,005 bytes) and confirmed identical paths,
+hashes, inodes, sizes, modes and modification/change times. The verified data
+UUID/serial stayed unchanged while device 66309 became 66305; the separately
+verified root/private-authority device changed from 66305 to 66306. Certificate
+`header_reboot_equivalence_v4_v1.json` is 7,275 bytes, SHA256
+`dad6bc2bc9b2e63c5008bab091b8cb9100cbd39b3fff1e00d0b29060cc284bd7`.
+The narrow v4 adapter preserves old OWNER/drain/source evidence and uses only
+fresh identities for requests and final gates. It passed independent QA and 96
+canonical Linux fixtures; log SHA256 is
+`099883ba12bacce34cd7c7523e5323b6bdc478aa112722ba33df023e25b97142`.
+Source/test SHA256 values are
+`e8d297d0726dcc60d070fc3e986f9f961ad3d862bd0ad4e5d59e310d6394d24d` and
+`c438f1df6dc925f4f66462945edafb158320244d6eeb5fad1309f1dad163702d`;
+the source commit is `9f8a8ae7304d7ce0eee56bd51a01f7b3f108af33`.
+No device rule, cap, filter or cohort is relaxed generally.
+
+Root may now prepare fresh full-header v4 and full compact-metadata v4
+admissions at one clean, pushed source revision. Their disjoint-input and
+resource separation from the earlier acquisition contract still applies.
+Keep source frozen until both producers drain; a successful compact pilot
+does not admit a full universe. Independent source compilation is deferred
+until metadata's full stage is terminal, so its new files and charges cannot
+mutate the raw-metadata stage's prior ledger.
