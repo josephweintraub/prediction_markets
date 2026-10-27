@@ -229,7 +229,7 @@ def validate_prior(value, output, source, inputs, reboot):
         files[path]["category"] == ("failed" if path.endswith("/response.raw") else "control")
         for path in expected_paths), "observation_roster_or_category")
     echo_path=FAILED_STDOUT_ECHO["path"]
-    require(echo_path in value["standalone_control_files"] and echo_path in files and
+    require(value["standalone_control_files"].count(echo_path)==1 and echo_path in files and
         ref(files[echo_path])==FAILED_STDOUT_ECHO and files[echo_path]["category"]=="control" and
         files[echo_path]["chunk"] is None,"fixed_failed_stdout_not_rostered")
     echo,echo_binding=read_json(FAILED_STDOUT_ECHO)

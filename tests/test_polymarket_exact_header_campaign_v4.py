@@ -266,6 +266,11 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
         self.assertFalse(self.calls);self.assertFalse(self.output.exists())
 
+    def test_fixed_failed_stdout_duplicate_standalone_listing_is_not_waived(self):
+        self.admission["prior"]["standalone_control_files"].append(str(self.failed_stdout))
+        with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_not_rostered"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
     def test_fixed_failed_stdout_requires_equal_rostered_failed_source(self):
         path=self.old_root/"FAILED.json";value=json.loads(path.read_bytes());value["accepted_keys"]=1
         capture=self.save(path,value)
