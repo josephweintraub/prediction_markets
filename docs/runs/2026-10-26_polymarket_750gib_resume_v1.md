@@ -6,6 +6,11 @@ estimates or replacement Dropbox release is admitted by this record. The
 and [final-sample contract](../analysis_specs/polymarket_final_sample_refresh_v1.md)
 retain the exclusive `2026-10-02T00:00:00Z` cutoff and full nine-sport scope.
 
+Terminal update: adaptive raw append v2 completed and reconciled; EC2 was
+independently verified stopped at `2026-10-27T03:32:12.814Z` (26 October
+Eastern time), and its completion heartbeat is paused. This is raw collection
+completion, not admission of the refreshed paper sample.
+
 ## Verified storage and source state
 
 The user reported the existing data volume modified to 750 GiB. Root verified
@@ -114,8 +119,9 @@ The durable launch receipt binds the actual clean source revision, command,
 parent PID/birth identity and frozen campaign plan. This record alone is not
 proof that the parent launched or completed.
 
-The current-chat heartbeat `monitor-polymarket-append-collection` is active
-every 15 minutes. It must remain quiet on unchanged healthy progress, never
+The current-chat heartbeat `monitor-polymarket-append-collection` was configured
+every 15 minutes and is now paused after verified terminal shutdown. While
+active it must remain quiet on unchanged healthy progress, never
 launch or retry collection, and notify only completion, failure or a needed
 decision. After the parent and every owned child/transfer exit, root stops
 EC2, verifies stopped and pauses the heartbeat. Desktop monitoring requires
@@ -172,3 +178,34 @@ coverage, archive-retention bridge, fresh classification coverage and refreshed
 nine-sport clocks remain required. Root must finish all required data handling,
 check that no process or agent needs EC2, stop it and verify stopped after this
 work unit, including on interruption or failure.
+
+## Adaptive v2 terminal collection and shutdown
+
+The successor retained exactly 19 accepted v1 chunks by reference and
+validated 563 fresh chunks. All 582 planned chunks cover blocks
+88,979,538–94,796,039 without gaps or overlaps. Their manifests sum to
+473,196,272 raw native event records. This is not an economic-fill count or
+the final estimation sample. The separately accepted first 1,000-block probe
+is outside this campaign interval and remains independently bound.
+
+The campaign published `COMPLETE.json`, manifest
+`manifests/bc81639712b44761b2dfcc39816bd777.json`, and
+`sessions/d63c9a51a38d4cdaa0205a7bf9685a27/RESULT.json` under
+`/mnt/data/runs/2026-10-26_polymarket_native_append_campaign_v2`.
+The result records collection complete and analysis not admitted.
+Canonical source remained clean at
+`c39ddce3d9a010fe65faac652359fd401561e877`.
+
+Root reopened all 583 old/new saved child process identities, confirmed
+the parent absent and checked host compute, transfers and user jobs.
+Independent local review reconciled the terminal metadata and released
+its hold. After transferring only the small terminal metadata, root repeated
+the host-idleness check and then stopped EC2 normally. AWS independently
+reported `stopped`; the existing heartbeat was paused, not replaced.
+
+The small local terminal record is
+`output/polymarket_adaptive_resume_2026-10-26_v2/terminal_checkpoint_2026-10-27T033212Z.json`.
+Its sibling `task_state.json`, terminal metadata,
+`shutdown_preflight_v1.json` and `post_transfer_idle_v1.json` preserve the
+evidence and remaining gates. No data was promoted, no analysis was run,
+and the existing paper and Dropbox release remain unchanged.

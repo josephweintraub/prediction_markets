@@ -1,7 +1,24 @@
 # Changelog
 
+## 2026-10-27 - Polymarket Oct 1 finalization
+
+- Added an immutable, fixed-budget exact-header pilot with adversarial fixtures;
+  kept legacy fetchers unchanged and retained literal-key-only completion semantics.
+- Added separately reviewed sparse V3-history and public-market-pagination pilots;
+  neither grants final-universe, normalized-outcome or economic-source admission.
+- Opened the approved final-data and paper refresh work unit, preserving the completed
+  append and prior releases; recorded the separate validated Dropbox dataset destination.
+- Audited timestamp, V3, market metadata, sports and export admission boundaries before
+  reusing historical entrypoints; new bounded adapters remain subject to independent QA.
+
 ## 2026-10-26 - September Polymarket refresh readiness
 
+- Sealed and independently reconciled the adaptive raw append; preserved terminal
+  controls, verified all process/transfer holds released, stopped EC2 and paused
+  completion monitoring. Final-sample and downstream analysis gates remain closed.
+- Recorded standing approval for smaller collection/API requests, batches or
+  shards without renewed permission, preserving coverage, validation and cumulative
+  limits; canonical documentation sync waits until active collection has drained.
 - Added separately versioned adaptive native collection and campaign entrypoints,
   retaining accepted old chunks by reference and splitting only proven oversized
   requests within the original aggregate ceilings.
