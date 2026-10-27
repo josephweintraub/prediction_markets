@@ -314,15 +314,108 @@ class HeaderKeyInventoryTests(unittest.TestCase):
                 self.assertEqual(result["usage"]["native_payload_bytes_rehashed"], 0)
             scan.assert_not_called(); hashes.assert_not_called()
 
-    def test_three_pass_footer_reservation_fails_before_body_even_when_first_pass_fits(self):
+    def test_two_pass_footer_reservation_fails_before_body_even_when_first_pass_fits(self):
         total = sum(int.from_bytes(Path(item["path"]).read_bytes()[-8:-4], "little") + 12 for item in self.files)
-        with patch.dict(inventory.CAPS, {"footer_read_bytes": 2 * total}), \
+        with patch.dict(inventory.CAPS, {"footer_read_bytes": 2 * total - 1}), \
                 patch.object(inventory, "scan_sources") as scan:
             result = self.execute()
         self.assert_blocked(result, "planned_footer_read_bytes_limit")
         self.assertEqual(result["usage"]["footer_bytes_read"], total)
         self.assertEqual(result["usage"]["native_payload_bytes_rehashed"], 0)
         scan.assert_not_called()
+
+    def test_cached_metadata_gives_exactly_two_footer_passes_and_no_hidden_source_reads(self):
+        paths = {str(self.legacy), str(self.native)}
+        phase, reads, footers, cached, reader_paths = [None], [], [], {}, []
+        original_open, original_footer = Path.open, inventory.read_footer
+        original_hash, original_projection = inventory.rehash_native, inventory.ProjectedReader.read
+        original_parquet, original_scan = pq.ParquetFile, inventory.scan_sources
+        class Observed:
+            def __init__(self, stream, path): self.stream, self.path = stream, path
+            def __enter__(self): self.stream.__enter__(); return self
+            def __exit__(self, *args): return self.stream.__exit__(*args)
+            def read(self, size=-1):
+                if phase[0] is None: raise AssertionError("unclassified source read")
+                raw = self.stream.read(size)
+                reads.append((self.path, phase[0], len(raw)))
+                return raw
+            def __getattr__(self, name): return getattr(self.stream, name)
+        def open_path(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            return Observed(stream, str(path)) if str(path) in paths and args and args[0] == "rb" else stream
+        def footer(entry, budget):
+            previous, phase[0] = phase[0], "footer"
+            try:
+                answer = original_footer(entry, budget)
+                footers.append(entry["path"])
+                cached.setdefault(entry["path"], answer[0])
+                return answer
+            finally: phase[0] = previous
+        def rehash(entry, budget):
+            self.assertEqual(footers[:2], [str(self.legacy), str(self.native)])
+            previous, phase[0] = phase[0], "payload"
+            try: return original_hash(entry, budget)
+            finally: phase[0] = previous
+        def projected(stream, size=-1):
+            previous, phase[0] = phase[0], "projection"
+            try: return original_projection(stream, size)
+            finally: phase[0] = previous
+        def parquet(source, *args, **kwargs):
+            if isinstance(source, inventory.ProjectedReader):
+                path = str(source.stream.name)
+                self.assertIs(kwargs["metadata"], cached[path])
+                reader_paths.append(path)
+                if path == str(self.native):
+                    self.assertEqual(sum(size for name, kind, size in reads if name == path and kind == "payload"),
+                                     self.native.stat().st_size)
+            return original_parquet(source, *args, **kwargs)
+        def scan(*args):
+            answer = original_scan(*args)
+            self.assertEqual(args[4], [None, None])
+            return answer
+        total = sum(int.from_bytes(Path(item["path"]).read_bytes()[-8:-4], "little") + 12 for item in self.files)
+        with patch.object(Path, "open", open_path), patch.object(inventory, "read_footer", side_effect=footer), \
+                patch.object(inventory, "rehash_native", side_effect=rehash), \
+                patch.object(inventory.ProjectedReader, "read", projected), \
+                patch.object(pq, "ParquetFile", side_effect=parquet), \
+                patch.object(inventory, "scan_sources", side_effect=scan), \
+                patch.dict(inventory.CAPS, {"footer_read_bytes": 2 * total}):
+            result = self.execute()
+        self.assertEqual(result["status"], "literal_header_key_inventory_complete", result)
+        self.assertEqual(footers, [str(self.legacy), str(self.native)] * 2)
+        self.assertEqual(reader_paths, [str(self.legacy), str(self.native)])
+        self.assertEqual(result["planned_reads"]["footer_read_bytes"], 2 * total)
+        self.assertEqual(sum(size for _, kind, size in reads if kind == "footer"), 2 * total)
+        self.assertEqual(sum(size for _, kind, size in reads if kind == "projection"),
+                         result["usage"]["projected_compressed_bytes_read"])
+        self.assertEqual(sum(size for _, kind, size in reads if kind == "payload"), self.native.stat().st_size)
+        self.assertFalse(any(path == str(self.legacy) and kind == "payload" for path, kind, _ in reads))
+
+    def test_source_mutation_between_admission_and_cached_scan_is_refused(self):
+        original = inventory.scan_sources
+        def mutate(*args):
+            with self.legacy.open("r+b") as stream:
+                stream.seek(10); raw = stream.read(1); stream.seek(10); stream.write(bytes([raw[0] ^ 1]))
+            return original(*args)
+        with patch.object(inventory, "scan_sources", side_effect=mutate):
+            result = self.execute()
+        self.assert_blocked(result, "source_identity_differs")
+        self.assertEqual(result["usage"]["projected_compressed_bytes_read"], 0)
+        self.assertEqual(result["usage"]["native_payload_bytes_rehashed"], 0)
+
+    def test_final_footer_hash_is_independent_of_cached_metadata_and_identity_checks(self):
+        original_scan, original_identity = inventory.scan_sources, inventory.file_identity
+        fixed = {**self.files[1]["identity"], "bytes": self.files[1]["bytes"]}
+        def identity(path):
+            return fixed if Path(path) == self.native else original_identity(path)
+        def mutate(*args):
+            original_scan(*args)
+            with self.native.open("r+b") as stream:
+                stream.seek(-12, os.SEEK_END); raw = stream.read(1)
+                stream.seek(-12, os.SEEK_END); stream.write(bytes([raw[0] ^ 1]))
+        with patch.object(inventory, "file_identity", side_effect=identity), \
+                patch.object(inventory, "scan_sources", side_effect=mutate):
+            self.assert_blocked(self.execute(), "source_footer_differs")
 
     def test_native_payload_hash_mismatch_is_never_a_completed_inventory(self):
         files = copy.deepcopy(self.files)
@@ -359,13 +452,88 @@ class HeaderKeyInventoryTests(unittest.TestCase):
         def mutate(*args):
             result = original(*args)
             calls[0] += 1
-            if calls[0] == 5:
+            if calls[0] == 3:
                 path = self.output / "source_audit.parquet"
                 with path.open("r+b") as stream:
                     stream.seek(10); old = stream.read(1); stream.seek(10); stream.write(bytes([old[0] ^ 1]))
             return result
         with patch.object(inventory, "read_footer", side_effect=mutate):
             self.assert_blocked(self.execute(), "published_output_changed")
+
+    def test_post_manifest_and_post_pending_input_or_output_mutations_block_completion(self):
+        original_publish, original_fsync = inventory.publish_json, inventory.fsync_directory
+        for phase in ("manifest", "pending"):
+            for target in ("roster", "native_body", "source", "audit", "keys", "start", "preflight", "manifest"):
+                with self.subTest(phase=phase, target=target):
+                    self.output = self.root / (phase + "_" + target)
+                    self.snapshot.side_effect = None
+                    self.snapshot.return_value = copy.deepcopy(SOURCE)
+                    self.publish_native([20, 30, 30], [block_hash(20), block_hash(30), block_hash(30)])
+                    self.publish_roster()
+                    changed = False
+                    def mutate():
+                        nonlocal changed
+                        if changed:
+                            return
+                        changed = True
+                        if target == "source":
+                            self.snapshot.return_value = {**SOURCE, "head": "c" * 40}
+                        elif target == "roster":
+                            raw = self.roster.read_bytes()
+                            self.roster.write_bytes(raw[:-1] + b" ")
+                        else:
+                            names = {"audit": "source_audit.parquet", "keys": "required_keys.parquet",
+                                     "start": "START.json", "preflight": "PREFLIGHT.json", "manifest": "manifest.json"}
+                            path = self.native if target == "native_body" else self.output / names[target]
+                            with path.open("r+b") as stream:
+                                stream.seek(10); raw = stream.read(1); stream.seek(10)
+                                stream.write(bytes([raw[0] ^ 1]))
+                    def publish(budget, name, value, **kwargs):
+                        answer = original_publish(budget, name, value, **kwargs)
+                        if phase == "manifest" and name == "manifest.json":
+                            mutate()
+                        return answer
+                    def fsync(path):
+                        answer = original_fsync(path)
+                        if phase == "pending" and (self.output / ".COMPLETE.json.pending").exists():
+                            mutate()
+                        return answer
+                    with patch.object(inventory, "publish_json", side_effect=publish), \
+                            patch.object(inventory, "fsync_directory", side_effect=fsync):
+                        result = self.execute()
+                    self.assertTrue(changed)
+                    self.assert_blocked(result)
+                    self.assertEqual(result["usage"]["footer_bytes_read"], result["planned_reads"]["footer_read_bytes"])
+                    self.assertEqual(result["usage"]["native_payload_bytes_rehashed"], self.native.stat().st_size)
+
+    def test_staged_marker_mutation_after_directory_fsync_is_not_committed(self):
+        original = inventory.fsync_directory
+        changed = False
+        def fsync(path):
+            nonlocal changed
+            answer = original(path)
+            pending = self.output / ".COMPLETE.json.pending"
+            if pending.exists():
+                raw = pending.read_bytes()
+                pending.write_bytes(raw[:-1] + b" ")
+                changed = True
+            return answer
+        with patch.object(inventory, "fsync_directory", side_effect=fsync):
+            result = self.execute()
+        self.assertTrue(changed)
+        self.assert_blocked(result, "control_reopen_differs")
+        self.assertTrue((self.output / ".COMPLETE.json.pending").exists())
+
+    def test_staged_completion_deadline_after_final_reopens_is_enforced(self):
+        original = inventory.hash_output
+        now = [0]
+        def hash_output(path, budget):
+            answer = original(path, budget)
+            if (self.output / ".COMPLETE.json.pending").exists():
+                now[0] = inventory.CAPS["runtime_seconds"]
+            return answer
+        with patch.object(inventory, "hash_output", side_effect=hash_output):
+            self.assert_blocked(self.execute(clock=lambda: now[0]), "runtime_limit")
 
     def test_existing_or_partial_destination_is_not_resumed_or_overwritten(self):
         self.output.mkdir(); keep = self.output / "keep"; keep.write_bytes(b"preserve")

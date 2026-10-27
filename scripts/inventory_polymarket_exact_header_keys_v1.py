@@ -354,7 +354,8 @@ def hash_output(path, budget):
     return {"path": path.name, "bytes": size, "sha256": hasher.hexdigest()}
 
 
-def publish_json(budget, name, value, *, failure=False):
+def publish_json(budget, name, value, *, failure=False, final_check=None):
+    require(final_check is None or (name == "COMPLETE.json" and not failure), "final_check_not_completion")
     raw = json_bytes(value)
     budget.space(len(raw), failure=failure)
     target, pending = budget.output / name, budget.output / ("." + name + ".pending")
@@ -370,6 +371,10 @@ def publish_json(budget, name, value, *, failure=False):
     fsync_directory(budget.output)
     if not failure:
         budget.time()
+    if final_check is not None:
+        final_check()
+        require(pending.read_bytes() == raw, "control_reopen_differs")
+        budget.space()
     # Especially for COMPLETE, the no-replace rename is the last fallible
     # artifact operation. All directory/file flushes and reopenings precede it.
     atomic_publish(pending, target)
@@ -423,7 +428,7 @@ def aggregate_batch(con, table, plans, budget):
         con.unregister("incoming")
 
 
-def scan_sources(con, entries, plans, budget):
+def scan_sources(con, entries, plans, budget, metadata_cache):
     import pyarrow as pa
     import pyarrow.compute as pc
     import pyarrow.parquet as pq
@@ -431,12 +436,16 @@ def scan_sources(con, entries, plans, budget):
     for index, (entry, plan) in enumerate(zip(entries, plans)):
         budget.time()
         plan["payload_sha256_verified"] = rehash_native(entry, budget)
-        metadata, reopened = read_footer(entry, budget)
-        require(all(reopened[key] == plan[key] for key in reopened), "source_footer_plan_changed")
+        reopen_identity(entry)
+        metadata = metadata_cache[index]
+        require(metadata is not None and metadata.num_rows == plan["rows_declared"]
+                and metadata.num_row_groups == plan["row_groups"], "cached_source_metadata_differs")
+        metadata_cache[index] = None  # The current reader owns the only needed reference.
         if metadata.num_rows == 0:
             # Some Arrow versions request offset zero for empty column chunks.
             # The admitted footer already proves there are no body rows to read.
             reopen_identity(entry)
+            del metadata
             continue
         with ProjectedReader(entry, plan["ranges"], budget) as stream:
             parquet = pq.ParquetFile(stream, metadata=metadata, pre_buffer=False, buffer_size=0)
@@ -457,6 +466,7 @@ def scan_sources(con, entries, plans, budget):
                     if pending_rows == BATCH_ROWS:
                         aggregate_batch(con, pa.concat_tables(pending), plans, budget)
                         pending, pending_rows = [], 0
+        del parquet, metadata
         reopen_identity(entry)
     if pending:
         aggregate_batch(con, pa.concat_tables(pending), plans, budget)
@@ -543,7 +553,7 @@ def run_inventory(roster, roster_sha256, expected_head, output, *, clock=time.mo
         require(output != Path(entry["path"]) and output not in Path(entry["path"]).parents, "output_overlaps_source")
     require(shutil.disk_usage(output.parent).free >= CAPS["all_artifact_bytes"] + CAPS["minimum_free_bytes"], "free_space_floor")
     output.mkdir(mode=0o700)
-    budget, con, plans = Budget(output, clock), None, []
+    budget, con, plans, metadata_cache = Budget(output, clock), None, [], []
     result = {"schema_version": "polymarket_exact_header_key_inventory_v1", "status": "blocked",
               "scope": SCOPE, "literal_roster_only": True, "final_universe_admitted": False,
               "historical_v3_admitted": False, "roster": roster_binding, "source": source, "caps": CAPS}
@@ -551,23 +561,24 @@ def run_inventory(roster, roster_sha256, expected_head, output, *, clock=time.mo
         start = publish_json(budget, "START.json", result)
         for entry in entries:
             metadata, plan = read_footer(entry, budget)
+            metadata_cache.append(metadata)
             del metadata
             plan.update({name: 0 for name in ("rows_scanned", "valid_rows", "null_block_rows", "invalid_block_rows",
                                            "null_hash_rows", "invalid_hash_rows", "conflicting_hash_blocks")})
             plan["payload_sha256_verified"] = False
             plans.append(plan)
-        # Three metadata-only passes: admission, projected-reader construction,
-        # and final independent source reopening. No body is read before this gate.
-        planned = {"footer_read_bytes": 3 * sum(item["footer_read_bytes_per_pass"] for item in plans),
+        # Two physical footer passes: all-source admission and final independent
+        # reopening. Readers reuse the admitted metadata; no body precedes this gate.
+        planned = {"footer_read_bytes": 2 * sum(item["footer_read_bytes_per_pass"] for item in plans),
                    "projected_compressed_read_bytes": sum(item["projected_compressed_bytes"] for item in plans),
                    "native_payload_rehash_bytes": sum(item["bytes"] for item in entries if item["source_role"] == "native_raw")}
         for key, value in planned.items():
             require(value <= CAPS[key], "planned_" + key + "_limit")
         result["planned_reads"] = planned
-        publish_json(budget, "PREFLIGHT.json", {"status": "literal_roster_body_reads_admitted", "planned_reads": planned,
-                                               "files": len(entries), "rows_declared": sum(item["rows_declared"] for item in plans)})
+        preflight = publish_json(budget, "PREFLIGHT.json", {"status": "literal_roster_body_reads_admitted", "planned_reads": planned,
+                                                           "files": len(entries), "rows_declared": sum(item["rows_declared"] for item in plans)})
         con = initialize_database()
-        scan_sources(con, entries, plans, budget)
+        scan_sources(con, entries, plans, budget, metadata_cache)
         audit_bound = write_parquet(budget, "source_audit.parquet", audit_schema(), audit_batches(entries, plans))
         audit_count = compare_batches(iter(audit_batches(entries, plans)),
                                      iter(pq.ParquetFile(output / audit_bound["path"]).iter_batches(batch_size=AUDIT_BATCH_ROWS)), budget)
@@ -608,9 +619,21 @@ def run_inventory(roster, roster_sha256, expected_head, output, *, clock=time.mo
                       source_reopened=True, usage=budget.usage(), completed_utc=datetime.now(timezone.utc).isoformat())
         manifest = publish_json(budget, "manifest.json", result)
         require(hash_output(output / manifest["path"], budget) == manifest, "manifest_reopen_differs")
+        def final_check():
+            # Preserve exactly two dedicated footer passes and one native
+            # payload hash. Their evidence remains bound by every full source
+            # identity (including ctime/bytes) at the staged-marker boundary.
+            for entry in entries:
+                reopen_identity(entry)
+            reopened_entries, reopened_binding = read_roster(roster, roster_sha256)
+            require(reopened_entries == entries and reopened_binding == roster_binding, "roster_changed_during_run")
+            require(source_snapshot(expected_head) == source, "source_changed_during_run")
+            for bound in (start, preflight, audit_bound, keys_bound, manifest):
+                require(hash_output(output / bound["path"], budget) == bound, "published_output_changed")
+            budget.time()
         publish_json(budget, "COMPLETE.json", {"schema_version": "polymarket_exact_header_key_inventory_completion_v1",
                      "status": result["status"], "manifest": manifest, "literal_roster_only": True,
-                     "final_universe_admitted": False})
+                     "final_universe_admitted": False}, final_check=final_check)
     except BaseException as exc:
         result.update(status="blocked", error_code=str(exc) if isinstance(exc, InventoryBlocked) else
                       "interrupted" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "inventory_io_or_resource_failure",
