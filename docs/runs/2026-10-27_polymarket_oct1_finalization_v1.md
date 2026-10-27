@@ -372,3 +372,30 @@ and bounded admission preparation. The raw-metadata root admission will debit
 49 prior HTTP attempts, 117,440,512 response bytes and 4,200 seconds, including
 the separate source lookup and bounded root preparation. These are inherited
 debits inside unchanged cumulative ceilings, not permission to increase them.
+
+The first full-header root preflight stopped before writing an admission or
+launching because the roster builder had also echoed its manifest to stdout.
+Its saved failure receipt SHA256 is
+`82ee9758a1dea351ea180e81853e0a9a78b1d2c86dace772a9790eb73866bf63`.
+The second narrow allowance binds only that literal 3,084-byte artifact, SHA256
+`4bd368bc90ac33203989b43174425a504da55730314fea833ff8d87d8f6a8aaf`,
+decoded equality to the ledger-bound producer manifest, whole-root inclusion
+and the ordinary marker/source/count gates. All other new operational controls
+passed the original strict validator. Independent verification passed 58
+focused tests; the related suite passed 202 tests. No generic exception or cap
+change was introduced.
+
+The raw-metadata admission at revision
+`1ce194e6de336083bdafe5f804ff3eedac2e415d` was saved but never launched. Preserve
+`full_metadata_admission_v1.json` (20,300 bytes, SHA256
+`ade12ee405e4241f0ea3dec7f9840543871a14128aa9d5aded835a5ffc837caa`)
+as prior control evidence; the reviewed source continuation needs a fresh v2
+admission and must charge this old file rather than overwrite it.
+
+The separate lossless V3 decoder passed 13 focused and 99 related fixtures,
+then independent byte-level randomized/adversarial checks and 101 related
+fixtures. Its provider timestamp remains opaque provenance. Canonical focused
+integration of the final ledger delta, decoder and unchanged related units
+passed 185 tests in 31.808 seconds, exit zero; its v3 log SHA256 is
+`0ae68d5bf677ed9189d6a45b29f625c62619996bcd5000689562585143e391e7`.
+No data decoding or final sample is admitted by these pure-core fixtures.

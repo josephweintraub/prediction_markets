@@ -2,6 +2,8 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Added a lossless seven-word V3 decoder and native-schema fixtures; preserve
+  opaque provider timestamps as provenance rather than an execution-clock fallback.
 - Sealed the literal source-key inventory with every declared raw record
   reconciled and no invalid/conflicting keys; keep exact-clock collection and
   final analysis admission separate.
