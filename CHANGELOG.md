@@ -2,6 +2,14 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Add a fixed two-stage detached caller with exclusive birth-bound receipts,
+  bounded logs and cumulative deadlines; require separate root acceptance of
+  producer artifacts and process drainage before any stage promotion.
+- Retain the exact historical failed-header CLI echo as charged control evidence
+  without allowing arbitrary protocol artifacts or duplicate roster entries.
+- Add pure explicit-version Gamma identity parsing with literal token, condition,
+  clock and event provenance; keep mapping candidates separate from resolution,
+  economic eligibility and global-spine admission.
 - Verify the compact metadata pilot and its saved pages, then prepare fresh full
   acquisition from its own initial cursor; preserve the failed full-market prefix
   as supplemental evidence rather than splicing endpoint cursors.

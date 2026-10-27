@@ -707,3 +707,59 @@ Keep source frozen until both producers drain; a successful compact pilot
 does not admit a full universe. Independent source compilation is deferred
 until metadata's full stage is terminal, so its new files and charges cannot
 mutate the raw-metadata stage's prior ledger.
+
+## Full-stage integration and detached supervision
+
+Canonical commit `d36a8bf3af2e041d6b413b7d758abcf4f61f3b35` adds only an
+exact-once allowance for the original failed-header CLI echo. The literal
+558-byte `full_header_v1.log` must match the rostered failed campaign's
+`FAILED.json` and its old source epoch. Its SHA256 is
+`c4b06c4ce038f6a4a581c51e6cad789f0051eda191b4629ec1adb44f310911f0`.
+It remains charged as control; arbitrary renamed protocol artifacts and duplicate
+standalone entries are not admitted. All 103 related Linux fixtures passed;
+log SHA256 is `a2c83d948692a97e7bd97dd31c0a50ec262b449d218ba43fca0e1b72129a25e0`.
+
+The pure Gamma identity helper was adopted at
+`8ffc64d18f7fbb052cd761c23d2bf4133c3288d1` after 49 canonical fixtures.
+Its source SHA256 is
+`d97402b7ceffe8a301ea546c050359a445914df07ac20801b8fcc61ed496c5be`.
+Explicit API version chooses the identity field. Missing versions and malformed
+identities are quarantined; Gamma status or price never supplies an inferred
+winner. This helper has not processed the full raw metadata or admitted a spine.
+
+Full acquisitions require a reviewed detached caller for exactly header v4 and
+metadata v4 full. It records exclusive START/LAUNCH/EXIT receipts, caller and
+producer Linux birth/boot/session identities, and at most a 1 MiB log prefix
+inside each stage's existing 2 MiB external-control allowance. Its deadline
+includes preflight and cleanup, deducts authenticated inherited runtime, and
+never retries or resumes. Root must independently reopen producer evidence and
+owned-process drainage; receipt presence is not stage acceptance or host idleness.
+
+The fresh admissions retain all prior failures, diagnostic charges and full pilot
+reservations. Header preparation reserves 10,800 prior seconds and 147,197 new
+projected seconds within the unchanged 72-hour cap. Metadata preparation carries
+4,863 HTTP attempts, 11,988,950,937 response bytes and 12,000 prior seconds within
+the unchanged 24-hour cap. No new provider observation is authorized by an old,
+consumed diagnostic approval. The later human instruction authorizes reviewed
+routine continuations within the existing sample and resource ceilings.
+
+The legacy cleaned archive cannot simply be relabeled with exact clocks: its
+11-field value grain has no block identifier and can collapse observations from
+different blocks. The next bridge must reconstruct that convention from complete
+raw lineage, exact headers and admitted metadata, then reconcile UTC partition
+migrations and full-value DISTINCT groups. A sparse corrected-parent shortcut is
+not admitted without proof. Final data, results and Dropbox publication remain
+unadmitted.
+
+The fixed detached caller was committed and pushed at
+`12054c03f3a6ae0187a4f6bc298a99c0a3667a4d`. All 105 canonical Linux caller/header/
+metadata fixtures passed, including real `/proc` birth and session drainage;
+the log SHA256 is
+`03cd61730cf427b1ec88b833a807d128507e7535b29c0852bc1591d24ea886e2`.
+Source/test SHA256 values are
+`4bad170c635b000af3f580a63c5ac11277ed2f83e7a39b7fd81056550e44e403` and
+`3e148073d1183a947d9c80263c8b0efa0987d9b05b8d886bfba5fb13646874c8`.
+Full launch still requires the separately sealed admissions and root dispatch
+receipts in the operational run. Its root builder makes zero provider requests,
+revalidates all prior producer chains, and records current RAM/free space for the
+two disjoint acquisitions. No collection is inferred from source adoption alone.
