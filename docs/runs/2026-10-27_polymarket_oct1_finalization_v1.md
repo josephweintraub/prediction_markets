@@ -113,3 +113,31 @@ not the old child's completion marker alone. Global admission must carry forward
 all inherited, failed and diagnostic charges; full history additionally requires
 an independently accepted positive-row probe. No full historical collection or
 full-header/metadata/sports stage is admitted by this record alone.
+
+## Reviewed historical wrapper and metadata continuation
+
+Independent wrapper review reproduced an unsafe false-idle claim after a child
+birth-capture failure, before any production launch. The repaired wrapper retains
+the spawned handle/process receipt, withholds terminal success or false-idle
+claims when ownership/drainage is unknown, and signals only a proven owned group.
+Real-constructor fixtures cover missing births, identity reuse, partial pipe
+setup and lingering descendants. Independent recheck accepted the repaired
+wrapper (`f3cdafdf19e5bdfaf892c37b86c1f600365643751db88e46ba24381ed3f30248`).
+
+The initial raw-retaining metadata v2 invocation preserved two accepted CLOB pages
+and failed unaccepted on an additive Gamma `$schema` field. Its raw response
+hashes were independently reopened; all ten returned Gamma rows matched the
+literal requested version/open scope. A source-versioned continuation permits
+only the exact optional schema URI, leaves every other gate/cap unchanged and
+requires a fresh directory. The earlier failed run is never resumed or relabeled.
+
+The root historical-probe accounting receipt is
+`v3_historical_global_admission_probe_v1.json`, SHA256
+`9423177e947daa643d25bb820b3adf150e210988d15fa43ffc774a007f484488`.
+Its prior charges are 39,228,112,651 retained bytes, 498,999 RPC calls,
+571,259,492,106 response bytes and 97,902.126 seconds. These include explicit
+conservative diagnostic/control reservations, not merely observed usage.
+The v2 terminal aggregate already includes its inherited/failed raw roots;
+those roots are not re-added. New profile reservations remain inside the
+unchanged global ceilings. Full historical admission must additionally account
+for the probe's charged use and independently reopen its positive-row acceptance.

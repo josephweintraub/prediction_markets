@@ -161,6 +161,83 @@ class ProbeTests(unittest.TestCase):
         self.assertFalse(value["universe_complete"])
         self.assertTrue(all(s["pagination_terminal_observed"] for s in self.read("manifest.json")["streams"]))
 
+    def test_observed_gamma_schema_field_preserves_raw_pages_rows_and_cursors(self):
+        responses = capped_responses()
+        for index in range(2, len(responses)):
+            body = json.loads(responses[index].raw)
+            body["$schema"] = "https://gamma-api.polymarket.com/schemas/MarketsKeysetListResponse.json"
+            responses[index] = Response(json.dumps(body, indent=1).encode() + b"\n")
+        expected_raw = [response.raw for response in responses]
+        value = self.run_fixture(responses)
+        self.assertEqual(value["status"], "probe_complete_universe_incomplete")
+        self.assertEqual(value["successful_pages"], 10)
+        self.assertEqual(value["raw_rows_in_validated_pages"], 82)
+        for index, raw in enumerate(expected_raw, 1):
+            self.assertEqual(self.body(index), raw)
+            rows = json.loads(raw).get("markets", json.loads(raw).get("data"))
+            self.assertEqual(len(self.read(f"rows/a{index:02d}.json")["records"]), len(rows))
+        for stream in self.read("manifest.json")["streams"][1:]:
+            self.assertTrue(stream["returned_scope_fields_verified"])
+            self.assertTrue(stream["stopped_at_page_cap"])
+            self.assertFalse(stream["pagination_terminal_observed"])
+            self.assertEqual(stream["next_cursor"], "opaque-second_-")
+        self.assertFalse(value["universe_complete"])
+        self.assertFalse(value["analysis_admitted"])
+
+    def test_gamma_schema_field_on_short_or_empty_terminal_preserves_all_rows(self):
+        stream = probe.STREAMS[1]
+        for index, rows in enumerate(([], [None, {}, {"conditionId": None}, gamma_row(stream)])):
+            self.output = self.parent / f"schema_terminal_{index}"
+            body = json.loads(gamma_page(stream, rows=rows))
+            body["$schema"] = probe.GAMMA_SCHEMA_URI
+            raw = json.dumps(body, indent=2).encode()
+            responses = terminal_responses()
+            responses[1] = Response(raw)
+            value = self.run_fixture(responses)
+            self.assertEqual(value["status"], "probe_complete_terminal_cursors_observed")
+            self.assertEqual(value["raw_rows_in_validated_pages"], 4 + len(rows))
+            self.assertEqual(self.body(2), raw)
+            self.assertEqual(len(self.read("rows/a02.json")["records"]), len(rows))
+            receipt = self.read("manifest.json")["streams"][1]
+            self.assertTrue(receipt["pagination_terminal_observed"])
+            self.assertIsNone(receipt["next_cursor"])
+            self.assertFalse(value["universe_complete"])
+
+    def test_gamma_schema_field_wrong_type_value_and_unknown_keys_fail_closed(self):
+        invalid = (None, False, 1, [], {}, "", "http://gamma-api.polymarket.com/schemas/MarketsKeysetListResponse.json",
+                   probe.GAMMA_SCHEMA_URI + "/", "https://example.invalid/MarketsKeysetListResponse.json")
+        for index, schema in enumerate(invalid):
+            self.output = self.parent / f"schema_invalid_{index}"
+            body = json.loads(gamma_page(probe.STREAMS[1])) | {"$schema": schema}
+            raw = json.dumps(body).encode()
+            value = self.run_fixture([terminal_responses()[0], Response(raw)])
+            self.assert_failed(value, "gamma_schema_uri_invalid")
+            self.assertEqual(self.body(2), raw)
+        self.output = self.parent / "schema_unknown_key"
+        body = json.loads(gamma_page(probe.STREAMS[1])) | {"$schema": probe.GAMMA_SCHEMA_URI, "extra": "unaccepted"}
+        raw = json.dumps(body).encode()
+        self.assert_failed(self.run_fixture([terminal_responses()[0], Response(raw)]), "page_envelope_schema")
+        self.assertEqual(self.body(2), raw)
+
+    def test_gamma_schema_field_does_not_weaken_pagination_or_scope_checks(self):
+        stream = probe.STREAMS[1]
+        for body, code in (({"markets": [gamma_row(stream)] * 10}, "gamma_full_page_missing_cursor"),
+                           ({"markets": [], "next_cursor": "opaque"}, "gamma_short_page_has_cursor"),
+                           ({"markets": [], "next_cursor": None}, "invalid_cursor")):
+            body["$schema"] = probe.GAMMA_SCHEMA_URI
+            with self.assertRaisesRegex(probe.ProbeError, code):
+                probe.page_envelope(json.dumps(body).encode(), stream, None, {None}, set())
+        for index, change in enumerate(({"version": "v2"}, {"closed": True})):
+            self.output = self.parent / f"schema_scope_{index}"
+            body = {"$schema": probe.GAMMA_SCHEMA_URI, "markets": [gamma_row(stream) | change]}
+            self.assert_failed(self.run_fixture([terminal_responses()[0], Response(json.dumps(body).encode())]),
+                               "gamma_returned_scope_conflict")
+
+    def test_gamma_schema_field_is_not_permitted_in_clob_envelope(self):
+        raw = clob_page(probe.END_CURSOR, **{"$schema": probe.GAMMA_SCHEMA_URI})
+        self.assert_failed(self.run_fixture([Response(raw)]), "page_envelope_schema")
+        self.assertEqual(self.body(), raw)
+
     def test_real_blank_identifier_counts_remain_raw_rows(self):
         rows = [clob_row(index + 1) for index in range(1000)]
         for index in range(165, 219):

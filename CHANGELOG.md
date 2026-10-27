@@ -2,6 +2,11 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Added an independently checked parent acceptance wrapper for one fresh V3
+  historical child, including birth-failure/descendant-drain fixtures and inherited
+  campaign accounting; child completion alone cannot admit repaired raw history.
+- Continued raw metadata acquisition with a narrowly validated optional provider
+  schema label, preserving failed source-bound probe directories unchanged.
 - Added an observation-only historical V3 runtime/dependency diagnostic, a projected
   required-header-key inventory and a raw-retaining metadata probe; preserve old
   artifacts and keep protocol, whole-universe and paper admission separate.

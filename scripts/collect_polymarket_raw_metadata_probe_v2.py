@@ -40,6 +40,7 @@ from production_guard import require_production_host
 
 INITIAL_CURSOR, END_CURSOR = "MA==", "LTE="
 GAMMA_LIMIT = 10
+GAMMA_SCHEMA_URI = "https://gamma-api.polymarket.com/schemas/MarketsKeysetListResponse.json"
 STREAMS = (
     {"id": "clob", "provider": "clob", "endpoint": "https://clob.polymarket.com/markets"},
     *({"id": f"gamma_{version}_{'closed' if closed else 'open'}", "provider": "gamma",
@@ -188,8 +189,11 @@ def page_envelope(raw, stream, requested_cursor, seen_cursors, seen_rows):
         terminal = cursor == END_CURSOR
         require(rows or terminal, "empty_nonterminal_page")
     else:
-        require(type(body) is dict and set(body) in ({"markets"}, {"markets", "next_cursor"}),
+        require(type(body) is dict and set(body) - {"$schema"} in ({"markets"}, {"markets", "next_cursor"}),
                 "page_envelope_schema")
+        if "$schema" in body:
+            require(type(body["$schema"]) is str and body["$schema"] == GAMMA_SCHEMA_URI,
+                    "gamma_schema_uri_invalid")
         require(type(body["markets"]) is list and len(body["markets"]) <= GAMMA_LIMIT,
                 "page_count_or_data_schema")
         rows = body["markets"]
