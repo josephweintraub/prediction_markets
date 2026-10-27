@@ -2,6 +2,14 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Sealed the literal source-key inventory with every declared raw record
+  reconciled and no invalid/conflicting keys; keep exact-clock collection and
+  final analysis admission separate.
+- Added an independently checked full-header campaign and source-build verifier;
+  repaired per-child startup deadline accounting before compiler execution.
+- Added a pure V3 archive-role projection core with exact-token/header and
+  intra-block era gates; preserve eligible opposite-role observations when a
+  binary64 complement rounds to an endpoint.
 - Prepared independently reviewed compact-header, raw-source-lookup and full
   raw-metadata collectors; preserve literal diagnostic scope and require fresh
   cumulative resource admission before production execution.

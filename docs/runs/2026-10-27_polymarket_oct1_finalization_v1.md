@@ -244,3 +244,131 @@ or filename glob can substitute for the bound source lineage.
 Canonical verification of the roster builder passed 106 focused/related
 synthetic tests, exit zero. The fixture log SHA256 is
 `063138d6dfe78eeb24a4b8fcb5875a271352c25e5f0cb9ac99a71b45eb304673`.
+
+## Literal source roster and key inventory
+
+The roster builder completed at clean pushed revision
+`c14d79c86d572c21f0af300156a6a04a89387f26`. Its literal 131,356-file roster
+is `/mnt/data/runs/2026-10-27_polymarket_exact_header_roster_v1/roster.json`,
+65,678,058 bytes, SHA256
+`1e0e9663a4507f2ba1d5d478c7774d1a212823f315ef17a123fc8a3ea84c02cb`.
+It includes the authoritative historical full repair and excludes the overlapping
+diagnostic historical probe. The 2,015,058,879 declared source records are raw
+records, not paper observations or unique economic fills. The builder's
+completion SHA256 is
+`5d40b55434192b4aaede87fbe4a803894562b337f422d7be43d909431f004b51`.
+
+Root launched the committed key inventory at 16:31:36 UTC on 2026-10-27,
+PID 30058, Linux birth ticks 1158554, boot
+`b9008fdc-0b94-4daf-b498-13403e96c475`. Its launch receipt is
+`/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_key_inventory_v1.LAUNCH.json`;
+outputs are under
+`/mnt/data/runs/2026-10-27_polymarket_exact_header_key_inventory_v1`.
+The separate admission SHA256 is
+`eb9a47ac94c02ffbf3d85befd2faeb65e0a201fb511200d7ee2a9045491057b9`.
+Keep canonical source frozen until this process and its owned children exit.
+The run has fixed 2,400-second runtime, 64 GB native-payload rehash, 2 GB
+projected compressed reads, 2 GB footer reads, 1 GB output, zero spill and
+20 GB free-space floor. It must reconcile every projected source row and
+native hash before sealing the required block keys. No fallback, full-header
+campaign, analysis sample or Dropbox publication is admitted by launch.
+
+The next full-header collector passed 49 focused and 193 combined local
+fixtures, plus independent review, but is not yet canonical or admitted.
+Its actual-key-count and complete cumulative-ledger gates remain outstanding.
+The independent source compiler verifier is still under repair after review
+reproduced a per-child startup timeout gap. No compiler has been downloaded or
+executed, and no deployed-source equivalence is claimed.
+
+The inventory subsequently exited zero at 16:58:59 UTC. Its completion SHA256 is
+`ad6b125cfa56c4c7feb989b383f18317a6aeb333941fa22855d3931945c93eef`,
+and its 2,689-byte manifest SHA256 is
+`ba00b4e762ff614c45c87bfd55d75465394b7418ddc1d856b920adabe1eae108`.
+It reconciled all 2,015,058,879 declared raw records, 131,356 source files and
+32,901,442 sorted distinct required blocks, with zero invalid/null block keys,
+invalid/null native hashes or conflicting block hashes. Required-key Parquet is
+293,488,549 bytes, SHA256
+`bbf4502da63275225605d665790e8083542c3d9a7cfaee77cb42847501c41be9`.
+The source audit is 14,612,374 bytes, SHA256
+`43cb1377699c6e1d483e2cda1a940582b492b3d764f1af7bec65cad75f305012`.
+The inventory rehashed 37,381,873,746 native payload bytes, read 1,367,693,740
+dedicated footer bytes and 479,002,442 compressed projected bytes. Its manifest
+records 1,610.516 seconds before terminal checks; the whole CLI finished within
+its fixed 2,400-second limit. These are raw-lineage checks, not unique economic
+fill or final paper observation counts.
+
+The compiler verifier's startup deadline repair passed 39 local fixtures and
+independent replays of the 601/600-second and 11/10-second overruns. The full
+header collector's final 49-fixture version and this verifier together passed
+88 local synthetic tests. Both still need canonical fixture/commit integration
+before production. Compiler download and deployed-build admission remain
+outstanding.
+
+Root's independent key-output recheck is saved as
+`header_key_inventory_root_acceptance_v1.json`, SHA256
+`5dd1a0c34927529f3cc213c656ac9b6d4d2f66f199d3547de31771815bba77bc`.
+It rehashed the published outputs, checked every source-audit record and source
+identity, and independently read the sorted key sequence. It found 5,884,493
+keys with native hash assertions, first required block 35,896,869 and last
+94,796,039. It did not repeat the 37 GB native payload hash pass. The check used
+zero API calls and 20.934 seconds under a separate 600-second diagnostic
+reservation.
+
+Canonical verification of the next full-header/source-build units and related
+helpers passed 325 synthetic tests in 138.902 seconds, exit zero. The log SHA256
+is `970a0ee166d7810ca9b3621f4a43edea74d7a79695eab7f2400ff029f643fbad`.
+Actual prior-ledger integration subsequently found one legitimate CLI stdout
+copy of the accepted scale manifest. A narrow fixed-path/size/SHA plus decoded
+manifest-equality allowance is being reviewed; generic protocol-artifact
+admission remains forbidden.
+
+A separate pure V3 archive projection core passed 28 focused and 86 related
+fixtures and independent review. It requires explicit accepted build/era,
+singleton exact-header and reciprocal full-token-ID inputs. It retains both
+archive roles, checks eligibility per role, keeps eligible module-2 binary
+claims, and distinguishes excluded module-3 claims and either-wallet exchange
+hits. A reproduced binary64 rounding case was repaired before acceptance so
+an invalid complemented role cannot erase a valid primary-role observation.
+This core does not scan, publish, deduplicate or admit a final sample.
+
+## Next collection-stage separation
+
+Root may run the admitted full-header and full raw-metadata campaigns together
+only at one clean frozen source revision. They have disjoint immutable inputs,
+fresh output directories, no shared mutable caches, different API authorities,
+separate unchanged 8 GB storage partitions, and separate 8 GiB process limits.
+The header stage reads the accepted literal block keys; the metadata stage
+walks public market pages and never changes those keys or source payloads.
+Both retain their cumulative request/runtime accounting and 20 GB free-space
+floor. This independence permits concurrent acquisition, not concurrent
+downstream estimation or source mutation. Keep canonical source frozen until
+both campaigns and their owned processes exit. Neither may be used downstream
+without its own terminal proof and root reconciliation.
+
+## Resumed source integration
+
+After a usage interruption, root rechecked AWS at 18:00 UTC: the same instance
+was running, the verified data UUID remained mounted, and no production,
+notebook or transfer consumer was active. The completed inventory and its
+acceptance were unchanged; no full-header or full-metadata output directory
+existed. Only the eight expected reviewed source/doc paths were modified or
+untracked in canonical Git. Pending local compiler-acquisition and decoder work
+was not copied or admitted.
+
+The narrow scale-stdout allowance passed all 54 focused tests and independent
+review; the related local suite passed 198 tests. It accepts only the literal
+1,723-byte stdout artifact with SHA256
+`1fa7aadb16d893677a10ed00948806d1bef87c6698d63fc826b80ed620e37e3b`,
+requires decoded equality to the accepted scale manifest and complete inclusion
+of that producer root, and charges it as ordinary control bytes.
+
+Final canonical verification passed 358 synthetic tests in 139.996 seconds,
+exit zero, including the new pure archive core. The v2 fixture log is 1,408
+bytes, SHA256
+`66b6f64585b74710563451e2055454768ccb9a5f3bbb9450399427d15d349db8`.
+The full-header root admission will debit 7,200 prior seconds conservatively,
+including roster/inventory reservations, pilots, independent checks, fixtures
+and bounded admission preparation. The raw-metadata root admission will debit
+49 prior HTTP attempts, 117,440,512 response bytes and 4,200 seconds, including
+the separate source lookup and bounded root preparation. These are inherited
+debits inside unchanged cumulative ceilings, not permission to increase them.
