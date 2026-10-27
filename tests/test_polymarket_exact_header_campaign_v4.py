@@ -48,6 +48,43 @@ class RecoveryTests(unittest.TestCase):
         self.admission["prior"]["rpc"]=dict(recovery.PRIOR_FLOOR)
         self.sleeps=[]
         self.make_observation()
+        self.make_reboot()
+        self.old_bytes={str(path):path.read_bytes() for path in self.old_root.rglob("*") if path.is_file()}
+
+    def make_reboot(self):
+        prior=self.admission["prior"];owner_path=self.old_root/"OWNER.json"
+        owner=json.loads(owner_path.read_bytes());current=copy.deepcopy(owner["inputs"])
+        self.current_data_device=current["keys"]["identity"]["device"]
+        for item in owner["inputs"].values():item["identity"]["device"]=recovery.OLD_DATA_DEVICE
+        owner_ref=self.save(owner_path,owner)
+        drain_path=Path(prior["campaigns"][0]["drain"]["path"])
+        drain=json.loads(drain_path.read_bytes());drain["owner_sha256"]=owner_ref["sha256"]
+        drain_ref=self.save(drain_path,drain);prior["campaigns"][0]["drain"]=drain_ref
+        for item in prior["files"]:
+            if item["path"] in (str(owner_path),str(drain_path)):item.update(self.ref(Path(item["path"])))
+        private_identity=recovery.pilot.identity(self.private)
+        self.reboot_env={"boot_id":recovery.CURRENT_BOOT_ID,"uuid":recovery.DATA_UUID,"fstype":"ext4",
+            "serial":recovery.DATA_SERIAL,"device_bytes":str(750*1024**3),"data_device":self.current_data_device,
+            "root_uuid":"0df68d9a-e70c-413e-9a10-736ae3f00a7a","root_device":private_identity["device"]}
+        self.certificate={"schema_version":"polymarket_header_reboot_equivalence_v4",
+            "status":"root_verified_same_volume_device_reassignment","old_boot_id":fixture.BOOT,
+            "current_boot_id":recovery.CURRENT_BOOT_ID,
+            "data_volume":{"uuid":recovery.DATA_UUID,"serial":recovery.DATA_SERIAL,"device_bytes":750*1024**3,
+                "old_device":recovery.OLD_DATA_DEVICE,"current_device":self.current_data_device},
+            "old_owner":owner_ref,"old_drain":drain_ref,
+            "inputs":{name:{"old":old,"current":current[name]} for name,old in owner["inputs"].items()},
+            "private_authority":{"reference":self.admission["private_file"],"old":private_identity,
+                "current":private_identity,"root_uuid":self.reboot_env["root_uuid"]}}
+        self.certificate_path=self.root/"header_reboot_equivalence.json"
+        self.refresh_certificate()
+        prior["standalone_control_files"].append(str(self.certificate_path))
+        prior["files"].append(self.admission["reboot_equivalence"]|{"category":"control","chunk":None})
+
+    def refresh_certificate(self):
+        captured=self.save(self.certificate_path,self.certificate)
+        self.admission["reboot_equivalence"]=captured
+        for item in self.admission["prior"]["files"]:
+            if item["path"]==str(self.certificate_path):item.update(captured)
 
     def make_observation(self):
         self.obs=self.root/"diagnostic";self.obs.mkdir()
@@ -91,6 +128,11 @@ class RecoveryTests(unittest.TestCase):
              patch.object(recovery.legacy,"ORIGINAL_PILOT_INPUT",self.original_ref),\
              patch.object(recovery,"OBSERVATION_ACCEPTANCE",self.acceptance),\
              patch.object(recovery,"PRIOR_SOURCE_HEAD",self.prior_head),\
+             patch.object(recovery,"OLD_BOOT_ID",fixture.BOOT),\
+             patch.object(recovery,"CURRENT_DATA_DEVICE",self.current_data_device),\
+             patch.object(recovery,"OLD_PRIVATE_DEVICE",self.reboot_env["root_device"]),\
+             patch.object(recovery,"CURRENT_PRIVATE_DEVICE",self.reboot_env["root_device"]),\
+             patch.object(recovery,"reboot_environment",side_effect=lambda:self.reboot_env),\
              patch.object(recovery,"source_snapshot",side_effect=source_effect,return_value=self.source),\
              patch.object(recovery.scale,"git_blob",side_effect=blob),\
              patch.object(recovery.inventory,"resource_state",return_value=fixture.RESOURCES),\
@@ -121,6 +163,86 @@ class RecoveryTests(unittest.TestCase):
         owner=json.loads((self.output/"OWNER.json").read_bytes())
         self.assertEqual(owner["schema_version"],"polymarket_exact_header_owner_v4")
         self.assertEqual(owner["source"]["head"],NEXT)
+        self.assertEqual(owner["reboot_equivalence"]["sha256"],self.admission["reboot_equivalence"]["sha256"])
+        self.assertNotEqual(owner["inputs"]["keys"]["identity"]["device"],
+            self.certificate["inputs"]["keys"]["old"]["identity"]["device"])
+
+    def test_reboot_certificate_schema_volume_boot_and_private_fields_fail_before_dispatch(self):
+        original=copy.deepcopy(self.certificate)
+        mutations=(lambda c:c.update(status="not_accepted"),lambda c:c.update(old_boot_id="wrong"),
+            lambda c:c.update(current_boot_id="wrong"),lambda c:c["data_volume"].update(uuid="wrong"),
+            lambda c:c["data_volume"].update(serial="wrong"),lambda c:c["data_volume"].update(device_bytes=1),
+            lambda c:c["data_volume"].update(old_device=True),lambda c:c["private_authority"].update(root_uuid="wrong"),
+            lambda c:c["private_authority"]["current"].update(uid=99999),
+            lambda c:c["private_authority"]["old"].update(inode=1),lambda c:c["inputs"].pop("keys"))
+        for mutate in mutations:
+            self.certificate=copy.deepcopy(original);mutate(self.certificate);self.refresh_certificate()
+            with self.assertRaises(recovery.Blocked):self.execute()
+            self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_reboot_live_boot_volume_root_or_private_device_differs_fail_before_dispatch(self):
+        original=dict(self.reboot_env)
+        for field,value in (("boot_id","wrong"),("uuid","wrong"),("serial","wrong"),("fstype","xfs"),
+                ("device_bytes","1"),("data_device",1),("root_uuid","wrong"),("root_device",1)):
+            self.reboot_env={**original,field:value}
+            with self.assertRaises(recovery.Blocked):self.execute()
+            self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_reboot_every_nondevice_input_field_and_full_sha_are_mandatory(self):
+        original=copy.deepcopy(self.certificate)
+        for name in original["inputs"]:
+            for field in ("inode","bytes","mode","mtime_ns","ctime_ns"):
+                self.certificate=copy.deepcopy(original)
+                self.certificate["inputs"][name]["old"]["identity"][field]+=1
+                self.refresh_certificate()
+                with self.assertRaisesRegex(recovery.Blocked,"reboot_input_nondevice_identity_differs"):self.execute()
+                self.assertFalse(self.calls)
+            self.certificate=copy.deepcopy(original)
+            self.certificate["inputs"][name]["old"]["sha256"]="0"*64;self.refresh_certificate()
+            with self.assertRaisesRegex(recovery.Blocked,"reboot_input_binding_differs"):self.execute()
+            self.assertFalse(self.calls)
+
+    def test_reboot_owner_drain_and_certificate_roster_bindings_are_mandatory(self):
+        original=copy.deepcopy(self.certificate)
+        for name in ("old_owner","old_drain"):
+            self.certificate=copy.deepcopy(original);self.certificate[name]["sha256"]="0"*64;self.refresh_certificate()
+            with self.assertRaises(recovery.Blocked):self.execute()
+            self.assertFalse(self.calls)
+        self.certificate=original;self.refresh_certificate()
+        self.admission["prior"]["standalone_control_files"].remove(str(self.certificate_path))
+        with self.assertRaisesRegex(recovery.Blocked,"reboot_certificate_not_standalone"):self.execute()
+        self.assertFalse(self.calls)
+
+    def test_reboot_certificate_hash_cannot_be_replaced_by_similar_unpinned_json(self):
+        self.admission["reboot_equivalence"]["sha256"]="0"*64
+        with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_reboot_all_nine_artifacts_are_rehashed_even_after_earlier_input_validation(self):
+        original=recovery.validate_inputs
+        def changed(*args):
+            value=original(*args);path=Path(self.inputs["scale_journal"]["path"])
+            raw=path.read_bytes();path.write_bytes(b"X"+raw[1:]);return value
+        with patch.object(recovery,"validate_inputs",side_effect=changed):
+            with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_late_reboot_certificate_or_environment_change_withholds_completion(self):
+        def source(_):
+            if (self.output/".COMPLETE.json.pending").exists():
+                raw=self.certificate_path.read_bytes();self.certificate_path.write_bytes(raw[:-1]+b" ")
+            return self.source
+        self.assert_blocked(self.execute(source_effect=source),"input_identity_changed")
+
+    def test_current_reboot_binding_is_checked_before_next_dispatch(self):
+        original=self.transport
+        def transport(*args,**kwargs):
+            value=original(*args,**kwargs)
+            if len(self.calls)==1:
+                raw=self.certificate_path.read_bytes();self.certificate_path.write_bytes(raw[:-1]+b" ")
+            return value
+        self.assert_blocked(self.execute(transport=transport),"request_input_changed")
+        self.assertEqual(len(self.calls),1)
 
     def error_reply(self,payload,codes):
         values=[]
@@ -212,7 +334,7 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(recovery.Blocked,"producer_committed_blob_differs"):self.execute()
         self.blobs[name]=original
         self.prior_head="d"*40
-        with self.assertRaisesRegex(recovery.Blocked,"prior_producer_epoch_not_admitted"):self.execute()
+        with self.assertRaisesRegex(recovery.Blocked,"reboot_old_owner_or_drain_differs"):self.execute()
         self.assertEqual(self.calls,[])
 
     def test_live_prior_owner_and_changed_inputs_block_before_output(self):

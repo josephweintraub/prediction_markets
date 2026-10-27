@@ -48,6 +48,12 @@ PRIOR_FLOOR = {"http_attempts":220, "method_items":12309, "response_bytes":10143
 OBSERVATION_ACCEPTANCE = {
     "path":"/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_error_observation_v3.ROOT_ACCEPTANCE.json",
     "bytes":2576, "sha256":"f3cf41e30d6bf6bbeba35c8e276d4de42fc9a286376250a0e256a2b7298e15af"}
+OLD_BOOT_ID = "b9008fdc-0b94-4daf-b498-13403e96c475"
+CURRENT_BOOT_ID = "1ad746ce-103e-4e8f-a2f5-ba4df810e899"
+OLD_DATA_DEVICE, CURRENT_DATA_DEVICE = 66309,66305
+DATA_UUID,DATA_SERIAL = "d0cd087b-94c4-428c-bae9-ae28929059f6","vol0acbba4565a64f792"
+ROOT_UUID = "0df68d9a-e70c-413e-9a10-736ae3f00a7a"
+OLD_PRIVATE_DEVICE,CURRENT_PRIVATE_DEVICE = 66305,66306
 
 
 class Deadline(BaseException):
@@ -74,7 +80,89 @@ def validate_inputs(value, source, actual_keys):
     return legacy.validate_inputs(value, legacy_source(source), actual_keys)
 
 
-def validate_prior(value, output, source, inputs):
+def reboot_environment():
+    """Read only the literal mounted devices and this boot, never infer equivalence."""
+    def command(argv):
+        result=subprocess.run(argv,capture_output=True,check=True,timeout=10)
+        require(len(result.stdout)<=65536 and len(result.stderr)<=65536,"reboot_mount_reply_limit")
+        return result.stdout.decode().strip().split()
+    data=command(["findmnt","-n","-o","UUID,FSTYPE","--target","/mnt/data"])
+    volume=command(["lsblk","-b","-n","-d","-o","SERIAL,SIZE","/dev/nvme1n1"])
+    root=command(["findmnt","-n","-o","UUID","--target","/"])
+    require(len(data)==2 and len(volume)==2 and len(root)==1,"reboot_mount_shape")
+    return {"boot_id":Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+        "uuid":data[0],"fstype":data[1],"serial":volume[0],"device_bytes":volume[1],
+        "data_device":Path("/mnt/data").stat().st_dev,"root_uuid":root[0],"root_device":Path("/").stat().st_dev}
+
+
+def validate_reboot(certificate_ref, prior_value, inputs, private_ref):
+    """One SHA-bound root-approved reboot, not a general identity relaxation."""
+    certificate,binding=read_json(certificate_ref)
+    require(set(certificate)=={"schema_version","status","old_boot_id","current_boot_id","data_volume",
+        "old_owner","old_drain","inputs","private_authority"} and
+        certificate["schema_version"]=="polymarket_header_reboot_equivalence_v4" and
+        certificate["status"]=="root_verified_same_volume_device_reassignment" and
+        certificate["old_boot_id"]==OLD_BOOT_ID and certificate["current_boot_id"]==CURRENT_BOOT_ID,
+        "reboot_certificate_not_exact")
+    volume={"uuid":DATA_UUID,"serial":DATA_SERIAL,"device_bytes":750*1024**3,
+        "old_device":OLD_DATA_DEVICE,"current_device":CURRENT_DATA_DEVICE}
+    require(encode(certificate["data_volume"])==encode(volume),"reboot_volume_certificate_differs")
+    env=reboot_environment()
+    require(env["boot_id"]==CURRENT_BOOT_ID and env["uuid"]==DATA_UUID and env["fstype"]=="ext4" and
+        env["serial"]==DATA_SERIAL and env["device_bytes"]==str(750*1024**3) and
+        env["data_device"]==CURRENT_DATA_DEVICE,"reboot_live_volume_or_boot_differs")
+    campaigns=prior_value.get("campaigns")
+    require(type(campaigns) is list and len(campaigns)==1,"reboot_prior_campaign_not_exact")
+    campaign=campaigns[0]
+    require(certificate["old_owner"]["path"]==str(Path(campaign["run_dir"])/"OWNER.json") and
+        certificate["old_drain"]==campaign["drain"],"reboot_owner_or_drain_not_exact")
+    owner,owner_binding=read_json(certificate["old_owner"])
+    drain,drain_binding=read_json(certificate["old_drain"])
+    require(owner.get("schema_version")=="polymarket_exact_header_owner_v3" and
+        owner.get("source",{}).get("head")==PRIOR_SOURCE_HEAD and owner.get("process",{}).get("boot_id")==OLD_BOOT_ID and
+        drain.get("owner_sha256")==owner_binding["sha256"] and drain.get("run_dir")==campaign["run_dir"],
+        "reboot_old_owner_or_drain_differs")
+    files={item["path"]:item for item in prior_value["files"]}
+    for captured in (binding,owner_binding,drain_binding):
+        require(captured["path"] in files and ref(files[captured["path"]])==ref(captured) and
+            files[captured["path"]]["category"]=="control","reboot_proof_not_rostered")
+    require(binding["path"] in prior_value["standalone_control_files"],"reboot_certificate_not_standalone")
+    require(type(certificate["inputs"]) is dict and set(certificate["inputs"])==set(inputs),"reboot_input_roster_differs")
+    old_inputs={}
+    for name,current in inputs.items():
+        pair=certificate["inputs"][name]
+        require(type(pair) is dict and set(pair)=={"old","current"},"reboot_input_pair_schema")
+        old=pair["old"]
+        require(type(old) is dict and set(old)=={"path","bytes","sha256","identity"} and
+            encode(pair["current"])==encode(current) and ref(old)==ref(current) and
+            type(old["identity"]) is dict and set(old["identity"])==set(current["identity"]),"reboot_input_binding_differs")
+        changed=dict(old["identity"]);changed["device"]=CURRENT_DATA_DEVICE
+        require(type(old["identity"].get("device")) is int and old["identity"]["device"]==OLD_DATA_DEVICE and
+            type(current["identity"].get("device")) is int and current["identity"]["device"]==CURRENT_DATA_DEVICE and
+            encode(changed)==encode(current["identity"]),"reboot_input_nondevice_identity_differs")
+        require(reference(ref(current),CAPS["baseline_bytes"])==current,"reboot_input_rehash_differs")
+        old_inputs[name]=old
+    require(encode(owner.get("inputs"))==encode(old_inputs),"reboot_old_owner_inputs_differs")
+    authority=certificate["private_authority"]
+    require(type(authority) is dict and set(authority)=={"reference","old","current","root_uuid"} and
+        authority["reference"]==private_ref and type(authority["root_uuid"]) is str and
+        authority["root_uuid"]==env["root_uuid"]==ROOT_UUID,"reboot_private_authority_schema")
+    actual_private=reference(private_ref);current_private=pilot.identity(Path(private_ref["path"]))
+    scale_contract=read_json(ref(inputs["scale_contract"]))[0]
+    require(encode(authority["old"])==encode(scale_contract.get("rpc_authority_private_file_identity")) and
+        encode(authority["current"])==encode(current_private),"reboot_private_identity_differs")
+    changed=dict(authority["old"]);changed["device"]=current_private["device"]
+    require(type(authority["old"].get("device")) is int and authority["old"]["device"]==OLD_PRIVATE_DEVICE and
+        type(current_private["device"]) is int and current_private["device"]==env["root_device"]==CURRENT_PRIVATE_DEVICE and
+        encode(changed)==encode(current_private),
+        "reboot_private_nondevice_identity_differs")
+    previous_admission=read_json(ref(owner["admission"]),MAX_LEDGER)[0]
+    require(previous_admission.get("private_file")==private_ref,"reboot_old_private_reference_differs")
+    return {"binding":binding,"old_inputs":old_inputs,"private_binding":actual_private,
+        "private_current":current_private,"environment":env}
+
+
+def validate_prior(value, output, source, inputs, reboot):
     require(type(value) is dict and set(value) == {"complete_roster","baseline_cache_excluded","roots",
         "standalone_control_files","original_pilot_input","files","rpc","campaigns","observations"},
         "prior_ledger_schema")
@@ -141,7 +229,9 @@ def validate_prior(value, output, source, inputs):
     base_value = {key:part for key,part in value.items() if key != "observations"}
     base_value["roots"] = [name for name in value["roots"] if name != str(root)]
     base_value["files"] = [item for item in value["files"] if item["path"] not in removed]
-    prior = legacy.validate_prior(base_value, output, legacy_source(source), inputs)
+    # The unchanged validator receives the exact old OWNER inputs only after
+    # full-byte, same-volume equivalence. Actual collection uses fresh inputs.
+    prior = legacy.validate_prior(base_value, output, legacy_source(source), reboot["old_inputs"])
     require(bool(value["campaigns"]), "failed_v3_campaign_missing")
     for campaign in value["campaigns"]:
         owner = read_json(ref(prior["files"][str(Path(campaign["run_dir"])/"OWNER.json")]))[0]
@@ -388,7 +478,8 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
             and output.parent.is_dir() and not output.exists() and not output.is_symlink(), "destination_not_fresh")
     admission, admission_binding = read_json({"path": str(admission_path), "bytes": identity(admission_path)["bytes"], "sha256": admission_sha}, MAX_LEDGER)
     require(type(admission) is dict and set(admission) == {"schema_version", "status", "caps", "consumer_head", "run_dir",
-        "raw_clocks_only", "final_sample_admitted", "inputs", "private_file", "actual_keys", "conservative_new_runtime_seconds", "prior"}
+        "raw_clocks_only", "final_sample_admitted", "inputs", "private_file", "actual_keys", "conservative_new_runtime_seconds", "prior",
+        "reboot_equivalence"}
         and admission["schema_version"] == SCHEMA and admission["status"] == "root_exact_header_campaign_admitted"
         and admission["caps"] == CAPS and admission["consumer_head"] == head and admission["run_dir"] == str(output)
         and admission["raw_clocks_only"] is True and admission["final_sample_admitted"] is False, "root_admission_not_exact")
@@ -400,7 +491,8 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
     if arm_prior: arm_prior(declared_runtime, started)
     K = legacy.integer(admission["actual_keys"], CAPS["keys"]); require(K > 0, "empty_key_sample")
     inputs, measured = validate_inputs(admission["inputs"], source, K)
-    prior = validate_prior(admission["prior"], output, source, inputs)
+    reboot=validate_reboot(admission["reboot_equivalence"],admission["prior"],inputs,admission["private_file"])
+    prior = validate_prior(admission["prior"], output, source, inputs,reboot)
     for value in inputs.values():
         require(value["path"] in prior["files"] and ref(prior["files"][value["path"]]) == ref(value), "input_absent_from_global_ledger")
     projection = legacy.elapsed(admission["conservative_new_runtime_seconds"])
@@ -410,8 +502,8 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
     require(private_binding["path"] == str(private) and private.stat().st_size <= 16 * 1024, "private_configuration_binding")
     endpoint, configuration = inventory.load_rpc_endpoint(private)
     require(configuration == "private_file", "private_rpc_authority_required")
-    scale_contract = read_json(admission["inputs"]["scale_contract"])[0]
-    require(scale_contract.get("rpc_authority_private_file_identity") == pilot.identity(private), "rpc_authority_differs_from_scale")
+    require(reboot["private_current"]==pilot.identity(private) and private_binding==reboot["private_binding"],
+        "rpc_authority_differs_from_reboot")
     for path in [admission_binding["path"], private_binding["path"], *prior["files"]]:
         require(Path(path) != output and output not in Path(path).parents and Path(path) not in output.parents, "input_output_overlap")
     resources = inventory.resource_state(output.parent)
@@ -423,7 +515,7 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
     b = Budget(output, prior, admission_binding["bytes"], started)
     source_identities = {name: identity(REPO / name) for name in SOURCE_FILES}
     def before_request():
-        for value in (admission_binding, private_binding, inputs["keys"]):
+        for value in (admission_binding, private_binding, inputs["keys"],reboot["binding"]):
             require(identity(Path(value["path"])) == value["identity"], "request_input_changed")
         require(all(identity(REPO / name) == value for name, value in source_identities.items()), "request_source_changed")
     b.before_request = before_request
@@ -433,15 +525,20 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
         for value in [admission_binding, private_binding, *inputs.values(), *prior["files"].values()]:
             require(identity(Path(value["path"])) == value["identity"], "input_identity_changed")
         require(inventory.load_rpc_endpoint(private) == (endpoint, configuration), "private_authority_changed")
+        require(identity(Path(reboot["binding"]["path"]))==reboot["binding"]["identity"] and
+            reboot_environment()==reboot["environment"],"reboot_certificate_or_environment_changed")
         if full:
             require(read_json(ref(admission_binding), MAX_LEDGER)[1] == admission_binding, "admission_changed")
             require(reference(admission["private_file"]) == private_binding, "private_authority_changed")
             for value in inputs.values(): require(bound(Path(value["path"]), CAPS["baseline_bytes"]) == value, "input_changed")
-            require(validate_prior(admission["prior"], output, source, inputs) == prior, "prior_artifacts_or_roster_changed")
+            require(validate_reboot(admission["reboot_equivalence"],admission["prior"],inputs,admission["private_file"])==reboot,
+                "reboot_certificate_changed")
+            require(validate_prior(admission["prior"], output, source, inputs,reboot) == prior, "prior_artifacts_or_roster_changed")
         b.check()
     try:
         b.write("OWNER.json", encode({"schema_version": "polymarket_exact_header_owner_v4", "run_dir": str(output),
             "source": source, "process": owner_identity(), "inputs": inputs, "caps": CAPS, "admission": admission_binding,
+            "reboot_equivalence":reboot["binding"],
             "raw_clocks_only": True, "final_sample_admitted": False}))
         external()
         RPC(endpoint, b, transport, "rpc.jsonl").call()
@@ -505,6 +602,7 @@ def run_campaign(admission_path, admission_sha, head, output, private, *, transp
                 "diagnostic_chunk_bytes":DIAGNOSTIC_CHUNK_BYTES,"diagnostic_total_bytes":DIAGNOSTIC_TOTAL_BYTES,
                 "retry_delays_seconds":RETRY_DELAYS},
             "inputs": inputs, "admission": admission_binding, "caps": CAPS, "requested_keys": K, "accepted_keys": K,
+            "reboot_equivalence":reboot["binding"],
             "missing_keys": 0, "duplicate_keys": 0, "fallback_rows": 0, "exact_key_coverage": True,
             "chunks": completed, "artifact_inventory": inventory_binding, "usage": b.usage(),
             "raw_clocks_only": True, "final_sample_admitted": False, "history_completeness_certified": False,
