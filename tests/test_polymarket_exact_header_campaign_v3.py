@@ -126,6 +126,7 @@ class FullCampaignTests(unittest.TestCase):
             self.assertIn(head, (HEAD, PRODUCER)); return self.blobs[name]
         with patch.object(full, "RUN_ROOT", self.root), patch.object(full, "ORIGINAL_PILOT_INPUT", self.original_ref), \
                 patch.object(full, "SCALE_STDOUT_ECHO", getattr(self, "scale_stdout_echo_ref", full.SCALE_STDOUT_ECHO)), \
+                patch.object(full, "ROSTER_STDOUT_ECHO", getattr(self, "roster_stdout_echo_ref", full.ROSTER_STDOUT_ECHO)), \
                 patch.object(full, "source_snapshot", side_effect=source_effect, return_value=self.source), \
                 patch.object(full.scale, "git_blob", side_effect=blob), patch.object(full.inventory, "resource_state", return_value=RESOURCES), \
                 patch.object(full.inventory, "load_rpc_endpoint", return_value=("https://rpc.invalid/SECRET_KEY", "private_file")), \
@@ -780,6 +781,84 @@ class FullCampaignTests(unittest.TestCase):
         def source(*_):
             if (self.output / ".COMPLETE.json.pending").exists():
                 path.write_bytes(path.read_bytes().replace(b"1000", b"1001", 1))
+            return self.source
+        self.assert_blocked(self.execute(source_effect=source), "input_identity_changed")
+
+    def roster_stdout_echo(self, *, changed_echo=False):
+        root = self.root / "roster_builder"; root.mkdir()
+        source = {"head": PRODUCER, "files": {name: self.source["files"][name]["sha256"] for name in full.roster_profile.SOURCE_FILES}}
+        start = {"schema_version": "polymarket_exact_header_roster_build_v1", "source": source, "caps": full.roster_profile.CAPS,
+                 "status": "blocked", "literal_source_generation_only": True, "final_universe_admitted": False, "analysis_admitted": False}
+        self.save(root / "START.json", start)
+        roster = self.save(root / "roster.json", {"schema_version": "polymarket_exact_header_key_roster_v1", "files": [{"source_role": "legacy_raw"}]})
+        manifest = start | {"status": "sealed_source_roster_complete_not_inventory_admission", "roster": roster | {"path": "roster.json"}, "source_files": 1}
+        mb = self.save(root / "manifest.json", manifest)
+        self.save(root / "COMPLETE.json", {"status": manifest["status"], "manifest": mb | {"path": "manifest.json"},
+                                          "final_universe_admitted": False, "analysis_admitted": False})
+        self.inputs["roster"] = roster
+        im = full.read_json(self.inputs["inventory_manifest"])[0]; im["roster"] = roster
+        self.inputs["inventory_manifest"] = self.save(self.inv / "manifest.json", im)
+        ic = full.read_json(self.inputs["inventory_complete"])[0]
+        ic["manifest"] = self.inputs["inventory_manifest"] | {"path": "manifest.json"}
+        self.inputs["inventory_complete"] = self.save(self.inv / "COMPLETE.json", ic)
+        self.admission["prior"]["roots"].append(str(root)); self.refresh_ledger()
+        mixed = self.root / "mixed"; mixed.mkdir(exist_ok=True)
+        path = mixed / "header_roster_v1.log"
+        self.save(path, manifest | {"source_files": 2} if changed_echo else manifest)
+        self.roster_stdout_echo_ref = self.ref(path)
+        self.admission["prior"]["standalone_control_files"].append(str(path))
+        self.admission["prior"]["files"].append(self.ref(path) | {"category": "control", "chunk": None})
+        return path, root
+
+    def test_roster_stdout_echo_has_one_literal_production_pin_and_exact_accepted_root(self):
+        self.assertEqual(full.ROSTER_STDOUT_ECHO, {
+            "path": "/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_roster_v1.log",
+            "bytes": 3084, "sha256": "4bd368bc90ac33203989b43174425a504da55730314fea833ff8d87d8f6a8aaf"})
+        path, _ = self.roster_stdout_echo()
+        (path.parent / "unrelated_growing.log").write_bytes(b"not header evidence")
+        self.assertEqual(self.execute()["status"], full.SUCCESS)
+
+    def test_roster_stdout_echo_changed_bytes_or_renamed_path_still_block(self):
+        for index, renamed in enumerate((False, True)):
+            if index: self.setUp()
+            path, _ = self.roster_stdout_echo()
+            if renamed:
+                changed = path.with_name("renamed_roster.log"); path.rename(changed)
+                self.admission["prior"]["standalone_control_files"] = [str(changed)]
+                self.admission["prior"]["files"][-1] = self.ref(changed) | {"category": "control", "chunk": None}
+                code = "standalone_protocol_artifact_forbidden"
+            else:
+                path.write_bytes(path.read_bytes() + b" ")
+                self.admission["prior"]["files"][-1] = self.ref(path) | {"category": "control", "chunk": None}
+                code = "reference_changed"
+            with self.assertRaisesRegex(full.Blocked, code): self.execute()
+            self.assertFalse(self.calls)
+
+    def test_roster_stdout_requires_equal_manifest_whole_root_and_normal_profile_checks(self):
+        self.roster_stdout_echo(changed_echo=True)
+        with self.assertRaisesRegex(full.Blocked, "fixed_roster_stdout_manifest_differs"): self.execute()
+        self.assertFalse(self.calls)
+        self.setUp(); _, root = self.roster_stdout_echo()
+        self.admission["prior"]["roots"].remove(str(root))
+        with self.assertRaisesRegex(full.Blocked, "fixed_roster_stdout_roster_root_missing"): self.execute()
+        self.assertFalse(self.calls)
+        self.setUp(); _, root = self.roster_stdout_echo()
+        marker = full.read_json(self.ref(root / "COMPLETE.json"))[0]; marker["status"] = "blocked"
+        self.save(root / "COMPLETE.json", marker)
+        item = next(item for item in self.admission["prior"]["files"] if item["path"] == str(root / "COMPLETE.json"))
+        item.update(self.ref(root / "COMPLETE.json"))
+        with self.assertRaisesRegex(full.Blocked, "roster_profile_marker_or_start_differs"): self.execute()
+        self.assertFalse(self.calls)
+
+    def test_roster_stdout_is_control_chunk_none_and_cannot_survive_late_mutation(self):
+        path, _ = self.roster_stdout_echo()
+        self.admission["prior"]["files"][-1]["chunk"] = 0
+        with self.assertRaisesRegex(full.Blocked, "fixed_roster_stdout_category_invalid"): self.execute()
+        self.assertFalse(self.calls)
+        self.admission["prior"]["files"][-1]["chunk"] = None
+        def source(*_):
+            if (self.output / ".COMPLETE.json.pending").exists():
+                raw = path.read_bytes(); path.write_bytes(raw[:-1] + b" ")
             return self.source
         self.assert_blocked(self.execute(source_effect=source), "input_identity_changed")
 

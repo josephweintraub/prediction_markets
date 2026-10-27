@@ -53,6 +53,9 @@ ORIGINAL_PILOT_INPUT = {
 SCALE_STDOUT_ECHO = {
     "path": "/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_scale_v2.log",
     "bytes": 1723, "sha256": "1fa7aadb16d893677a10ed00948806d1bef87c6698d63fc826b80ed620e37e3b"}
+ROSTER_STDOUT_ECHO = {
+    "path": "/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_roster_v1.log",
+    "bytes": 3084, "sha256": "4bd368bc90ac33203989b43174425a504da55730314fea833ff8d87d8f6a8aaf"}
 FINAL_RESERVE = 2 * 1024**2
 SUCCESS = "literal_exact_header_campaign_complete_raw_clocks_only"
 SCHEMA = "polymarket_exact_header_campaign_admission_v3"
@@ -389,6 +392,7 @@ def validate_prior(value, output, source, inputs):
             require(not item.is_symlink() and (item.is_dir() or item.is_file()), "prior_tree_invalid")
             if item.is_file(): actual.add(str(item))
             require(len(actual) <= MAX_FILES, "prior_roster_size")
+    roster_echo = None
     for name in standalone:
         path = Path(name)
         require(str(path) not in actual and path.is_absolute() and path.resolve() == path and RUN_ROOT in path.parents
@@ -406,6 +410,10 @@ def validate_prior(value, output, source, inputs):
                     "fixed_scale_stdout_scale_root_missing")
             require(echoed == read_json(ref(inputs["scale_manifest"]))[0],
                     "fixed_scale_stdout_manifest_differs")
+        elif str(path) == ROSTER_STDOUT_ECHO["path"]:
+            roster_echo, _ = read_json(ROSTER_STDOUT_ECHO)
+            require(type(roster_echo) is dict and Path(inputs["roster"]["path"]).parent in directories,
+                    "fixed_roster_stdout_roster_root_missing")
         else:
             standalone_operational_control(path)
         actual.add(str(path))
@@ -421,12 +429,18 @@ def validate_prior(value, output, source, inputs):
         require(item["path"] not in standalone or item["category"] == "control", "standalone_control_category")
         require(item["path"] != SCALE_STDOUT_ECHO["path"] or
                 item["category"] == "control" and item["chunk"] is None, "fixed_scale_stdout_category_invalid")
+        require(item["path"] != ROSTER_STDOUT_ECHO["path"] or
+                item["category"] == "control" and item["chunk"] is None, "fixed_roster_stdout_category_invalid")
         require(item["path"] != original["path"] or item["category"] == "baseline" and item["chunk"] is None,
                 "original_pilot_input_misclassified_or_outside_run_root")
         capture = reference(ref(item), CAPS["global_header_bytes"])
         files[item["path"]] = capture | {"category": item["category"], "chunk": item["chunk"]}
         totals[item["category"]] += item["bytes"]
     require(set(files) == actual and len(standalone) == len(set(standalone)), "prior_roster_incomplete")
+    if roster_echo is not None:
+        manifest_path = str(Path(inputs["roster"]["path"]).parent / "manifest.json")
+        require(manifest_path in files and roster_echo == read_json(ref(files[manifest_path]))[0],
+                "fixed_roster_stdout_manifest_differs")
     require(all(totals[key] <= CAPS[key + "_bytes"] for key in totals)
             and sum(totals.values()) <= CAPS["global_header_bytes"], "prior_disk_allocation")
     rpc = value["rpc"]
