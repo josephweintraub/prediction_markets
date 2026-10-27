@@ -48,6 +48,9 @@ PRIOR_FLOOR = {"http_attempts":220, "method_items":12309, "response_bytes":10143
 OBSERVATION_ACCEPTANCE = {
     "path":"/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/header_error_observation_v3.ROOT_ACCEPTANCE.json",
     "bytes":2576, "sha256":"f3cf41e30d6bf6bbeba35c8e276d4de42fc9a286376250a0e256a2b7298e15af"}
+FAILED_STDOUT_ECHO = {
+    "path":"/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/full_header_v1.log",
+    "bytes":558,"sha256":"c4b06c4ce038f6a4a581c51e6cad789f0051eda191b4629ec1adb44f310911f0"}
 OLD_BOOT_ID = "b9008fdc-0b94-4daf-b498-13403e96c475"
 CURRENT_BOOT_ID = "1ad746ce-103e-4e8f-a2f5-ba4df810e899"
 OLD_DATA_DEVICE, CURRENT_DATA_DEVICE = 66309,66305
@@ -225,10 +228,29 @@ def validate_prior(value, output, source, inputs, reboot):
     require(actual == expected_paths and all(files[path]["chunk"] is None and
         files[path]["category"] == ("failed" if path.endswith("/response.raw") else "control")
         for path in expected_paths), "observation_roster_or_category")
-    removed = expected_paths
+    echo_path=FAILED_STDOUT_ECHO["path"]
+    require(echo_path in value["standalone_control_files"] and echo_path in files and
+        ref(files[echo_path])==FAILED_STDOUT_ECHO and files[echo_path]["category"]=="control" and
+        files[echo_path]["chunk"] is None,"fixed_failed_stdout_not_rostered")
+    echo,echo_binding=read_json(FAILED_STDOUT_ECHO)
+    require(echo.get("schema_version")=="polymarket_exact_header_campaign_v3" and echo.get("status")=="blocked" and
+        echo.get("error_code")=="rpc_reply_shape" and echo.get("raw_clocks_only") is True and
+        echo.get("final_sample_admitted") is False,"fixed_failed_stdout_status_differs")
+    require(len(value["campaigns"])==1,"fixed_failed_stdout_campaign_not_exact")
+    campaign_root=Path(value["campaigns"][0]["run_dir"])
+    failed_path,owner_path=str(campaign_root/"FAILED.json"),str(campaign_root/"OWNER.json")
+    require(failed_path in files and owner_path in files and files[failed_path]["category"]=="control" and
+        files[failed_path]["chunk"] is None,"fixed_failed_stdout_source_missing")
+    failure=read_json(ref(files[failed_path]))[0];owner=read_json(ref(files[owner_path]))[0]
+    require(encode(failure)==encode(echo) and files[failed_path]["bytes"]==echo_binding["bytes"] and
+        files[failed_path]["sha256"]==echo_binding["sha256"] and
+        owner.get("schema_version")=="polymarket_exact_header_owner_v3" and
+        owner.get("source",{}).get("head")==PRIOR_SOURCE_HEAD,"fixed_failed_stdout_source_differs")
+    removed = expected_paths|{echo_path}
     base_value = {key:part for key,part in value.items() if key != "observations"}
     base_value["roots"] = [name for name in value["roots"] if name != str(root)]
     base_value["files"] = [item for item in value["files"] if item["path"] not in removed]
+    base_value["standalone_control_files"]=[path for path in value["standalone_control_files"] if path!=echo_path]
     # The unchanged validator receives the exact old OWNER inputs only after
     # full-byte, same-volume equivalence. Actual collection uses fresh inputs.
     prior = legacy.validate_prior(base_value, output, legacy_source(source), reboot["old_inputs"])

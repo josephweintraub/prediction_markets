@@ -49,6 +49,11 @@ class RecoveryTests(unittest.TestCase):
         self.sleeps=[]
         self.make_observation()
         self.make_reboot()
+        self.failed_stdout=self.root/"full_header_v1.log"
+        self.failed_stdout.write_bytes((self.old_root/"FAILED.json").read_bytes())
+        self.failed_stdout_ref=self.ref(self.failed_stdout)
+        self.admission["prior"]["standalone_control_files"].append(str(self.failed_stdout))
+        self.admission["prior"]["files"].append(self.failed_stdout_ref|{"category":"control","chunk":None})
         self.old_bytes={str(path):path.read_bytes() for path in self.old_root.rglob("*") if path.is_file()}
 
     def make_reboot(self):
@@ -127,6 +132,7 @@ class RecoveryTests(unittest.TestCase):
         with patch.object(recovery,"RUN_ROOT",self.root),patch.object(recovery.legacy,"RUN_ROOT",self.root),\
              patch.object(recovery.legacy,"ORIGINAL_PILOT_INPUT",self.original_ref),\
              patch.object(recovery,"OBSERVATION_ACCEPTANCE",self.acceptance),\
+             patch.object(recovery,"FAILED_STDOUT_ECHO",self.failed_stdout_ref),\
              patch.object(recovery,"PRIOR_SOURCE_HEAD",self.prior_head),\
              patch.object(recovery,"OLD_BOOT_ID",fixture.BOOT),\
              patch.object(recovery,"CURRENT_DATA_DEVICE",self.current_data_device),\
@@ -243,6 +249,58 @@ class RecoveryTests(unittest.TestCase):
             return value
         self.assert_blocked(self.execute(transport=transport),"request_input_changed")
         self.assertEqual(len(self.calls),1)
+
+    def test_fixed_failed_stdout_echo_is_reinserted_and_charged_exactly_once(self):
+        original=recovery.Budget;captured={}
+        def budget(output,prior,*args):
+            captured.update(prior);return original(output,prior,*args)
+        with patch.object(recovery,"Budget",side_effect=budget):result=self.execute()
+        self.assertEqual(result["status"],recovery.SUCCESS,result)
+        self.assertIn(str(self.failed_stdout),captured["files"])
+        self.assertEqual(captured["files"][str(self.failed_stdout)]["category"],"control")
+        expected=sum(item["bytes"] for item in self.admission["prior"]["files"] if item["category"]=="control")
+        self.assertEqual(captured["bytes"]["control"],expected)
+
+    def test_fixed_failed_stdout_echo_same_size_mutation_is_rejected_before_dispatch(self):
+        raw=self.failed_stdout.read_bytes();self.failed_stdout.write_bytes(raw[:-1]+b" ")
+        with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_fixed_failed_stdout_requires_equal_rostered_failed_source(self):
+        path=self.old_root/"FAILED.json";value=json.loads(path.read_bytes());value["accepted_keys"]=1
+        capture=self.save(path,value)
+        next(item for item in self.admission["prior"]["files"] if item["path"]==str(path)).update(capture)
+        with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_source_differs"):self.execute()
+        self.assertFalse(self.calls)
+
+    def test_fixed_failed_stdout_missing_source_or_wrong_category_is_rejected(self):
+        entries=self.admission["prior"]["files"]
+        self.admission["prior"]["files"]=[item for item in entries if item["path"]!=str(self.old_root/"FAILED.json")]
+        with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_source_missing"):self.execute()
+        self.admission["prior"]["files"]=entries
+        item=next(item for item in entries if item["path"]==str(self.failed_stdout))
+        for field,value in (("category","baseline"),("category","failed"),("chunk",0)):
+            previous=item[field];item[field]=value
+            with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_not_rostered"):self.execute()
+            item[field]=previous
+        self.assertFalse(self.calls)
+
+    def test_fixed_failed_stdout_does_not_allow_renamed_or_extra_protocol_echoes(self):
+        extra=self.root/"other.log";extra.write_bytes(self.failed_stdout.read_bytes())
+        self.admission["prior"]["standalone_control_files"].append(str(extra))
+        self.admission["prior"]["files"].append(self.ref(extra)|{"category":"control","chunk":None})
+        with self.assertRaisesRegex(recovery.Blocked,"standalone_protocol_artifact_forbidden"):self.execute()
+        self.admission["prior"]["standalone_control_files"].remove(str(self.failed_stdout))
+        self.admission["prior"]["files"]=[item for item in self.admission["prior"]["files"] if item["path"]!=str(self.failed_stdout)]
+        with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_not_rostered"):self.execute()
+        self.assertFalse(self.calls)
+
+    def test_late_failed_stdout_echo_mutation_withholds_completion(self):
+        def source(_):
+            if (self.output/".COMPLETE.json.pending").exists():
+                raw=self.failed_stdout.read_bytes();self.failed_stdout.write_bytes(raw[:-1]+b" ")
+            return self.source
+        self.assert_blocked(self.execute(source_effect=source),"input_identity_changed")
 
     def error_reply(self,payload,codes):
         values=[]
