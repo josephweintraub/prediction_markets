@@ -12,6 +12,8 @@
 - Kept the header inventory within its read ceilings using cached admitted
   footer metadata, and repaired final input/output binding checks at staged
   completion; canonical downstream verification passed 241 synthetic tests.
+- Completed a compact literal-clock scale pilot and two raw source-evidence
+  lookups; prepared a footer-only builder for the explicit sealed source roster.
 - Added an independently checked parent acceptance wrapper for one fresh V3
   historical child, including birth-failure/descendant-drain fixtures and inherited
   campaign accounting; child completion alone cannot admit repaired raw history.

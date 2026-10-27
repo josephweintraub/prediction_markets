@@ -211,3 +211,36 @@ The saved v2 fixture log SHA256 is
 The header inventory retains two dedicated footer passes and one native-payload
 hash pass; its repaired staged-completion gate rechecks source identities,
 roster/source bindings, outputs and deadline after marker staging.
+
+## Compact clock and source-evidence pilots
+
+The reviewed downstream units are committed and pushed at clean revision
+`922265ed7e5253da72af6132b5fa3c0e95d5d434`, in separate logical source commits.
+The fixed two-address source lookup completed with two HTTP 200 records,
+1,554,185 charged response bytes and no compiler execution. The raw result
+SHA256 is `5d2a7eeecca8f1c8d665884ba24eb43402cc0bf1ddf0a634e4aaafe59bdc3d76`.
+Reported compiler/source matches remain untrusted until their independent
+source/runtime and build checks pass; no economic source is admitted by lookup.
+
+The compact timestamp pilot completed the same literal 1,000 keys as the
+original pilot, with every projected time/hash matching, zero missing keys and
+zero fallback rows. Its 72,750-byte Parquet has SHA256
+`5eb9aff29f59ab374697281e471aad22149f974aa629a2e8cecf16e5f928e668`.
+The cumulative usage is 116 HTTP attempts, 2,008 method items and 23,846,667
+response bytes, including the original pilot. Its 11.016-second cumulative
+elapsed figure includes 8.829 seconds inherited from that original pilot.
+This is a scale diagnostic, not full-history feasibility or timestamp coverage.
+The original pilot has 408 retained files; adding its separate input gives 409.
+All 422 prior header/control ledger entries and the ledger itself total
+1,320,569 bytes before this pilot's separately bounded outputs.
+
+The next literal-roster builder is independently reviewed, including full
+historical parent acceptance and zero-row intervals. Its 2 GB cumulative JSON
+ceiling includes output reopens and all prior preflight reads, and its one
+footer pass remains separate from the subsequent inventory's two passes.
+Native payload bytes are not read by this builder. Final coverage requires the
+later native-payload rehash and projected key inventory; no archive-discovery
+or filename glob can substitute for the bound source lineage.
+Canonical verification of the roster builder passed 106 focused/related
+synthetic tests, exit zero. The fixture log SHA256 is
+`063138d6dfe78eeb24a4b8fcb5875a271352c25e5f0cb9ac99a71b45eb304673`.
