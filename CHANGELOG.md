@@ -2,6 +2,9 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Extend the exact same-volume reboot certificate to the unchanged original
+  1,000-key request; prove legacy-validator equivalence and preserve fresh
+  per-request/final identities without modifying historical v3 source.
 - Preserve failed zero-request preflights and bind the actual historical error
   snapshots independently, including their source-proved self-write control-byte
   transition; retain all charges and require fresh admission before collection.

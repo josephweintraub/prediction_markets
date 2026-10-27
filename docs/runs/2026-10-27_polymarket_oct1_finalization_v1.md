@@ -804,3 +804,40 @@ and control charges. Header inherited runtime is conservatively rounded to
 and 24-hour caps. Request/response ceilings, providers, sample and filters remain
 unchanged. No draft status field is an accepted full stage without the separate
 successful root admission-check receipt and durable caller dispatch.
+
+### Original pilot request: complete same-boot equivalence
+
+The v2 zero-request check additionally refused an old full identity nested in
+the scale contract's original request. Neither producer directory nor metadata
+admission existed. Keep `full_header_v4_admission_v2.json` (135,388 bytes,
+SHA256 `a78fee57ccdcbdea8387f3372d71154b39aac6b5e69c12fff33f04e5924fcad7`)
+and `full_acquisition_preflight_failure_v2.json` unchanged.
+
+Root rehashed and reparsed the original 38,091-byte request: all 1,000 keys,
+raw SHA256 `af83e45810ab3f3e156c54420fca5b1017ac402067c941fff5ef9be4a865a150`,
+normalized-key SHA256
+`300bc5b131fbc6979bd023487c5694d5c2f40332843cd196498d0933d0de6c41`,
+path, inode, owner, mode and times are identical. Only data device 66309 became
+66305. The new mandatory `original_pilot_request` certificate field binds that
+exact old scale-contract value to the current reread. Whole certificate v2 is
+8,377 bytes, SHA256
+`89efc5894cb2e60671242c1abe348178e09b9c7826170441e85a71e9a614da7d`.
+Both original certificates and the root certificate program remain retained.
+
+The v4-local frozen prior validator keeps every legacy gate, proven by an
+AST-equivalence fixture, with only this certified request comparison adapted.
+The original v3 source remains untouched. Initial/final gates rehash and reparse
+the request; every RPC additionally checks its fresh identity. All 113 related
+canonical Linux fixtures passed at
+`94649b134c2f428dc7369f7332bc8b0d8b3042f0`; log SHA256 is
+`fb5070d1eb732acb7f40d4d4dcdf4172e1cd8ed2a5f1a397bc78a79f10e6612e`.
+Source/test SHA256 values are
+`e43e3a23c4e710622b0d55c6c55f081ed374b5e36d3d541361e121f4a8465fd7` and
+`92b66f660f5d3955667364c1a4db2145041c2457f98681491f6e0bc6bb2724fd`.
+
+The fresh v3 operator generation checks the small prior/reboot contracts before
+the full key-count scan, then performs the complete unchanged input validation.
+It retains v1/v2 failures and charges, rounding header prior runtime to 13,200
+seconds and metadata to 14,400 seconds without increasing any stage ceiling.
+Full acquisition, final data, analysis and Dropbox publication still require
+their separate actual success receipts.
