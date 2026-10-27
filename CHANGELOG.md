@@ -2,6 +2,9 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Added an observation-only historical V3 runtime/dependency diagnostic, a projected
+  required-header-key inventory and a raw-retaining metadata probe; preserve old
+  artifacts and keep protocol, whole-universe and paper admission separate.
 - Added an immutable, fixed-budget exact-header pilot with adversarial fixtures;
   kept legacy fetchers unchanged and retained literal-key-only completion semantics.
 - Added separately reviewed sparse V3-history and public-market-pagination pilots;

@@ -70,3 +70,46 @@ was replaced, and no sample or whole-history coverage was admitted.
 The pilot's per-ten-key output overhead must not be extrapolated into a full
 history run under the 8 GB header envelope. A separate required-key inventory and
 efficient, globally accounted campaign need review before full execution.
+
+## Completed V3 diagnostics and metadata acquisition boundary
+
+The sparse-history diagnostic completed at revision
+`835b94e8111372952be7fe03d104d24aa34c87be`: its exact literal address/topic
+range receipts support conservative raw-event collection from block 87,479,447.
+The saved result SHA256 is
+`faebc665f82de3a66ae73bdb1ea96a089ee39fca8be8a20cdbb27046eb87e10b`.
+This is not first-deployment or event/token/economic-equivalence admission.
+
+The observation-only runtime/getter diagnostic was committed and pushed at
+`ce9edd599d73039678ca58b0379e9994f4d431d6`. Canonical verification passed
+111 focused fixtures after preserving an earlier test-invocation import error.
+Its 48-request execution exited zero, retained the two exact implementation
+runtimes, and recorded historical configuration/dependency getters. The result
+SHA256 is `761eb05565361d5303e14a4b0fceb21dbc5b18b6181879ce3aea3f53cf1f156b`.
+Source equivalence, implementation histories of dependencies, position-family
+mapping and payout semantics remain separate gates.
+
+The original public-metadata pilot failed unaccepted on schema irregularities.
+Its first raw response is preserved at
+`/mnt/data/runs/2026-10-27_polymarket_market_metadata_pilot_v1/responses/a01.body`:
+54 of 1,000 objects had blank condition IDs, and 110 token IDs were blank.
+These are observed identity issues, not proof of missing native trades. No
+completion marker or normalized source was admitted. A separate raw-retaining
+v2 probe preserves irregular rows and distinguishes pagination evidence from
+returned-scope verification; it must not rewrite the failed v1 run.
+
+## Next admitted implementation boundaries
+
+The projected header-key inventory binds an explicit immutable file roster,
+rehashes new native payloads, reads only required block/hash column extents,
+and accounts for every source row before producing sorted required keys.
+Its completion remains literal-roster-only while historical V3 is outstanding.
+The raw metadata v2 probe fixes five public streams and at most two pages each;
+neither terminal cursors nor pilot success certify the final native universe.
+Canonical combined fixture verification passed 140 tests before execution.
+
+Historical V3 collection must use a separately reviewed parent acceptance wrapper,
+not the old child's completion marker alone. Global admission must carry forward
+all inherited, failed and diagnostic charges; full history additionally requires
+an independently accepted positive-row probe. No full historical collection or
+full-header/metadata/sports stage is admitted by this record alone.
