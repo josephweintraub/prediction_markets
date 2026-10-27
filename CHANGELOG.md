@@ -2,6 +2,9 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Preserve failed zero-request preflights and bind the actual historical error
+  snapshots independently, including their source-proved self-write control-byte
+  transition; retain all charges and require fresh admission before collection.
 - Add a fixed two-stage detached caller with exclusive birth-bound receipts,
   bounded logs and cumulative deadlines; require separate root acceptance of
   producer artifacts and process drainage before any stage promotion.

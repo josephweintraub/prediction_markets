@@ -712,8 +712,11 @@ mutate the raw-metadata stage's prior ledger.
 
 Canonical commit `d36a8bf3af2e041d6b413b7d758abcf4f61f3b35` adds only an
 exact-once allowance for the original failed-header CLI echo. The literal
-558-byte `full_header_v1.log` must match the rostered failed campaign's
-`FAILED.json` and its old source epoch. Its SHA256 is
+558-byte `full_header_v1.log` was initially assumed to match the rostered
+`FAILED.json` byte for byte. The zero-request admission correctly refused that
+assumption. Its actual SHA256 is
+`2e4f9ecd4b3c66969d5b60473116c0ce322f98efe640c20b8da86a54cc9fdaa9`;
+the failure file's separate SHA256 remains
 `c4b06c4ce038f6a4a581c51e6cad789f0051eda191b4629ec1adb44f310911f0`.
 It remains charged as control; arbitrary renamed protocol artifacts and duplicate
 standalone entries are not admitted. All 103 related Linux fixtures passed;
@@ -736,7 +739,7 @@ never retries or resumes. Root must independently reopen producer evidence and
 owned-process drainage; receipt presence is not stage acceptance or host idleness.
 
 The fresh admissions retain all prior failures, diagnostic charges and full pilot
-reservations. Header preparation reserves 10,800 prior seconds and 147,197 new
+reservations. The superseded first preparation reserves 10,800 prior seconds and 147,197 new
 projected seconds within the unchanged 72-hour cap. Metadata preparation carries
 4,863 HTTP attempts, 11,988,950,937 response bytes and 12,000 prior seconds within
 the unchanged 24-hour cap. No new provider observation is authorized by an old,
@@ -763,3 +766,41 @@ Full launch still requires the separately sealed admissions and root dispatch
 receipts in the operational run. Its root builder makes zero provider requests,
 revalidates all prior producer chains, and records current RAM/free space for the
 two disjoint acquisitions. No collection is inferred from source adoption alone.
+
+### Zero-request preflight findings and fresh admission generation
+
+The first wrapper invocation conservatively detected its own temporary Python
+parent as another compute consumer and stopped before creating admissions. A
+direct invocation then sealed only the header admission draft and refused its
+incorrect historical stdout assumption, before either producer output directory
+or any provider request existed. Preserve
+`full_header_v4_admission_v1.json` (132,288 bytes, SHA256
+`730739e0d67e75fadecdecf6230bc4fc7a74b181f88236d09ca99f93063e3633`),
+both v1 root programs and `full_acquisition_preflight_failure_v1.json` unchanged.
+
+Root reopened both original error files and verified that the sole decoded
+difference is `usage.new_retained_bytes.control`: 164,433 in FAILED versus
+164,991 in stdout. The original `Budget.usage()` retains `self.used` by
+reference; writing the 558-byte FAILED file increments that dict before main
+serializes the same returned result to stdout. The narrowed recovery pins both
+whole artifacts separately and permits only that exact source-proved +558
+transition, with every other field unchanged. No trade data, clock or RPC charge
+is corrected by this operational adapter.
+
+The first Linux fixture attempt for that adapter failed at import because its
+long fixture patch chain exceeded Python 3.12's static nesting limit. Its v3 log
+and receipt remain retained. The test-only ExitStack correction passed all 106
+canonical fixtures in the fresh v4 receipt; log SHA256 is
+`8156f2444ca7d4fd6e2db704962b97bc96252d6725c3a32a11ea111347c949ee`.
+Source/test SHA256 values are
+`ce2cdc82503e788023fbb7bc0a40a6a75f5094e83798439741e00cb1a1a40e1d` and
+`72ee1e20f864c9bce37a1acfc17a4651a2c299c524191ebcbdef408ae5393a93`;
+the clean pushed source commit is `d03b4db77339dc55527c04af67499d9653252de3`.
+No production collection ran during these preflights or fixture corrections.
+
+Fresh v2 root programs and admissions must retain these earlier drafts, failures
+and control charges. Header inherited runtime is conservatively rounded to
+12,000 seconds, and metadata to 13,200 seconds, within the same original 72-hour
+and 24-hour caps. Request/response ceilings, providers, sample and filters remain
+unchanged. No draft status field is an accepted full stage without the separate
+successful root admission-check receipt and durable caller dispatch.
