@@ -1,5 +1,5 @@
 """Synthetic source-versioned recovery fixtures; no real API/data access."""
-from contextlib import nullcontext
+from contextlib import ExitStack, nullcontext
 import copy
 import http.client
 import json
@@ -49,8 +49,13 @@ class RecoveryTests(unittest.TestCase):
         self.sleeps=[]
         self.make_observation()
         self.make_reboot()
+        self.failed_source_ref=self.ref(self.old_root/"FAILED.json")
         self.failed_stdout=self.root/"full_header_v1.log"
-        self.failed_stdout.write_bytes((self.old_root/"FAILED.json").read_bytes())
+        printed=json.loads((self.old_root/"FAILED.json").read_bytes())
+        printed["usage"]["new_retained_bytes"]["control"]+=self.failed_source_ref["bytes"]
+        # Different key order is immaterial after each complete body is pinned.
+        self.failed_stdout.write_bytes((json.dumps(dict(reversed(tuple(printed.items()))),
+            separators=(",",":"),allow_nan=False)+"\n").encode())
         self.failed_stdout_ref=self.ref(self.failed_stdout)
         self.admission["prior"]["standalone_control_files"].append(str(self.failed_stdout))
         self.admission["prior"]["files"].append(self.failed_stdout_ref|{"category":"control","chunk":None})
@@ -129,25 +134,32 @@ class RecoveryTests(unittest.TestCase):
         admission=self.save(self.admission_path,self.admission)
         def blob(head,name):
             self.assertIn(head,(fixture.HEAD,fixture.PRODUCER,NEXT));return self.blobs[name]
-        with patch.object(recovery,"RUN_ROOT",self.root),patch.object(recovery.legacy,"RUN_ROOT",self.root),\
-             patch.object(recovery.legacy,"ORIGINAL_PILOT_INPUT",self.original_ref),\
-             patch.object(recovery,"OBSERVATION_ACCEPTANCE",self.acceptance),\
-             patch.object(recovery,"FAILED_STDOUT_ECHO",self.failed_stdout_ref),\
-             patch.object(recovery,"PRIOR_SOURCE_HEAD",self.prior_head),\
-             patch.object(recovery,"OLD_BOOT_ID",fixture.BOOT),\
-             patch.object(recovery,"CURRENT_DATA_DEVICE",self.current_data_device),\
-             patch.object(recovery,"OLD_PRIVATE_DEVICE",self.reboot_env["root_device"]),\
-             patch.object(recovery,"CURRENT_PRIVATE_DEVICE",self.reboot_env["root_device"]),\
-             patch.object(recovery,"reboot_environment",side_effect=lambda:self.reboot_env),\
-             patch.object(recovery,"source_snapshot",side_effect=source_effect,return_value=self.source),\
-             patch.object(recovery.scale,"git_blob",side_effect=blob),\
-             patch.object(recovery.inventory,"resource_state",return_value=fixture.RESOURCES),\
-             patch.object(recovery.inventory,"load_rpc_endpoint",return_value=("https://rpc.invalid/SECRET_KEY","private_file")),\
-             patch.object(recovery,"owner_identity",return_value={"hostname":"fixture","boot_id":fixture.BOOT,"pid":123,"birth_ticks":456}),\
-             patch.object(recovery.legacy,"owner_state",side_effect=lambda _:self.owner_status),\
-             patch.object(recovery.time,"monotonic",side_effect=lambda:self.tick),\
-             patch.object(recovery.time,"sleep",side_effect=lambda seconds:(self.sleeps.append(seconds),setattr(self,"tick",self.tick+seconds))),\
-             patch.object(recovery,"request_deadline",return_value=nullcontext()):
+        contexts=(
+            patch.object(recovery,"RUN_ROOT",self.root),
+            patch.object(recovery.legacy,"RUN_ROOT",self.root),
+            patch.object(recovery.legacy,"ORIGINAL_PILOT_INPUT",self.original_ref),
+            patch.object(recovery,"OBSERVATION_ACCEPTANCE",self.acceptance),
+            patch.object(recovery,"FAILED_STDOUT_ECHO",self.failed_stdout_ref),
+            patch.object(recovery,"FAILED_SOURCE",self.failed_source_ref),
+            patch.object(recovery,"PRIOR_SOURCE_HEAD",self.prior_head),
+            patch.object(recovery,"OLD_BOOT_ID",fixture.BOOT),
+            patch.object(recovery,"CURRENT_DATA_DEVICE",self.current_data_device),
+            patch.object(recovery,"OLD_PRIVATE_DEVICE",self.reboot_env["root_device"]),
+            patch.object(recovery,"CURRENT_PRIVATE_DEVICE",self.reboot_env["root_device"]),
+            patch.object(recovery,"reboot_environment",side_effect=lambda:self.reboot_env),
+            patch.object(recovery,"source_snapshot",side_effect=source_effect,return_value=self.source),
+            patch.object(recovery.scale,"git_blob",side_effect=blob),
+            patch.object(recovery.inventory,"resource_state",return_value=fixture.RESOURCES),
+            patch.object(recovery.inventory,"load_rpc_endpoint",return_value=("https://rpc.invalid/SECRET_KEY","private_file")),
+            patch.object(recovery,"owner_identity",return_value={"hostname":"fixture","boot_id":fixture.BOOT,"pid":123,"birth_ticks":456}),
+            patch.object(recovery.legacy,"owner_state",side_effect=lambda _:self.owner_status),
+            patch.object(recovery.time,"monotonic",side_effect=lambda:self.tick),
+            patch.object(recovery.time,"sleep",side_effect=lambda seconds:(self.sleeps.append(seconds),setattr(self,"tick",self.tick+seconds))),
+            patch.object(recovery,"request_deadline",return_value=nullcontext()),
+        )
+        with ExitStack() as stack:
+            for context in contexts:
+                stack.enter_context(context)
             return recovery.run_campaign(self.admission_path,admission["sha256"],NEXT,self.output,self.private,
                 transport=transport or self.transport)
 
@@ -260,6 +272,11 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(captured["files"][str(self.failed_stdout)]["category"],"control")
         expected=sum(item["bytes"] for item in self.admission["prior"]["files"] if item["category"]=="control")
         self.assertEqual(captured["bytes"]["control"],expected)
+        failed=json.loads((self.old_root/"FAILED.json").read_bytes())
+        printed=json.loads(self.failed_stdout.read_bytes())
+        self.assertEqual(printed["usage"]["new_retained_bytes"]["control"]-
+            failed["usage"]["new_retained_bytes"]["control"],self.failed_source_ref["bytes"])
+        self.assertNotEqual(self.failed_source_ref["sha256"],self.failed_stdout_ref["sha256"])
 
     def test_fixed_failed_stdout_echo_same_size_mutation_is_rejected_before_dispatch(self):
         raw=self.failed_stdout.read_bytes();self.failed_stdout.write_bytes(raw[:-1]+b" ")
@@ -270,6 +287,29 @@ class RecoveryTests(unittest.TestCase):
         self.admission["prior"]["standalone_control_files"].append(str(self.failed_stdout))
         with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_not_rostered"):self.execute()
         self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_fixed_failed_source_raw_pin_mutation_is_rejected_before_dispatch(self):
+        path=self.old_root/"FAILED.json";raw=path.read_bytes();path.write_bytes(raw[:-1]+b" ")
+        with self.assertRaisesRegex(recovery.Blocked,"reference_changed"):self.execute()
+        self.assertFalse(self.calls);self.assertFalse(self.output.exists())
+
+    def test_fixed_failed_stdout_only_allows_exact_postwrite_control_delta(self):
+        failed=json.loads((self.old_root/"FAILED.json").read_bytes())
+        for delta in (0,self.failed_source_ref["bytes"]-1,self.failed_source_ref["bytes"]+1):
+            value=copy.deepcopy(failed);value["usage"]["new_retained_bytes"]["control"]+=delta
+            self.failed_stdout_ref=self.save(self.failed_stdout,value)
+            next(item for item in self.admission["prior"]["files"] if item["path"]==str(self.failed_stdout)).update(self.failed_stdout_ref)
+            with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_source_differs"):self.execute()
+            self.assertFalse(self.calls)
+
+    def test_fixed_failed_stdout_other_usage_fields_cannot_change(self):
+        original=json.loads(self.failed_stdout.read_bytes())
+        for key in ("http_attempts","method_items","response_bytes","elapsed_seconds"):
+            value=copy.deepcopy(original);value["usage"][key]+=1
+            self.failed_stdout_ref=self.save(self.failed_stdout,value)
+            next(item for item in self.admission["prior"]["files"] if item["path"]==str(self.failed_stdout)).update(self.failed_stdout_ref)
+            with self.assertRaisesRegex(recovery.Blocked,"fixed_failed_stdout_source_differs"):self.execute()
+            self.assertFalse(self.calls)
 
     def test_fixed_failed_stdout_requires_equal_rostered_failed_source(self):
         path=self.old_root/"FAILED.json";value=json.loads(path.read_bytes());value["accepted_keys"]=1

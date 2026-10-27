@@ -50,6 +50,9 @@ OBSERVATION_ACCEPTANCE = {
     "bytes":2576, "sha256":"f3cf41e30d6bf6bbeba35c8e276d4de42fc9a286376250a0e256a2b7298e15af"}
 FAILED_STDOUT_ECHO = {
     "path":"/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/full_header_v1.log",
+    "bytes":558,"sha256":"2e4f9ecd4b3c66969d5b60473116c0ce322f98efe640c20b8da86a54cc9fdaa9"}
+FAILED_SOURCE = {
+    "path":"/mnt/data/runs/2026-10-27_polymarket_exact_header_campaign_v3/FAILED.json",
     "bytes":558,"sha256":"c4b06c4ce038f6a4a581c51e6cad789f0051eda191b4629ec1adb44f310911f0"}
 OLD_BOOT_ID = "b9008fdc-0b94-4daf-b498-13403e96c475"
 CURRENT_BOOT_ID = "1ad746ce-103e-4e8f-a2f5-ba4df810e899"
@@ -241,9 +244,16 @@ def validate_prior(value, output, source, inputs, reboot):
     failed_path,owner_path=str(campaign_root/"FAILED.json"),str(campaign_root/"OWNER.json")
     require(failed_path in files and owner_path in files and files[failed_path]["category"]=="control" and
         files[failed_path]["chunk"] is None,"fixed_failed_stdout_source_missing")
-    failure=read_json(ref(files[failed_path]))[0];owner=read_json(ref(files[owner_path]))[0]
-    require(encode(failure)==encode(echo) and files[failed_path]["bytes"]==echo_binding["bytes"] and
-        files[failed_path]["sha256"]==echo_binding["sha256"] and
+    require(failed_path==FAILED_SOURCE["path"] and ref(files[failed_path])==FAILED_SOURCE,
+        "fixed_failed_stdout_source_differs")
+    failure=read_json(FAILED_SOURCE)[0];owner=read_json(ref(files[owner_path]))[0]
+    # v3 usage() aliases self.used. The FAILED write then charges its own
+    # control bytes before main prints that same returned result object.
+    expected=decode(encode(failure))
+    control=expected.get("usage",{}).get("new_retained_bytes",{}).get("control")
+    require(type(control) is int and control>=0,"fixed_failed_stdout_control_schema")
+    expected["usage"]["new_retained_bytes"]["control"]=control+FAILED_SOURCE["bytes"]
+    require(encode(expected)==encode(echo) and
         owner.get("schema_version")=="polymarket_exact_header_owner_v3" and
         owner.get("source",{}).get("head")==PRIOR_SOURCE_HEAD,"fixed_failed_stdout_source_differs")
     removed = expected_paths|{echo_path}
