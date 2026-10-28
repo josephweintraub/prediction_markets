@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-28 - Prepare remaining October 1 validation stages (UTC)
+
+- Add same-volume/current-boot exact-header admission and caller versions,
+  retaining historical charges, request semantics and late-publication checks.
+- Add a bounded execution wrapper for the authenticated compiler, including its
+  executable copy in the existing artifact ceiling and carrying current usage.
+- Add formal zero-request acceptance of completed metadata pagination with fresh
+  process-consumer checks; defer global outcome/category and sample admission.
+- Preserve all historical source and artifacts; require canonical Linux QA and
+  separate current-host admission before each new production stage.
+
 ## 2026-10-28 - Authorized metadata budget continuation (UTC)
 
 - Add a separately versioned, human-approved metadata budget profile that replays
