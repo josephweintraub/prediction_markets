@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 - Authorized metadata budget continuation (UTC)
+
+- Add a separately versioned, human-approved metadata budget profile that replays
+  both saved prefixes and retains failed requests, rejected partials and all prior
+  charges without changing scientific definitions or the runtime ceiling.
+- Verify exact historical request reservations and final input, source and pending
+  marker bindings before atomic completion; keep historical collectors unchanged.
+
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
 - Add a versioned metadata continuation with complete saved-prefix replay,
