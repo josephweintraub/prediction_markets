@@ -10,6 +10,8 @@
   process-consumer checks; defer global outcome/category and sample admission.
 - Preserve all historical source and artifacts; require canonical Linux QA and
   separate current-host admission before each new production stage.
+- Bind the exact nested historical source-lookup root after checking real input
+  manifests; retain first-pass fixture receipts and use a fresh QA generation.
 
 ## 2026-10-28 - Authorized metadata budget continuation (UTC)
 

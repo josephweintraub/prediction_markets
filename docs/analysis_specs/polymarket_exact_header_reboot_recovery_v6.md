@@ -72,6 +72,11 @@ binds the same source map and clean pushed HEAD. The source union includes the
 collector, caller and preparer dependencies and this specification.
 The current exact loader count is209; local Linux-only skips are not accepted
 as canonical production QA.
+Use full_header_v6_linux_fixtures_v2.json and its v2.log for the final HEAD.
+The v1 receipt/log remain immutable after the preproduction metadata-acceptor
+compatibility fix for its exact historical nested source-lookup root. Bind and
+charge both retained v1 files once in the same external-control closure; do not
+overwrite them or substitute their prior HEAD/source map for the v2 proof.
 
 The new run is
 /mnt/data/runs/2026-10-28_polymarket_exact_header_campaign_v6.

@@ -107,3 +107,20 @@ started. Source adoption, production QA and current complete process-consumer
 checks still precede any stage admission. The earlier statement that the host
 remains stopped describes local implementation, not this subsequent bounded
 host-preparation step.
+
+## Real-input compatibility check before execution
+
+The first clean committed source generation 026bfc2aa53e70b7d1c514a8b00ba893213daba2
+passed 209 header, 32 metadata-acceptance and 59 compiler Linux fixtures, without
+skips. Their v1 receipts/logs remain immutable and charged. A subsequent check
+of the actual pinned historical admission found its exact nested operational
+source-lookup root was rejected by the new acceptor's direct-root restriction.
+The bounded correction permits only that literal retained root, not arbitrary
+nested paths. No production acceptance or data output had run.
+
+Use fresh v2 Linux fixture receipt/log paths for the corrected source generation;
+do not replace the earlier receipts or present them as tests of a later HEAD.
+The preparer still demands the exact current HEAD and complete tested source
+map. The original 1,018,896-byte inventory was mirrored for structural review
+and matches SHA256 c185181586f674763b95b13e84bf873d38aca9eb7b5b8a88bd6ba16645fbfede.
+Production still must reopen every retained artifact and exact file set on EC2.

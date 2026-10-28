@@ -227,7 +227,7 @@ def retained_closure(admission, manifest, reader):
     for item in prior_inventory["files"]: add_file(files, ref(item), item["category"])
     add_file(files, old["inventory"], "control")
     for name in old["roots"]:
-        root = Path(name); require(root.parent == RUN_ROOT, "old_root_scope")
+        root = Path(name); require(root.parent == RUN_ROOT or root == OPERATIONS / "v3_source_lookup_v1", "old_root_scope")
         roots[name] = {p for p in files if root in Path(p).parents}
         require(roots[name], "empty_old_root")
     for key in ("v4_prefix", "v5_prefix"):

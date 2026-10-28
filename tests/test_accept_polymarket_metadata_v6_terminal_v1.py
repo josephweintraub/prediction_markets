@@ -252,6 +252,42 @@ class AcceptanceTests(unittest.TestCase):
 
 
 class PrimitiveTests(unittest.TestCase):
+    def old_roots_fixture(self, extra=None):
+        roots=["/mnt/data/runs/2026-10-27_polymarket_market_metadata_pilot_v1",
+            "/mnt/data/runs/2026-10-27_polymarket_raw_metadata_probe_v2",
+            "/mnt/data/runs/2026-10-27_polymarket_raw_metadata_probe_v2b",
+            "/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/v3_source_lookup_v1",
+            "/mnt/data/runs/2026-10-27_polymarket_market_metadata_full_v3",
+            "/mnt/data/runs/2026-10-27_polymarket_solc_binary_v2",
+            "/mnt/data/runs/2026-10-27_polymarket_compact_metadata_pilot_v4"]
+        if extra:roots.append(extra)
+        inventory_ref={"path":"/mnt/data/runs/2026-10-27_polymarket_oct1_finalization_v1/full_metadata_v4_prior_inventory_v3.json",
+            "bytes":1018896,"sha256":"c185181586f674763b95b13e84bf873d38aca9eb7b5b8a88bd6ba16645fbfede"}
+        inventory={"schema_version":"polymarket_metadata_prior_inventory_v4","files":[
+            {"path":root+"/fixture.json","bytes":1,"sha256":"0"*64,"category":"control"} for root in roots]}
+        prefix={"root":"/mnt/data/runs/prefix",**{name:{"path":"/mnt/data/runs/prefix/"+name,
+            "bytes":1,"sha256":"0"*64} for name in ("admission","start","failure","attempts","pages")}}
+        class ReachedPrefix(Exception):pass
+        class Reader:
+            def json(self,binding):
+                if binding==prefix["admission"]:return {"prior_ledger":{"inventory":inventory_ref,"roots":roots}}
+                self_binding=inventory_ref
+                if binding!=self_binding:raise AssertionError("unexpected inventory reference")
+                return inventory
+            def lines(self,*_):raise ReachedPrefix()
+        return prefix,Reader(),ReachedPrefix
+
+    def test_actual_seven_prior_roots_include_only_the_pinned_nested_lookup(self):
+        prefix,reader,reached=self.old_roots_fixture()
+        with self.assertRaises(reached):accept.retained_closure({"v4_prefix":prefix},{},reader)
+
+    def test_adjacent_nested_roots_remain_outside_old_root_scope(self):
+        for extra in (str(accept.OPERATIONS/"v3_source_lookup_v2"),
+            str(accept.OPERATIONS/"other"/"v3_source_lookup_v1")):
+            prefix,reader,_=self.old_roots_fixture(extra)
+            with self.assertRaisesRegex(Exception,"old_root_scope"):
+                accept.retained_closure({"v4_prefix":prefix},{},reader)
+
     def test_malformed_saved_birth_cannot_be_proved_dead_by_boot_mismatch(self):
         with self.assertRaisesRegex(Exception,"saved_birth_schema"):
             accept.absent({"pid":False,"birth_ticks":None,"boot_id":"wrong"},{},BOOT)
