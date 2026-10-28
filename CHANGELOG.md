@@ -2,6 +2,11 @@
 
 ## 2026-10-27 - Polymarket Oct 1 finalization
 
+- Add a versioned metadata continuation with complete saved-prefix replay,
+  single-clock request pacing, bounded failure diagnostics and conservative
+  interrupted-attempt accounting; preserve all historical collectors and caps.
+- Add reviewed timestamp retry and fixed detached-caller profiles as dependencies;
+  require separate current-host admission before either production stage runs.
 - Extend the exact same-volume reboot certificate to the unchanged original
   1,000-key request; prove legacy-validator equivalence and preserve fresh
   per-request/final identities without modifying historical v3 source.
