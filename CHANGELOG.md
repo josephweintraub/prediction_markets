@@ -12,6 +12,8 @@
   separate current-host admission before each new production stage.
 - Bind the exact nested historical source-lookup root after checking real input
   manifests; retain first-pass fixture receipts and use a fresh QA generation.
+- Check boot-less legacy process records only through their pinned historical
+  absence certificate, without inventing original boots or weakening live checks.
 
 ## 2026-10-28 - Authorized metadata budget continuation (UTC)
 

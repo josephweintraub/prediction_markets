@@ -124,3 +124,19 @@ The preparer still demands the exact current HEAD and complete tested source
 map. The original 1,018,896-byte inventory was mirrored for structural review
 and matches SHA256 c185181586f674763b95b13e84bf873d38aca9eb7b5b8a88bd6ba16645fbfede.
 Production still must reopen every retained artifact and exact file set on EC2.
+
+The first live candidate check stopped before writing an admission or output:
+the 603-record historical process roster contains flat PID/start-tick receipts
+without original boot fields. The separately pinned shutdown observation proves
+their historical absence, but its observation boot is not their birth boot.
+The reviewed adapter uses only that exact certificate, matching bound tuples,
+its released/empty-live/unknown flags and a different current boot. Explicit
+valid enclosing boot context handles the two separately saved nested child
+receipts; unknown or malformed context still blocks. Current complete consumer
+classification and caller/child group checks remain unchanged.
+
+Retain v1 and v2 header QA controls; reserve the fresh v3 header QA paths until
+the short metadata/compiler stages have passed their real-input gates. This
+avoids relabeling prior-head tests or occupying another final-QA path before
+input compatibility is established. All preparation and failures remain inside
+the original continuous preparation clock and unchanged resource ceilings.

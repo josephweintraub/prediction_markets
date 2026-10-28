@@ -30,6 +30,15 @@ unrelated userspace processes without an executable, block acceptance. Root
 must freshly verify host, mounted volume and source before this stage. No
 historical device number is treated as current physical identity.
 
+The 603 historical process receipts are also bound by the exact pinned shutdown
+certificate. A boot-less flat `pid/start_ticks/state` receipt may use that
+certificate only when its saved tuple matches the certified row, the row was
+not live, shutdown/release flags and empty live/unknown lists agree, and the
+certificate's valid observation boot differs from the current boot. This is
+historical absence evidence, not inference of the process's original birth
+boot. Outside that fixed closure, a nested birth may inherit only a valid,
+explicit nearest enclosing boot identifier; missing or invalid ancestry blocks.
+
 ## Interface
 
 The production CLI requires `--admission`, `--admission-sha256`,

@@ -252,6 +252,47 @@ class AcceptanceTests(unittest.TestCase):
 
 
 class PrimitiveTests(unittest.TestCase):
+    def absence_fixture(self):
+        binding={"path":"/mnt/data/runs/2026-10-26_polymarket_native_append_campaign_v1/chunks/c000006/a01/PROCESS.json",
+            "bytes":60,"sha256":"1a0fcb1631b4ffe1f987a6d2292eedf6c99d706cc17a4ed40e128d04f4355569"}
+        row={"binding":binding,"pid":13168,"birth_ticks":345586,"matching_live_birth":False}
+        value={"pid":13168,"start_ticks":345586,"state":"S"}
+        certificate={"schema_version":"polymarket_oct1_terminal_shutdown_drain_v2","boot_id":"1ad746ce-103e-4e8f-a2f5-ba4df810e899",
+            "checked_utc":"2026-10-27T22:40:44.079016+00:00","shutdown_ready":True,"agents_and_transfers_released":True,
+            "live_receipt_births":[],"unknown_process_receipts":[],"all_non_kernel_executables_classified":[{"pid":1}]}
+        pin={"path":str(accept.OPERATIONS/"finalization_shutdown_drain_v2.json"),"bytes":accept.OLD_ROSTER_PIN[0],"sha256":accept.OLD_ROSTER_PIN[1]}
+        return row,value,certificate,pin
+
+    def test_pinned_historical_absence_does_not_invent_original_boot(self):
+        row,value,certificate,pin=self.absence_fixture()
+        accept.certified_old_absence(row,value,certificate,pin,BOOT)
+        self.assertNotIn("boot_id",value)
+
+    def test_historical_absence_requires_exact_certificate_tuple_and_flags(self):
+        for field,new in (("shutdown_ready",False),("agents_and_transfers_released",False),
+            ("live_receipt_births",[{}]),("unknown_process_receipts",[{}]),("boot_id","invalid")):
+            row,value,certificate,pin=self.absence_fixture();certificate[field]=new
+            with self.assertRaises(Exception):accept.certified_old_absence(row,value,certificate,pin,BOOT)
+        for mutate in (lambda row,value,pin:row.update(matching_live_birth=True),
+            lambda row,value,pin:value.update(start_ticks=345587),lambda row,value,pin:pin.update(sha256="0"*64)):
+            row,value,certificate,pin=self.absence_fixture();mutate(row,value,pin)
+            with self.assertRaises(Exception):accept.certified_old_absence(row,value,certificate,pin,BOOT)
+
+    def test_same_observation_boot_is_not_original_birth_evidence(self):
+        row,value,certificate,pin=self.absence_fixture()
+        with self.assertRaisesRegex(Exception,"historical_absence_boot_unproven"):
+            accept.certified_old_absence(row,value,certificate,pin,certificate["boot_id"])
+
+    def test_nested_child_exit_uses_only_nearest_explicit_valid_boot(self):
+        value={"boot_id":"b9008fdc-0b94-4daf-b498-13403e96c475",
+            "process":{"birth":{"pid":19709,"start_ticks":520591}}}
+        saved=list(accept.births(value));self.assertEqual(saved[0]["boot_id"],value["boot_id"])
+        self.assertNotIn("boot_id",value["process"]["birth"])
+        self.assertEqual(saved[0]["birth_ticks"],520591)
+        for bad in ({"process":value["process"]},value|{"boot_id":"bad"},
+            value|{"process":{"boot_id":None,"birth":{"pid":19709,"start_ticks":520591}}}):
+            with self.assertRaisesRegex(Exception,"saved_birth_schema"):list(accept.births(bad))
+
     def old_roots_fixture(self, extra=None):
         roots=["/mnt/data/runs/2026-10-27_polymarket_market_metadata_pilot_v1",
             "/mnt/data/runs/2026-10-27_polymarket_raw_metadata_probe_v2",

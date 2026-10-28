@@ -375,20 +375,47 @@ def reconcile(values, files, reader):
         "new_response_bytes_charged": charge, "historical_semantic_replay_repeated": False, "expanded_bodies_decoded": False}
 
 
-def births(value):
+def births(value, enclosing_boot=None):
     if type(value) is dict:
+        if "boot_id" in value:
+            try: valid = type(value["boot_id"]) is str and str(uuid.UUID(value["boot_id"])) == value["boot_id"]
+            except (ValueError, AttributeError): valid = False
+            require(valid, "saved_birth_schema"); enclosing_boot = value["boot_id"]
         names = ("birth_ticks", "start_ticks", "linux_birth_ticks")
         if "pid" in value and any(name in value for name in names):
             ticks = [value[name] for name in names if name in value]
             require(type(value["pid"]) is int and value["pid"] > 0 and ticks
                 and all(type(tick) is int and tick > 0 for tick in ticks) and len(set(ticks)) == 1
-                and type(value.get("boot_id")) is str, "saved_birth_schema")
-            try: valid = str(uuid.UUID(value["boot_id"])) == value["boot_id"]
+                and type(enclosing_boot) is str, "saved_birth_schema")
+            try: valid = str(uuid.UUID(enclosing_boot)) == enclosing_boot
             except (ValueError, AttributeError): valid = False
-            require(valid, "saved_birth_schema"); yield {**value, "birth_ticks": ticks[0]}
-        for child in value.values(): yield from births(child)
+            require(valid, "saved_birth_schema"); yield {**value, "birth_ticks": ticks[0], "boot_id": enclosing_boot}
+        for child in value.values(): yield from births(child, enclosing_boot)
     elif type(value) is list:
-        for child in value: yield from births(child)
+        for child in value: yield from births(child, enclosing_boot)
+
+
+def certified_old_absence(item, value, certificate, certificate_ref, current_boot):
+    """The pinned observation proves historic absence, not an original boot."""
+    require(certificate_ref["path"] == str(OPERATIONS / "finalization_shutdown_drain_v2.json")
+        and (certificate_ref["bytes"], certificate_ref["sha256"]) == OLD_ROSTER_PIN
+        and certificate.get("schema_version") == "polymarket_oct1_terminal_shutdown_drain_v2"
+        and certificate.get("shutdown_ready") is True and certificate.get("agents_and_transfers_released") is True
+        and certificate.get("live_receipt_births") == [] and certificate.get("unknown_process_receipts") == []
+        and type(certificate.get("all_non_kernel_executables_classified")) is list
+        and certificate["all_non_kernel_executables_classified"], "historical_absence_certificate_differs")
+    try:
+        boot = certificate["boot_id"]; valid = type(boot) is str and str(uuid.UUID(boot)) == boot
+        checked = datetime.fromisoformat(certificate["checked_utc"])
+        valid = valid and checked.tzinfo is not None and checked.utcoffset().total_seconds() == 0
+    except (KeyError, TypeError, ValueError, AttributeError): valid = False
+    require(valid and boot != current_boot, "historical_absence_boot_unproven")
+    require(type(item) is dict and set(item) == {"binding", "pid", "birth_ticks", "matching_live_birth"}
+        and item["matching_live_birth"] is False and type(item["pid"]) is int and item["pid"] > 0
+        and type(item["birth_ticks"]) is int and item["birth_ticks"] > 0
+        and type(value) is dict and set(value) == {"pid", "start_ticks", "state"}
+        and type(value["pid"]) is int and type(value["start_ticks"]) is int and type(value["state"]) is str and value["state"]
+        and (value["pid"], value["start_ticks"]) == (item["pid"], item["birth_ticks"]), "historical_absence_tuple_differs")
 
 
 def census(reader):
@@ -453,11 +480,15 @@ def process_gate(reader, old_roster, process_roots, boot, ancestry, terminal, *,
     processes = snapshot(reader); records, kernel = classify(processes, ancestry)
     old = reader.json(old_roster); require(type(old.get("process_receipts")) is list
         and len(old["process_receipts"]) == COUNTS["old_process_receipts"], "old_process_roster_count")
-    paths = set(); checks = extra = entries = 0
+    paths = set(); checks = extra = entries = certified = 0
     for item in old["process_receipts"]:
-        binding = item["binding"]; value = reader.json(binding); saved = list(births(value))
-        require(saved and binding["path"] not in paths, "old_process_roster_duplicate_or_empty")
-        for birth in saved: absent(birth, processes, boot)
+        binding = item["binding"]; value = reader.json(binding)
+        require(binding["path"] not in paths, "old_process_roster_duplicate_or_empty")
+        if type(value) is dict and set(value) == {"pid", "start_ticks", "state"}:
+            certified_old_absence(item, value, old, old_roster, boot); certified += 1
+        else:
+            saved = list(births(value)); require(saved, "old_process_roster_duplicate_or_empty")
+            for birth in saved: absent(birth, processes, boot)
         paths.add(binding["path"]); checks += 1
     for root in process_roots:
         root = Path(root); require(root.is_dir() and root.resolve() == root, "process_receipt_root_invalid")
@@ -478,6 +509,7 @@ def process_gate(reader, old_roster, process_roots, boot, ancestry, terminal, *,
         if saved["boot_id"] == boot:
             require(all(item["group"] != saved["process_group"] and item["session"] != saved["session"] for item in processes.values()), "owned_group_or_session_live")
     return {"old_process_receipts_checked": checks, "new_birth_checks": extra, "receipt_walk_entries": entries,
+        "historical_absence_certificate_receipts": certified, "historical_original_birth_boot_inferred": False,
         "nonkernel_process_census": records, "kernel_processes_classified": kernel,
         "owned_producers_drained": True, "transfers_drained": True, "host_idle_claimed": False}
 
