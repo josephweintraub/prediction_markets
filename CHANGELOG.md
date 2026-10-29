@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-29 - Approved fresh header admission allocation
+
+- Record explicit approval for a new 512KiB retained-log prefix, preserving full
+  stream hashes, lengths, all historical logs and the same cumulative limits.
+- Prepare a separately versioned cold-boot continuation after the expired,
+  unlaunched V7 attempt; keep EC2 stopped during local implementation and review.
+- Preserve the prior runtime floor and all post-drain elapsed time; require
+  fresh volume/identity evidence, Linux QA and independent admission review.
+
 ## 2026-10-29 - Authorized exact-header throughput continuation
 
 - Record the human-approved 400-header/second target following their Alchemy
