@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-29 - Authorized exact-header throughput continuation
+
+- Record the human-approved 400-header/second target following their Alchemy
+  dashboard evidence of a 10,000-CU/second plan; retain one active request and
+  100-header batches, the same provider, full key coverage and cumulative limits.
+- Prepare a separately tested and reviewed continuation that reuses sealed v6
+  chunks, retains interrupted-tail charges and requires verified worker drainage
+  before changing the canonical source or admitting a faster producer.
+- Keep the existing audit-file ceiling by reducing only the new caller's unused
+  prospective retained-log prefix by 64KiB; preserve full-stream hashes and all
+  historical logs and charges.
+
 ## 2026-10-28 - Prepare remaining October 1 validation stages (UTC)
 
 - Add same-volume/current-boot exact-header admission and caller versions,
