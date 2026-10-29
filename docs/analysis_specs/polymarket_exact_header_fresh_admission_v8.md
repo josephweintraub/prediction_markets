@@ -53,6 +53,16 @@ failed preconstructor receipt form the pinned62-reference, 981,353-byte retained
 union. New controls and source paths use finite explicit allowlists. Every old
 and new external reference is included in the same pool.
 
+Failed Linux QA1 and its complete log remain mandatory retained controls. The
+consumer and preparer reopen both exact files; all43 QA1 source entries are
+checked against their immutable committed epoch8542073491092e1acf35f83bca4639596002d494,
+not against corrected live source. A new QA2 receipt/log uses distinct v2 names
+and must attest the new committed source. The old failed receipt cannot satisfy
+the current pass gate. The root runs the new fixture suite in a fresh child with
+a separate300-second supervisor timeout, so the supervisor's alarm is not
+inherited by tests that inspect their own timer state. Prior assertions and
+historical sources remain unchanged. Both QA runs count in the same2 MiB pool.
+
 The preparer carries stopped6 runtime, all time since its canonical UTC drain,
 the existing104777-second floor and one fresh1800-second preparation reserve.
 The consumer independently captures its entry UTC and requires declared prior

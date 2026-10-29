@@ -22,8 +22,8 @@ OP=old.OP
 RUN=Path('/mnt/data/runs/2026-10-29_polymarket_exact_header_campaign_v8')
 REQUEST=OP/'header_v8_preparation_request_v1.json'
 HOST=OP/'full_header_v8_host_preflight_v1.json'
-QA=OP/'full_header_v8_linux_fixtures_v1.json'
-LOG=OP/'full_header_v8_linux_fixtures_v1.log'
+QA=OP/'full_header_v8_linux_fixtures_v2.json'
+LOG=OP/'full_header_v8_linux_fixtures_v2.log'
 COMMIT=OP/'full_header_v8_source_commit_v1.json'
 CERT=OP/'header_reboot_equivalence_v8_v1.json'
 LEDGER=OP/'header_v8_external_control_ledger_v1.json'
@@ -57,7 +57,7 @@ QA_COMMAND=['/home/ubuntu/venv/bin/python','-m','unittest',
     'tests.test_polymarket_exact_header_campaign_v5','tests.test_polymarket_exact_header_campaign_v4',
     'tests.test_polymarket_exact_header_campaign_v3','tests.test_launch_polymarket_oct1_stage_v7',
     'tests.test_prepare_polymarket_exact_header_campaign_v8']
-QA_COUNT=247  # Exact seven-module TestLoader count; zero skips required on Linux.
+QA_COUNT=256  # Exact seven-module TestLoader count; zero skips required on Linux.
 Blocked,require,encode,digest,ref=m.Blocked,m.require,m.encode,m.digest,m.ref
 
 
@@ -121,7 +121,10 @@ def retained_controls(reader,base,stopped):
     require(expired['prior']['base']==base and expired['prior']['stopped_v6']==stopped
       and expired['prior']['rpc']==dict(RETAINED_RPC,elapsed_seconds=RETAINED_RUNTIME_FLOOR),'retained_v7_lineage')
     reader.bind(m.EXPIRED_V7_TERMINAL)
-    return refs+[m.EXPIRED_V7_TERMINAL]
+    failed=m.failed_qa1_proof()
+    failed_refs=[ref(item) for item in failed['captures'].values()]
+    for binding in failed_refs:reader.bind(binding)
+    return refs+[m.EXPIRED_V7_TERMINAL,*failed_refs]
 
 
 def host_gate(value,head,environment,resources,now):

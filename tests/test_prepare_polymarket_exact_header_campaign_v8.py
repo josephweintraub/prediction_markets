@@ -41,12 +41,43 @@ class UnitTests(unittest.TestCase):
         stack=ExitStack();self.addCleanup(stack.close)
         for name,value in [('OLD_V7_LEDGER',ledger),('EXPIRED_V7_REFS',refs),('EXPIRED_V7_TERMINAL',terminal)]:
             stack.enter_context(patch.object(p.m,name,value))
+        blobs={name:(p.REPO/name).read_bytes() for name in p.SOURCE_FILES}
+        log=self.save('full_header_v8_linux_fixtures_v1.log',{'fixture':'failed alarm assertion'})
+        qa={'schema_version':'polymarket_header_v8_linux_fixture_receipt_v1','status':'failed_closed',
+          'source_head':p.m.FAILED_QA_HEAD,'source_clean_before':True,'source_clean_after':True,
+          'command':p.QA_COMMAND,'interpreter':p.QA_COMMAND[0],'log':log,'log_truncated':False,
+          'full_log_bytes':log['bytes'],'full_log_sha256':log['sha256'],'exit_code':1,'failures':1,'errors':0,
+          'tests_run':247,'tests_skipped':0,'provider_requests':0,
+          'tested_source_files':{name:{'bytes':len(raw),'sha256':p.digest(raw)} for name,raw in blobs.items()}}
+        self.failed={'qa':self.save('full_header_v8_linux_fixtures_v1.json',qa),'log':log}
+        stack.enter_context(patch.object(p.m,'FAILED_QA1_REFS',self.failed))
+        stack.enter_context(patch.object(p.m.scale,'git_blob',side_effect=lambda head,name:
+          blobs[name] if head==p.m.FAILED_QA_HEAD else (_ for _ in ()).throw(AssertionError('wrong epoch'))))
 
     def test_actual_shape_58_to62_mandatory_closure_rehashed(self):
         _,ledger,refs,terminal,base,stopped=self.fixture();self.contexts(ledger,refs,terminal)
         result=p.retained_controls(self.reader,base,stopped)
-        self.assertEqual(len(result),63);self.assertEqual(sum(v['bytes'] for v in result),983318)
-        self.assertEqual(len(self.reader.saved),63);self.reader.reopen()
+        self.assertEqual(len(result),65)
+        self.assertEqual(sum(v['bytes'] for v in result),983318+sum(v['bytes'] for v in self.failed.values()))
+        self.assertEqual(len(self.reader.saved),65);self.reader.reopen()
+        self.assertTrue({v['path'] for v in self.failed.values()}<={v['path'] for v in result})
+
+    def test_missing_or_mutated_failed_receipt_blocks(self):
+        _,ledger,refs,terminal,base,stopped=self.fixture();self.contexts(ledger,refs,terminal)
+        Path(self.failed['log']['path']).unlink()
+        with self.assertRaises((p.Blocked,FileNotFoundError)):p.retained_controls(self.reader,base,stopped)
+
+    def test_failed_proof_late_mutation_is_reopened(self):
+        _,ledger,refs,terminal,base,stopped=self.fixture();self.contexts(ledger,refs,terminal)
+        p.retained_controls(self.reader,base,stopped)
+        path=Path(self.failed['qa']['path']);raw=path.read_bytes();path.write_bytes(raw[:-1]+b' ')
+        with self.assertRaises(p.Blocked):self.reader.reopen()
+
+    def test_failed_epoch_cannot_be_replaced_by_current_sources(self):
+        _,ledger,refs,terminal,base,stopped=self.fixture();self.contexts(ledger,refs,terminal)
+        with patch.object(p.m.scale,'git_blob',return_value=b'new source instead of old commit'):
+            with self.assertRaisesRegex(p.Blocked,'failed_qa1_source_epoch'):
+                p.retained_controls(self.reader,base,stopped)
 
     def test_one_omission_duplicate_or_bad_total_blocks(self):
         value,_,refs,terminal,base,stopped=self.fixture()
@@ -228,6 +259,17 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaisesRegex(p.Blocked,'host_not_drained'):
             self.execute(host_refresh=lambda:dict(self.host,production_stage_running=True))
         self.assertFalse(self.paths['CHECK'].exists())
+
+    def test_historical_failed_qa1_is_carried_but_not_current_qa2(self):
+        current=self.request['linux_qa'];self.request['linux_qa']=p.m.FAILED_QA1_REFS['qa'];self.refresh()
+        with self.assertRaisesRegex(p.Blocked,'proof_paths'):self.execute()
+        self.request['linux_qa']=current
+        self.qa['source_head']=p.m.FAILED_QA_HEAD
+        self.request['linux_qa']=self.c.save(self.paths['QA'],self.qa);self.refresh()
+        with self.assertRaisesRegex(p.Blocked,'linux_qa'):self.execute()
+        self.assertFalse(self.paths['CERT'].exists())
+        self.assertEqual((self.paths['QA'].name,self.paths['LOG'].name),
+          ('full_header_v8_linux_fixtures_v2.json','full_header_v8_linux_fixtures_v2.log'))
 
     def test_host_refresh_after_real_replay_does_not_reset_reservation(self):
         original=p.m.validate_prior;replays=[];calls=[];initial=self.paths['HOST'].read_bytes()

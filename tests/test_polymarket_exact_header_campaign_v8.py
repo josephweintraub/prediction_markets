@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 from scripts import collect_polymarket_exact_header_campaign_v8 as m
 from scripts import collect_polymarket_exact_header_campaign_v7 as before
+from scripts import launch_polymarket_oct1_stage_v7 as caller7
 from tests import test_polymarket_exact_header_campaign_v6 as old6
 
 NEW_BOOT='93083635-9263-4fc3-a7f9-453a18f9faf8'
@@ -149,7 +150,27 @@ validate_prior or private-identity validator returns are mocked.
           'required_bytes':sum(item['bytes'] for item in required),'next_chunk':None,'next_attempt':None,'reused_keys':c.K}))
         self.certificate_value=m.certificate_value(self.inputs,self.private_ref)
         self.certificate_ref=self.save(m.CERTIFICATE_PATH,self.certificate_value)
-        current={item['path']:item for item in [*required,terminal,self.certificate_ref]}
+        names=m.EXTERNAL_SOURCE_FILES|set(caller7.SOURCE_FILES)
+        self.assertEqual(len(names),43)
+        self.historical_qa_blobs={name:('synthetic frozen QA1 epoch '+name).encode() for name in names}
+        self.stack.enter_context(patch.object(m.scale,'git_blob',side_effect=lambda head,name:
+          self.historical_qa_blobs[name] if head==m.FAILED_QA_HEAD else c.blobs[name]))
+        path=self.ops/'full_header_v8_linux_fixtures_v1.log';path.write_bytes(b'synthetic failed historical QA\n')
+        log=m.ref(m.bound(path))
+        self.failed_qa={'schema_version':'polymarket_header_v8_linux_fixture_receipt_v1','status':'failed_closed',
+          'source_head':m.FAILED_QA_HEAD,'source_clean_before':True,'source_clean_after':True,'exit_code':1,
+          'failures':1,'errors':0,'tests_run':247,'tests_skipped':0,'provider_requests':0,
+          'command':['/home/ubuntu/venv/bin/python','-m','unittest',*(
+            'tests.'+name for name in ('test_polymarket_exact_header_campaign_v8','test_polymarket_exact_header_campaign_v6',
+            'test_polymarket_exact_header_campaign_v5','test_polymarket_exact_header_campaign_v4',
+            'test_polymarket_exact_header_campaign_v3','test_launch_polymarket_oct1_stage_v7',
+            'test_prepare_polymarket_exact_header_campaign_v8'))],
+          'interpreter':'/home/ubuntu/venv/bin/python','log':log,'log_truncated':False,
+          'full_log_bytes':log['bytes'],'full_log_sha256':log['sha256'],
+          'tested_source_files':{name:{'bytes':len(raw),'sha256':m.digest(raw)} for name,raw in self.historical_qa_blobs.items()}}
+        self.failed_qa_refs={'qa':self.save(self.ops/'full_header_v8_linux_fixtures_v1.json',self.failed_qa),'log':log}
+        self.stack.enter_context(patch.object(m,'FAILED_QA1_REFS',self.failed_qa_refs))
+        current={item['path']:item for item in [*required,terminal,self.certificate_ref,*self.failed_qa_refs.values()]}
         self.ledger=self.save(self.ops/'header_v8_external_control_ledger_v1.json',{
           'schema_version':m.EXTERNAL_SCHEMA,'files':list(current.values()),'future_reserved_bytes':786432,
           'future_reserved_files':9,'ceiling_bytes':2097152})
@@ -208,6 +229,59 @@ validate_prior or private-identity validator returns are mocked.
 class ColdBootTests(unittest.TestCase):
     def case(self):
         case=ColdBootFixture('runTest');case.setUp();self.addCleanup(case.doCleanups);return case
+
+    def test_failed_qa1_reopens_all43_original_epoch_blobs_not_current_source(self):
+        case=self.case()
+        def frozen(head,name):
+            self.assertEqual(head,m.FAILED_QA_HEAD);return case.historical_qa_blobs[name]
+        with patch.object(m.scale,'git_blob',side_effect=frozen) as blobs:
+            proof=m.failed_qa1_proof()
+        self.assertEqual(blobs.call_count,43)
+        self.assertEqual({call.args[1] for call in blobs.call_args_list},set(case.historical_qa_blobs))
+        self.assertEqual({key:m.ref(value) for key,value in proof['captures'].items()},case.failed_qa_refs)
+        self.assertNotEqual(proof['qa']['tested_source_files']['scripts/collect_polymarket_exact_header_campaign_v8.py'],
+          case.source['files']['scripts/collect_polymarket_exact_header_campaign_v8.py'])
+        self.assertIn('full_header_v8_linux_fixtures_v2.json',m.NEW_OP_NAMES)
+        self.assertIn('full_header_v8_linux_fixtures_v2.log',m.NEW_OP_NAMES)
+
+    def test_failed_qa1_and_log_are_mandatory_in_consumer_closure(self):
+        case=self.case();saved=json.loads(Path(case.ledger['path']).read_bytes())
+        for role,binding in case.failed_qa_refs.items():
+            ledger=deepcopy(saved);ledger['files']=[item for item in ledger['files'] if item['path']!=binding['path']]
+            case.refresh_ledger(ledger)
+            with self.subTest(role=role),self.assertRaisesRegex(m.Blocked,'external_old_controls_omitted'):case.validate()
+
+    def test_failed_qa1_and_log_missing_or_mutated_cannot_be_skipped(self):
+        case=self.case()
+        for role,binding in case.failed_qa_refs.items():
+            path=Path(binding['path']);raw=path.read_bytes();path.write_bytes(raw[:-1]+b' ')
+            with self.subTest(role=role),self.assertRaises(m.Blocked):case.validate()
+            path.write_bytes(raw);path.unlink()
+            with self.subTest(role=role,missing=True),self.assertRaises(OSError):case.validate()
+            path.write_bytes(raw)
+
+    def test_failed_qa1_wrong_schema_epoch_counts_and43_name_map_rejected(self):
+        case=self.case();saved=deepcopy(case.failed_qa)
+        changes=(lambda v:v.update(schema_version='wrong'),lambda v:v.update(status='passed'),
+          lambda v:v.update(source_head=case.source['head']),lambda v:v.update(tests_run=248),
+          lambda v:v['tested_source_files'].pop('production_guard.py'),
+          lambda v:v['tested_source_files'].update(unrecognized=v['tested_source_files'].pop('production_guard.py')),
+          lambda v:v['tested_source_files']['production_guard.py'].update(bytes=True))
+        for index,change in enumerate(changes):
+            value=deepcopy(saved);change(value)
+            refs=dict(case.failed_qa_refs,qa=case.save(Path(case.failed_qa_refs['qa']['path']),value))
+            with self.subTest(index=index),patch.object(m,'FAILED_QA1_REFS',refs),self.assertRaises(m.Blocked):m.failed_qa1_proof()
+
+    def test_failed_qa1_original_blob_drift_and_late_log_drift_rejected(self):
+        case=self.case();name='scripts/collect_polymarket_exact_header_campaign_v8.py'
+        raw=case.historical_qa_blobs[name];case.historical_qa_blobs[name]=raw+b' changed'
+        with self.assertRaisesRegex(m.Blocked,'failed_qa1_source_epoch'):m.failed_qa1_proof()
+        case.historical_qa_blobs[name]=raw
+        def changed(head,name):
+            path=Path(case.failed_qa_refs['log']['path']);value=path.read_bytes();path.write_bytes(value[:-1]+b' ')
+            return case.historical_qa_blobs[name]
+        with patch.object(m.scale,'git_blob',side_effect=changed),self.assertRaises(m.Blocked):m.failed_qa1_proof()
+
     def test_full_cold_certificate_and_real_old6_prior(self):
         case=self.case()
         self.assertEqual(case.reboot['private_current'],m.pilot.identity(case.private))

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-29 - Isolate exact-header admission fixture watchdog
+
+- Preserve the failed first Linux fixture receipt and log without launching a
+  producer; verify all historical files and process consumers before stopping
+  EC2 and independently confirming stopped.
+- Review a control-only correction using a fresh test child inside the same
+  total timeout; keep collection assertions, pacing, coverage and limits fixed.
+- Carry failed QA and its immutable historical source epoch in the same shared
+  control pool, separately from the corrected current-source pass evidence.
+
 ## 2026-10-29 - Approved fresh header admission allocation
 
 - Record explicit approval for a new 512KiB retained-log prefix, preserving full

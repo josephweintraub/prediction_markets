@@ -74,9 +74,17 @@ EXPIRED_V7_TERMINAL={"path":str(OP_ROOT/"header_v7_unlaunched_terminal_v1.json")
     "sha256":"01bfc18fd3e7d33d7dcbffac61d8815a1574d5e71ffb5925bff353609f9a73bf"}
 STOPPED_V6={"path":str(HANDOFF_PATH),"bytes":97593,
     "sha256":"46019e7c0e812ba0259add42387ab85e967d7549edeb39c601931eac5c6587b5"}
+FAILED_QA_HEAD="8542073491092e1acf35f83bca4639596002d494"
+FAILED_QA1_REFS={
+    "qa":{"path":str(OP_ROOT/"full_header_v8_linux_fixtures_v1.json"),"bytes":7309,
+        "sha256":"a014633a765785f2ed737ac06dc5be8636e5cb5f8d9789e18206bf7576eaa9b0"},
+    "log":{"path":str(OP_ROOT/"full_header_v8_linux_fixtures_v1.log"),"bytes":1176,
+        "sha256":"9df14d7cae4c3561cf5c0b79fe356dd9df0ecaaa4eaa744c8700d0607579c6e1"}}
+FAILED_QA_SOURCE_ROSTER_SHA256="719989bc8dce47db129a782ca86cd1e03fbd7e645f5c8a3ac64274eaf5af4682"
 NEW_OP_NAMES={"header_v7_unlaunched_terminal_v1.json","header_reboot_equivalence_v8_v1.json",
     "header_v8_preparation_request_v1.json","full_header_v8_host_preflight_v1.json","full_header_v8_source_commit_v1.json",
     "full_header_v8_linux_fixtures_v1.json","full_header_v8_linux_fixtures_v1.log","header_v8_external_control_ledger_v1.json",
+    "full_header_v8_linux_fixtures_v2.json","full_header_v8_linux_fixtures_v2.log",
     "full_header_v8_admission_v1.json","full_header_v8_root_admission_check_v1.json","full_header_v8.START.json",
     "full_header_v8.LAUNCH.json","full_header_v8.EXIT.json","full_header_v8.log","full_header_v8_root_dispatch_v1.json",
     "full_header_v8_prime_acceptance_v1.json","full_header_v8_terminal_acceptance_v1.json"}
@@ -110,6 +118,36 @@ def previous_source(source):
 
 def validate_inputs(value,source,actual_keys):
     return previous.validate_inputs(value,previous_source(source),actual_keys)
+
+
+def failed_qa1_proof():
+    """Preserve failed evidence against its committed epoch, never today's files."""
+    qa,qb=read_json(FAILED_QA1_REFS["qa"]);lb=reference(FAILED_QA1_REFS["log"])
+    require(type(qa) is dict,"failed_qa1_schema")
+    command=["/home/ubuntu/venv/bin/python","-m","unittest",*("tests."+name for name in (
+        "test_polymarket_exact_header_campaign_v8","test_polymarket_exact_header_campaign_v6",
+        "test_polymarket_exact_header_campaign_v5","test_polymarket_exact_header_campaign_v4",
+        "test_polymarket_exact_header_campaign_v3","test_launch_polymarket_oct1_stage_v7",
+        "test_prepare_polymarket_exact_header_campaign_v8"))]
+    require(qa.get("schema_version")=="polymarket_header_v8_linux_fixture_receipt_v1"
+        and qa.get("status")=="failed_closed" and qa.get("source_head")==FAILED_QA_HEAD
+        and qa.get("source_clean_before") is True and qa.get("source_clean_after") is True
+        and qa.get("command")==command and qa.get("interpreter")==command[0]
+        and qa.get("log")==FAILED_QA1_REFS["log"] and qa.get("log_truncated") is False
+        and qa.get("full_log_bytes")==lb["bytes"] and qa.get("full_log_sha256")==lb["sha256"],"failed_qa1_schema")
+    for key,expected in (("exit_code",1),("failures",1),("errors",0),("tests_run",247),("tests_skipped",0),("provider_requests",0)):
+        require(type(qa.get(key)) is int and qa[key]==expected,"failed_qa1_counts")
+    files=qa.get("tested_source_files")
+    require(type(files) is dict and len(files)==43
+        and digest(encode(sorted(files)))==FAILED_QA_SOURCE_ROSTER_SHA256,"failed_qa1_source_roster")
+    for name,expected in files.items():
+        require(type(expected) is dict and set(expected)=={"bytes","sha256"}
+            and type(expected["bytes"]) is int and 0<=expected["bytes"]<=MAX_JSON
+            and type(expected["sha256"]) is str and pilot.SHA.fullmatch(expected["sha256"]),"failed_qa1_source_schema")
+        raw=scale.git_blob(FAILED_QA_HEAD,name)
+        require(len(raw)==expected["bytes"] and digest(raw)==expected["sha256"],"failed_qa1_source_epoch")
+    for capture in (qb,lb):require(reference(ref(capture))==capture,"failed_qa1_late_change")
+    return {"qa":qa,"captures":{"qa":qb,"log":lb}}
 
 
 def required_carried_runtime(prior_value,producer_start_utc):
@@ -423,7 +461,7 @@ def validate_prior(value,output,source,inputs,reboot):
     require(value["stopped_v6"]==STOPPED_V6 and Path(value["stopped_v6"]["path"])==HANDOFF_PATH,"handoff_path")
     require(set(inputs)==set(reboot["historical_v6_inputs"]) and all(ref(inputs[name])==ref(old)
         for name,old in reboot["historical_v6_inputs"].items()),"historical_v6_projection_not_certified")
-    expired=expired_v7_proof()
+    expired=expired_v7_proof();failed_qa=failed_qa1_proof()
     handoff,hb=read_json(value["stopped_v6"],MAX_LEDGER)
     require(type(handoff) is dict and set(handoff)=={"schema_version","status","run_dir","source_head","refs","files",
         "runtime_charge_seconds","chunk_runtime_seconds","raw_clocks_only","final_sample_admitted"} and
@@ -615,7 +653,7 @@ def validate_prior(value,output,source,inputs,reboot):
         all(str(OP_ROOT/name) in closed for name in OLD_FUTURE_NAMES),"v6_external_closure_incomplete")
     required.update(closed)
     required.update({path:ref(item) for path,item in expired["required"].items()})
-    for item in (expired["terminal_binding"],reboot["binding"]):required[item["path"]]=ref(item)
+    for item in (expired["terminal_binding"],reboot["binding"],*failed_qa["captures"].values()):required[item["path"]]=ref(item)
     for item in (hb,*captures.values()):
         if item["path"] not in files:required[item["path"]]=ref(item)
     require(all(path in closure and ref(closure[path])==ref(item) for path,item in required.items()),"external_old_controls_omitted")
